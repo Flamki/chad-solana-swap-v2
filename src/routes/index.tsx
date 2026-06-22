@@ -110,7 +110,7 @@ function Landing() {
 
 
       {/* ============ STATS ============ */}
-      <section className="relative border-t border-border/40 px-5 py-24">
+      <section className="relative px-5 py-24">
         <div className="mx-auto max-w-5xl grid gap-12 sm:grid-cols-3 text-center">
           {[
             { k: "$2.4B+", v: "volume routed" },
