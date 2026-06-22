@@ -391,12 +391,21 @@ function Landing() {
       </section>
 
       {/* ============ DOWNLOAD ============ */}
-      <section id="download" className="relative border-t border-border/40 px-5 py-24 text-center">
-        <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary">Now available on web</p>
-        <h2 className="mt-4 font-display text-4xl md:text-6xl font-semibold tracking-tight">
-          trade from anywhere.<br />never lose a beat.
-        </h2>
-        <div className="mt-10 flex flex-wrap justify-center gap-3">
+      <section id="download" className="relative border-t border-border/40 px-5 py-32 text-center overflow-hidden">
+        <div className="mx-auto max-w-5xl">
+          <video
+            src={chadVideo}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="mx-auto mb-12 w-full max-w-3xl rounded-3xl border border-border/50 shadow-2xl shadow-primary/20"
+          />
+          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary">Now available on web & mobile</p>
+          <h2 className="mt-4 font-display text-4xl md:text-6xl font-semibold tracking-tight">
+            trade from anywhere.<br />never lose a beat.
+          </h2>
+          <div className="mt-10 flex flex-wrap justify-center gap-3">
           <a href={IOS} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-border bg-background/40 backdrop-blur px-5 py-3 hover:bg-background/70 transition">
             <Apple className="h-5 w-5" />
             <div className="text-left leading-tight">
@@ -411,6 +420,7 @@ function Landing() {
               <div className="text-sm font-semibold">Google Play</div>
             </div>
           </a>
+          </div>
         </div>
       </section>
 
