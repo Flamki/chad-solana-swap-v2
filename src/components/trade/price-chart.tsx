@@ -42,5 +42,5 @@ export function PriceChart({ data }: { data: { time: number; value: number }[] }
     chartRef.current?.timeScale().fitContent();
   }, [data]);
 
-  return <div ref={ref} className="h-full w-full" />;
+  return <div ref={ref} className="h-full w-full min-h-[300px]" style={{ height: "100%" }} />;
 }

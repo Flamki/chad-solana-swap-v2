@@ -155,7 +155,7 @@ function TradePage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card/40 p-3 min-h-[320px]">
+          <div className="rounded-2xl border border-border bg-card/40 p-3 h-[420px]">
             <PriceChart data={history} />
           </div>
 
