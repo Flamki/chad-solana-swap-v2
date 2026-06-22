@@ -32,7 +32,11 @@ export function PriceChart({ data }: { data: { time: number; value: number }[] }
       bottomColor: "rgba(122, 245, 111, 0.02)",
       lineWidth: 2,
     });
-    series.setData(data.map((d) => ({ time: d.time as never, value: d.value })));
+    const cleaned = [...new Map(data.map(d => [Math.floor(d.time), d.value])).entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([time, value]) => ({ time: time as never, value }));
+    console.log("[PriceChart] setData", cleaned.length, cleaned[0], cleaned[cleaned.length - 1]);
+    series.setData(cleaned);
     chart.timeScale().fitContent();
     const ro = new ResizeObserver((entries) => {
       const cr = entries[0]?.contentRect;
