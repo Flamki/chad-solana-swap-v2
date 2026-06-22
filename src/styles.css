@@ -63,38 +63,49 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.129 0.042 264.695);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.129 0.042 264.695);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.129 0.042 264.695);
-  --primary: oklch(0.208 0.042 265.755);
-  --primary-foreground: oklch(0.984 0.003 247.858);
-  --secondary: oklch(0.968 0.007 247.896);
-  --secondary-foreground: oklch(0.208 0.042 265.755);
-  --muted: oklch(0.968 0.007 247.896);
-  --muted-foreground: oklch(0.554 0.046 257.417);
-  --accent: oklch(0.968 0.007 247.896);
-  --accent-foreground: oklch(0.208 0.042 265.755);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.984 0.003 247.858);
-  --border: oklch(0.929 0.013 255.508);
-  --input: oklch(0.929 0.013 255.508);
-  --ring: oklch(0.704 0.04 256.788);
+  /* ChadWallet — deep cosmic dark with neon green + electric purple */
+  --background: oklch(0.13 0.03 280);
+  --foreground: oklch(0.98 0.01 120);
+  --card: oklch(0.17 0.035 280);
+  --card-foreground: oklch(0.98 0.01 120);
+  --popover: oklch(0.15 0.035 280);
+  --popover-foreground: oklch(0.98 0.01 120);
+  --primary: oklch(0.86 0.24 142);            /* neon green */
+  --primary-foreground: oklch(0.15 0.03 280);
+  --secondary: oklch(0.62 0.27 305);          /* electric purple */
+  --secondary-foreground: oklch(0.98 0.01 120);
+  --muted: oklch(0.22 0.03 280);
+  --muted-foreground: oklch(0.72 0.03 280);
+  --accent: oklch(0.62 0.27 305);
+  --accent-foreground: oklch(0.98 0.01 120);
+  --destructive: oklch(0.68 0.25 25);
+  --destructive-foreground: oklch(0.98 0.01 120);
+  --success: oklch(0.78 0.22 142);
+  --border: oklch(0.28 0.04 280);
+  --input: oklch(0.22 0.04 280);
+  --ring: oklch(0.86 0.24 142);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.984 0.003 247.858);
-  --sidebar-foreground: oklch(0.129 0.042 264.695);
-  --sidebar-primary: oklch(0.208 0.042 265.755);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.968 0.007 247.896);
-  --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
-  --sidebar-border: oklch(0.929 0.013 255.508);
-  --sidebar-ring: oklch(0.704 0.04 256.788);
+  --sidebar: oklch(0.15 0.035 280);
+  --sidebar-foreground: oklch(0.98 0.01 120);
+  --sidebar-primary: oklch(0.86 0.24 142);
+  --sidebar-primary-foreground: oklch(0.15 0.03 280);
+  --sidebar-accent: oklch(0.22 0.04 280);
+  --sidebar-accent-foreground: oklch(0.98 0.01 120);
+  --sidebar-border: oklch(0.28 0.04 280);
+  --sidebar-ring: oklch(0.86 0.24 142);
+
+  --gradient-chad: linear-gradient(135deg, oklch(0.86 0.24 142) 0%, oklch(0.62 0.27 305) 100%);
+  --gradient-cosmic: radial-gradient(ellipse at 30% 20%, oklch(0.28 0.12 305 / 0.5), transparent 55%),
+                     radial-gradient(ellipse at 80% 80%, oklch(0.35 0.18 142 / 0.35), transparent 60%),
+                     oklch(0.10 0.025 280);
+  --shadow-glow-green: 0 0 40px oklch(0.86 0.24 142 / 0.45);
+  --shadow-glow-purple: 0 0 40px oklch(0.62 0.27 305 / 0.45);
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 .dark {
@@ -140,5 +151,54 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-display);
+    -webkit-font-smoothing: antialiased;
   }
+}
+
+@theme inline {
+  --color-success: var(--success);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+@utility text-gradient-chad {
+  background: var(--gradient-chad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility bg-cosmic {
+  background: var(--gradient-cosmic);
+}
+
+@utility glow-green {
+  box-shadow: var(--shadow-glow-green);
+}
+
+@utility glow-purple {
+  box-shadow: var(--shadow-glow-purple);
+}
+
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@utility animate-marquee {
+  animation: marquee 60s linear infinite;
+}
+
+@utility animate-marquee-reverse {
+  animation: marquee 60s linear infinite reverse;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+@utility animate-pulse-glow {
+  animation: pulse-glow 2.5s ease-in-out infinite;
 }
