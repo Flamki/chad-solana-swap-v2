@@ -92,14 +92,15 @@ export function generatePriceHistory(token: Token, points = 180): { time: number
   const now = Math.floor(Date.now() / 1000);
   const step = (24 * 60 * 60) / points;
   let seed = token.mint.charCodeAt(0) + token.mint.charCodeAt(5);
-  for (let i = 0; i < points; i++) {
+  for (let i = 0; i <= points; i++) {
     seed = (seed * 9301 + 49297) % 233280;
     const r = seed / 233280;
     const drift = (token.change24h / 100) / points;
     price = price * (1 + drift + (r - 0.5) * 0.025);
-    out.push({ time: now - (points - i) * step, value: price });
+    out.push({ time: Math.floor(now - (points - i) * step), value: price });
   }
-  out.push({ time: now, value: token.price });
+  // Ensure final point matches current price
+  out[out.length - 1] = { time: now, value: token.price };
   return out;
 }
 
