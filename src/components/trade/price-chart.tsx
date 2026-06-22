@@ -5,6 +5,7 @@ export function PriceChart({ data }: { data: { time: number; value: number }[] }
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log("[PriceChart] effect fired", { hasRef: !!ref.current, AreaSeries, dataLen: data.length });
     if (!ref.current) return;
     const el = ref.current;
     const initW = el.clientWidth || 600;
