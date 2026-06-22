@@ -94,60 +94,6 @@ function Landing() {
         </div>
       </section>
 
-      {/* Social-first trading */}
-      <section className="relative z-10 mx-auto max-w-7xl px-5 py-24">
-        <p className="text-xs font-mono uppercase tracking-[0.2em] text-lime">Social-first trading</p>
-        <h2 className="mt-4 max-w-3xl font-display text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05]">
-          Built for the moment<br />before consensus.
-        </h2>
-        <div className="mt-14 grid gap-6 md:grid-cols-3">
-          {[
-            { tag: "Discover", title: "Token discovery that feels like your feed", body: "Swipe through Solana momentum, KOL activity, fresh wallets, and volume spikes before they flatten into old news." },
-            { tag: "Trade", title: "Buy and sell from one focused surface", body: "The preview trading UI brings chart, holders, live trades, and position controls together so intent becomes action quickly." },
-            { tag: "Follow", title: "See what smart wallets are doing", body: "Designed for social trading: watch wallets, KOLs, token launches, and re-launches without bouncing through ten tabs." },
-          ].map((c) => (
-            <div key={c.tag} className="rounded-2xl border border-border/60 bg-card/40 backdrop-blur p-6">
-              <div className="aspect-[4/3] rounded-xl bg-gradient-to-br from-primary/30 via-background/60 to-success/20 border border-border/40" />
-              <p className="mt-6 text-[11px] font-mono uppercase tracking-[0.2em] text-lime">{c.tag}</p>
-              <h3 className="mt-3 font-display text-xl font-semibold leading-snug">{c.title}</h3>
-              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{c.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Mobile native */}
-      <section className="relative z-10 mx-auto max-w-7xl px-5 py-24 grid gap-12 md:grid-cols-2 items-center">
-        <div>
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-lime">Mobile native</p>
-          <h2 className="mt-4 font-display text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05]">
-            Never lose a trade between phone and web.
-          </h2>
-          <p className="mt-6 max-w-md text-base text-muted-foreground leading-relaxed">
-            The landing page mirrors the ChadWallet app story: discover on mobile, track signal, then jump into a focused web trading panel when conviction hits.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-border/60 bg-card/40 backdrop-blur p-6 space-y-3">
-          {[
-            { name: "The Disabled Alpha", sub: "$27.25K", right: "$0.0₄27" },
-            { name: "Roman", sub: "sold $100.41 on Pump", right: "1m", sell: true },
-            { name: "The Disabled Alpha", sub: "$27.25K", right: "$0.0₄27" },
-            { name: "Zrool 兆", sub: "sold $142.10 on Pump", right: "1m", sell: true },
-          ].map((t, i) => (
-            <div key={i} className="flex items-center justify-between rounded-xl border border-border/40 bg-background/40 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-br from-primary/60 to-success/40" />
-                <div>
-                  <div className="text-sm font-semibold">{t.name}</div>
-                  <div className={`text-xs ${t.sell ? "text-destructive" : "text-muted-foreground"}`}>{t.sub}</div>
-                </div>
-              </div>
-              <div className="text-sm font-mono text-muted-foreground">{t.right}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* Sub section */}
       <section id="download" className="relative z-10 mx-auto max-w-3xl px-5 py-24 text-center">
         <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary">Now available on web</p>
