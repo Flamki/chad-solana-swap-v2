@@ -35,9 +35,9 @@ const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
 function Landing() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* ============ HERO (scene confined here) ============ */}
+      {/* ============ HERO + STATS (shared scene) ============ */}
       <div className="relative overflow-hidden">
-        {/* Space background — confined to hero only */}
+        {/* Space background — extends through stats */}
         <div className="pointer-events-none absolute inset-0 z-0">
           <img
             src={heroImg}
@@ -46,7 +46,7 @@ function Landing() {
             className="absolute inset-0 h-full w-full object-cover object-center"
           />
           <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-64 bg-gradient-to-b from-transparent to-background" />
+          <div className="absolute inset-x-0 bottom-0 h-[32rem] bg-gradient-to-b from-transparent to-background" />
         </div>
 
         <TokenMarquee />
