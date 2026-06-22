@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Apple, Play } from "lucide-react";
-import heroImg from "@/assets/hero-astronaut.jpg";
+import heroImg from "@/assets/hero-space.jpg";
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenMarquee } from "@/components/token-marquee";
 
@@ -28,9 +28,9 @@ function Landing() {
           src={heroImg}
           alt=""
           aria-hidden
-          className="absolute inset-0 h-full w-full object-cover opacity-90"
+          className="absolute inset-0 h-full w-full object-cover object-center opacity-100"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/10 to-background" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/10 to-background/30" />
       </div>
 
       {/* Top marquee */}
