@@ -23,14 +23,14 @@ function Landing() {
   return (
     <div className="min-h-screen relative overflow-hidden bg-background text-foreground">
       {/* Space background image */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
+      <div className="pointer-events-none absolute inset-0 z-0">
         <img
           src={heroImg}
           alt=""
           aria-hidden
           className="absolute inset-0 h-full w-full object-cover object-center opacity-100"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/10 to-background/30" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/5 via-background/0 to-background/20" />
       </div>
 
       {/* Top marquee */}
