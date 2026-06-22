@@ -8,8 +8,12 @@ export function PriceChart({ data }: { data: { time: number; value: number }[] }
 
   useEffect(() => {
     if (!ref.current) return;
+    const el = ref.current;
+    const initW = el.clientWidth || 600;
+    const initH = el.clientHeight || 360;
     const chart = createChart(ref.current, {
-      autoSize: true,
+      width: initW,
+      height: initH,
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: "#9aa0b4",
@@ -31,7 +35,12 @@ export function PriceChart({ data }: { data: { time: number; value: number }[] }
     });
     chartRef.current = chart;
     seriesRef.current = series;
-    return () => chart.remove();
+    const ro = new ResizeObserver((entries) => {
+      const cr = entries[0]?.contentRect;
+      if (cr) chart.resize(cr.width, cr.height);
+    });
+    ro.observe(el);
+    return () => { ro.disconnect(); chart.remove(); };
   }, []);
 
   useEffect(() => {
