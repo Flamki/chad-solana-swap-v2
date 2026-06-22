@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Apple, Play, Zap, Shield, Smartphone, TrendingUp, Wallet, Globe } from "lucide-react";
+import { Apple, Play, Zap, Copy, Coins, ArrowUpRight } from "lucide-react";
 import heroImg from "@/assets/hero-astronaut.jpg";
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenMarquee } from "@/components/token-marquee";
@@ -96,28 +96,92 @@ function Landing() {
         </section>
       </div>
 
-      {/* ============ FEATURES ============ */}
-      <section className="relative border-t border-border/40 px-5 py-24">
+      {/* ============ ABOUT — premium editorial bento ============ */}
+      <section className="relative border-t border-border/40 px-5 py-32">
         <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">why chad</p>
-          <h2 className="mt-4 font-display text-4xl md:text-6xl font-semibold tracking-tight text-center">
-            no chains. no gas. no cope.
-          </h2>
-          <div className="mt-16 grid gap-px bg-border/40 sm:grid-cols-2 lg:grid-cols-3 rounded-2xl overflow-hidden border border-border/40">
-            {[
-              { icon: Zap, t: "Sub-second swaps", d: "Jupiter-routed orders confirm before the meme cycles." },
-              { icon: Shield, t: "Self-custody", d: "Privy keys. You own them. We can't touch them." },
-              { icon: Smartphone, t: "Apple Pay onramp", d: "Fiat → SOL in two taps. No KYC theater." },
-              { icon: TrendingUp, t: "Live token feed", d: "BirdEye-powered prices, charts and holders." },
-              { icon: Wallet, t: "Social-first", d: "Sign in with Apple or Google. No seed phrases." },
-              { icon: Globe, t: "Trade anywhere", d: "iOS, Android, and now the web. Same wallet." },
-            ].map(({ icon: Icon, t, d }) => (
-              <div key={t} className="bg-background p-8">
-                <Icon className="h-6 w-6 text-primary" />
-                <h3 className="mt-4 font-display text-xl font-semibold">{t}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">{d}</p>
+          {/* Eyebrow + headline */}
+          <div className="grid gap-10 md:grid-cols-12 md:items-end">
+            <div className="md:col-span-5">
+              <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
+                <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
+                about chadwallet
+              </p>
+              <h2 className="mt-6 font-display text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight">
+                Hunt every<br />
+                memecoin.<br />
+                <span className="text-muted-foreground">Every chain.</span><br />
+                One wallet.
+              </h2>
+            </div>
+            <div className="md:col-span-6 md:col-start-7">
+              <p className="text-lg md:text-xl leading-relaxed text-foreground/80">
+                ChadWallet is the trader-first wallet for people who actually print.
+                Built to <span className="text-foreground font-medium">outrun the bots</span>,
+                copy the wallets that matter, and turn every fill into rewards.
+              </p>
+              <div className="mt-8 flex items-center gap-6 text-sm">
+                <a href={IOS} target="_blank" rel="noreferrer" className="group inline-flex items-center gap-1.5 text-foreground hover:text-primary transition">
+                  Read the manifesto
+                  <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </a>
+                <span className="text-muted-foreground">·</span>
+                <span className="font-mono text-xs uppercase tracking-widest text-muted-foreground">v1.0 — live</span>
               </div>
+            </div>
+          </div>
+
+          {/* Three-pillar bento */}
+          <div className="mt-20 grid gap-4 md:grid-cols-3">
+            {[
+              {
+                icon: Zap,
+                kicker: "01 — speed",
+                t: "Outrun the bots.",
+                d: "Snipe memecoins at lightning speed on every chain. Sub-second Jupiter routing keeps you ahead of the snipers, not the exit liquidity.",
+              },
+              {
+                icon: Copy,
+                kicker: "02 — signal",
+                t: "Copy the printers.",
+                d: "Mirror the wallets that are actually winning. Live PnL, holdings and entries — no Discord alpha tax required.",
+              },
+              {
+                icon: Coins,
+                kicker: "03 — rewards",
+                t: "Earn $CHAD on every fill.",
+                d: "Every swap stacks points. Points stack into $CHAD. You get rewarded to ape — finally.",
+              },
+            ].map(({ icon: Icon, kicker, t, d }) => (
+              <article
+                key={t}
+                className="group relative overflow-hidden rounded-2xl border border-border/50 bg-gradient-to-b from-foreground/[0.04] to-transparent p-8 transition hover:border-primary/40"
+              >
+                <div className="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-primary/0 blur-3xl transition group-hover:bg-primary/20" />
+                <div className="relative flex h-full flex-col">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground">{kicker}</span>
+                    <Icon className="h-4 w-4 text-primary" />
+                  </div>
+                  <h3 className="mt-12 font-display text-2xl md:text-3xl font-semibold leading-tight tracking-tight">{t}</h3>
+                  <p className="mt-4 text-sm leading-relaxed text-muted-foreground">{d}</p>
+                </div>
+              </article>
             ))}
+          </div>
+
+          {/* Closing strip */}
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-6 rounded-2xl border border-border/50 bg-foreground/[0.02] px-8 py-6">
+            <div className="font-display text-xl md:text-2xl tracking-tight">
+              No chains. No gas confusion. <span className="text-muted-foreground">No cope.</span>
+            </div>
+            <Link
+              to="/trade/$mint"
+              params={{ mint: "So11111111111111111111111111111111111111112" }}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition"
+            >
+              Start hunting
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
           </div>
         </div>
       </section>
