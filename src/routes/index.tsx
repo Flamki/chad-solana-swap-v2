@@ -3,6 +3,19 @@ import { Apple, Play, Zap, Copy, Coins, ArrowUpRight } from "lucide-react";
 import heroImg from "@/assets/hero-astronaut.jpg";
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenMarquee } from "@/components/token-marquee";
+import screenSearch from "@/assets/app store/search.png";
+import screenToken from "@/assets/app store/token.png";
+import screenPortfolio from "@/assets/app store/portfolio.png";
+import screenKol from "@/assets/app store/kol.png";
+import screenLaunch from "@/assets/app store/launch.png";
+import screenDeposit from "@/assets/app store/deposit.png";
+import flowBuySell from "@/assets/flow/buy-sell-4.png";
+import flowKol from "@/assets/flow/kol-4.png";
+import flowLaunch from "@/assets/flow/launch-4.png";
+import flowMeme from "@/assets/flow/memecoin-4.png";
+import flowPortfolio from "@/assets/flow/portfolio-4.png";
+import flowRelaunch from "@/assets/flow/relaunch-4.png";
+import chadVideo from "@/assets/video/chadwallet.mp4";
 
 export const Route = createFileRoute("/")({
   head: () => ({
