@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Apple, Play } from "lucide-react";
-import heroImg from "@/assets/hero-space.jpg";
+import heroImg from "@/assets/hero-astronaut.jpg";
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenMarquee } from "@/components/token-marquee";
 
