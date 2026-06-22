@@ -107,7 +107,6 @@ function Landing() {
           </a>
         </div>
         </section>
-      </div>
 
 
       {/* ============ STATS ============ */}
