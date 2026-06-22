@@ -54,13 +54,13 @@ function TradePage() {
     <div className="min-h-screen bg-cosmic flex flex-col">
       {/* Top bar */}
       <header className="sticky top-0 z-30 backdrop-blur-md bg-background/60 border-b border-border">
-        <div className="flex h-14 items-center justify-between px-4">
+        <div className="flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <Link to="/" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
               <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Home</span>
             </Link>
             <div className="h-5 w-px bg-border" />
-            <ChadLogo variant="light" size="sm" />
+            <ChadLogo variant="dark" size="sm" />
           </div>
           <SignInButton />
         </div>

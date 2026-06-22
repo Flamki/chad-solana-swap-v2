@@ -52,8 +52,8 @@ function Landing() {
         <TokenMarquee />
 
         <header className="relative z-40">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
-          <ChadLogo variant="light" size="lg" />
+        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5">
+          <ChadLogo variant="dark" size="lg" />
           <div className="flex items-center gap-2">
             <a href={IOS} target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 backdrop-blur px-3 py-1.5 hover:bg-background/70 transition">
               <Apple className="h-4 w-4" />
@@ -495,7 +495,7 @@ function Landing() {
       <TokenMarquee reverse />
 
       <footer className="mx-auto max-w-7xl px-5 py-8 flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
-        <ChadLogo variant="light" size="md" />
+        <ChadLogo variant="dark" size="md" />
         <div>© {new Date().getFullYear()} ChadWallet · Solana</div>
       </footer>
     </div>
