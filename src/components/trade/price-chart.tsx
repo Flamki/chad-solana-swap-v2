@@ -1,10 +1,8 @@
 import { useEffect, useRef } from "react";
-import { createChart, AreaSeries, type IChartApi, type ISeriesApi, ColorType } from "lightweight-charts";
+import { createChart, AreaSeries, ColorType } from "lightweight-charts";
 
 export function PriceChart({ data }: { data: { time: number; value: number }[] }) {
   const ref = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Area"> | null>(null);
 
   useEffect(() => {
     if (!ref.current) return;
@@ -33,22 +31,14 @@ export function PriceChart({ data }: { data: { time: number; value: number }[] }
       bottomColor: "rgba(122, 245, 111, 0.02)",
       lineWidth: 2,
     });
-    chartRef.current = chart;
-    seriesRef.current = series;
+    series.setData(data.map((d) => ({ time: d.time as never, value: d.value })));
+    chart.timeScale().fitContent();
     const ro = new ResizeObserver((entries) => {
       const cr = entries[0]?.contentRect;
       if (cr) chart.resize(cr.width, cr.height);
     });
     ro.observe(el);
     return () => { ro.disconnect(); chart.remove(); };
-  }, []);
-
-  useEffect(() => {
-    if (!seriesRef.current) return;
-    seriesRef.current.setData(
-      data.map((d) => ({ time: d.time as never, value: d.value }))
-    );
-    chartRef.current?.timeScale().fitContent();
   }, [data]);
 
   return <div ref={ref} className="h-full w-full min-h-[300px]" style={{ height: "100%" }} />;
