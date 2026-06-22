@@ -67,7 +67,7 @@ function TradePage() {
       </header>
 
       {/* 3-column trading layout */}
-      <main className="flex-1 grid lg:grid-cols-[260px_1fr_340px] gap-3 p-3">
+      <main className="grid lg:grid-cols-[260px_1fr_340px] gap-3 p-3">
         {/* LEFT — trending */}
         <aside className="rounded-2xl border border-border bg-card/40 overflow-hidden flex flex-col min-h-[400px] lg:min-h-0">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -115,7 +115,7 @@ function TradePage() {
         </aside>
 
         {/* MIDDLE — info + chart + tabs */}
-        <section className="grid grid-rows-[auto_minmax(300px,1fr)_auto] gap-3 min-w-0">
+        <section className="flex flex-col gap-3 min-w-0">
           <div className="rounded-2xl border border-border bg-card/40 p-4">
             <div className="flex flex-wrap items-center gap-4">
               <img
@@ -155,7 +155,7 @@ function TradePage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-border bg-card/40 p-3 h-[420px]">
+          <div className="rounded-2xl border border-border bg-card/40 p-3 h-[420px] overflow-hidden">
             <PriceChart data={history} />
           </div>
 

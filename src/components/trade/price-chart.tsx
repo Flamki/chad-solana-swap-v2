@@ -62,13 +62,15 @@ export function PriceChart({ data }: { data: Point[] }) {
   const fmt = (v: number) => v < 0.01 ? v.toExponential(2) : v < 1 ? v.toFixed(4) : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
   return (
-    <div ref={wrapRef} className="relative h-full w-full min-h-[300px]" style={{ height: "100%" }}>
+    <div ref={wrapRef} className="relative h-full w-full min-h-[300px] overflow-hidden" style={{ height: "100%" }}>
       <svg
         width={size.w}
         height={size.h}
+        viewBox={`0 0 ${size.w} ${size.h}`}
+        preserveAspectRatio="none"
         onMouseMove={onMove}
         onMouseLeave={() => setHover(null)}
-        className="block"
+        className="block max-w-full"
       >
         <defs>
           <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
