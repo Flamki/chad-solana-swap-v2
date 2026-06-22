@@ -215,26 +215,130 @@ function Landing() {
         </div>
       </section>
 
-      {/* ============ HOW IT WORKS ============ */}
-      <section className="relative border-t border-border/40 px-5 py-24">
-        <div className="mx-auto max-w-5xl">
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">how it works</p>
-          <h2 className="mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight text-center">
-            three steps to chad.
-          </h2>
-          <ol className="mt-16 grid gap-8 md:grid-cols-3">
+      {/* ============ FEATURES — phone screenshots ============ */}
+      <section className="relative border-t border-border/40 px-5 py-32 overflow-hidden">
+        <div className="mx-auto max-w-6xl">
+          <div className="grid gap-10 md:grid-cols-12 md:items-end">
+            <div className="md:col-span-7">
+              <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
+                <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
+                inside the app
+              </p>
+              <h2 className="mt-6 font-display text-5xl md:text-6xl font-semibold leading-[0.95] tracking-tight">
+                Built for the<br/>
+                <span className="text-muted-foreground">fastest fingers</span> on Solana.
+              </h2>
+            </div>
+            <p className="md:col-span-5 text-base md:text-lg text-foreground/70 leading-relaxed">
+              Every screen ships with the trader in mind — discover, ape, track and cash out without ever leaving the wallet.
+            </p>
+          </div>
+
+          <div className="mt-20 grid gap-6 md:grid-cols-12">
+            {/* Big left feature */}
+            <article className="md:col-span-7 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-primary/[0.08] via-foreground/[0.03] to-transparent p-8 md:p-10">
+              <div className="grid gap-8 md:grid-cols-2 md:items-center">
+                <div>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">discover</span>
+                  <h3 className="mt-4 font-display text-3xl md:text-4xl font-semibold leading-tight tracking-tight">
+                    Search anything.<br/>Ape in seconds.
+                  </h3>
+                  <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+                    Token, ticker, CA or wallet — surface the next move before the timeline does.
+                  </p>
+                </div>
+                <div className="relative">
+                  <img src={screenSearch} alt="Search any token" className="mx-auto w-[220px] md:w-[260px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/20" />
+                </div>
+              </div>
+            </article>
+
+            {/* Right tall portfolio */}
+            <article className="md:col-span-5 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-8 md:p-10">
+              <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">portfolio</span>
+              <h3 className="mt-4 font-display text-2xl md:text-3xl font-semibold leading-tight tracking-tight">
+                Every bag.<br/>One pane of glass.
+              </h3>
+              <p className="mt-3 text-sm text-muted-foreground">Live PnL, holdings, history. Zero spreadsheet.</p>
+              <div className="mt-6 flex justify-center">
+                <img src={screenPortfolio} alt="Portfolio" className="w-[200px] md:w-[230px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/10" />
+              </div>
+            </article>
+
+            {/* Three smaller cards */}
             {[
-              { n: "01", t: "Sign in", d: "Apple or Google through Privy. Wallet ready in seconds." },
-              { n: "02", t: "Fund it", d: "Apple Pay, card or transfer SOL. No tutorial required." },
-              { n: "03", t: "Ape", d: "Search any token, hit buy. Track your bags in one place." },
-            ].map((s) => (
-              <li key={s.n} className="rounded-2xl border border-border/40 bg-background/40 p-8">
-                <div className="font-mono text-xs text-primary">{s.n}</div>
-                <div className="mt-3 font-display text-2xl font-semibold">{s.t}</div>
-                <p className="mt-2 text-sm text-muted-foreground">{s.d}</p>
-              </li>
+              { img: screenToken, k: "trade", t: "Charts that don't lie.", d: "Sub-second routing on Jupiter, native swap UX." },
+              { img: screenKol, k: "copy", t: "Mirror the printers.", d: "Track and copy KOL wallets in one tap." },
+              { img: screenLaunch, k: "launch", t: "First on every launch.", d: "New pairs surfaced the second they go live." },
+            ].map(({ img, k, t, d }) => (
+              <article key={k} className="md:col-span-4 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-7">
+                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">{k}</span>
+                <h3 className="mt-3 font-display text-xl md:text-2xl font-semibold leading-tight tracking-tight">{t}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{d}</p>
+                <div className="mt-5 flex justify-center">
+                  <img src={img} alt={t} className="w-[170px] rounded-[1.5rem] border border-border/60 shadow-xl shadow-black/40" />
+                </div>
+              </article>
             ))}
-          </ol>
+
+            {/* Deposit wide */}
+            <article className="md:col-span-12 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-r from-foreground/[0.05] to-transparent p-8 md:p-10">
+              <div className="grid gap-8 md:grid-cols-2 md:items-center">
+                <div>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">funding</span>
+                  <h3 className="mt-4 font-display text-3xl md:text-4xl font-semibold leading-tight tracking-tight">
+                    Apple Pay → SOL.<br/><span className="text-muted-foreground">No tutorial required.</span>
+                  </h3>
+                  <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-md">
+                    Top up with card, Apple Pay or transfer. Funds land trade-ready, not bridge-ready.
+                  </p>
+                </div>
+                <div className="flex justify-center md:justify-end">
+                  <img src={screenDeposit} alt="Deposit" className="w-[220px] md:w-[260px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/20" />
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* ============ THE FLOW — editorial strip ============ */}
+      <section className="relative border-t border-border/40 px-5 py-32">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
+                <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
+                the flow
+              </p>
+              <h2 className="mt-6 font-display text-5xl md:text-6xl font-semibold leading-[0.95] tracking-tight">
+                One wallet.<br/>Every play.
+              </h2>
+            </div>
+            <p className="max-w-sm text-sm md:text-base text-muted-foreground">
+              From the first deposit to the next launch — the entire trader loop, designed end-to-end.
+            </p>
+          </div>
+
+          <div className="mt-16 grid gap-5 md:grid-cols-2">
+            {[
+              { img: flowMeme, k: "01 — hunt", t: "Find the next memecoin." },
+              { img: flowBuySell, k: "02 — execute", t: "Buy & sell in one tap." },
+              { img: flowKol, k: "03 — copy", t: "Mirror the winners." },
+              { img: flowPortfolio, k: "04 — track", t: "Watch the bags move." },
+              { img: flowLaunch, k: "05 — launch", t: "Be early. Every time." },
+              { img: flowRelaunch, k: "06 — rotate", t: "Recycle into the next." },
+            ].map(({ img, k, t }) => (
+              <article key={k} className="group relative overflow-hidden rounded-2xl border border-border/50 bg-foreground/[0.02]">
+                <img src={img} alt={t} className="aspect-[16/9] w-full object-cover transition duration-700 group-hover:scale-[1.02]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-7">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">{k}</span>
+                  <h3 className="mt-2 font-display text-2xl md:text-3xl font-semibold leading-tight tracking-tight">{t}</h3>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
