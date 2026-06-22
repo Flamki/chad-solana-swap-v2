@@ -124,6 +124,7 @@ function Landing() {
           ))}
         </div>
       </section>
+      </div>
 
       {/* ============ FEATURES — phone screenshots ============ */}
       <section className="relative border-t border-border/40 px-5 py-32 overflow-hidden">
