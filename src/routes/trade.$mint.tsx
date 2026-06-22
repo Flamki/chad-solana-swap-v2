@@ -60,7 +60,7 @@ function TradePage() {
               <ArrowLeft className="h-4 w-4" /> <span className="hidden sm:inline">Home</span>
             </Link>
             <div className="h-5 w-px bg-border" />
-            <ChadLogo />
+            <ChadLogo variant="light" size="sm" />
           </div>
           <SignInButton />
         </div>
