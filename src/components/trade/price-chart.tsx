@@ -5,7 +5,6 @@ export function PriceChart({ data }: { data: { time: number; value: number }[] }
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    console.log("[PriceChart] effect fired", { hasRef: !!ref.current, AreaSeries, dataLen: data.length });
     if (!ref.current) return;
     const el = ref.current;
     const initW = el.clientWidth || 600;
@@ -35,7 +34,6 @@ export function PriceChart({ data }: { data: { time: number; value: number }[] }
     const cleaned = [...new Map(data.map(d => [Math.floor(d.time), d.value])).entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([time, value]) => ({ time: time as never, value }));
-    console.log("[PriceChart] setData", cleaned.length, cleaned[0], cleaned[cleaned.length - 1]);
     series.setData(cleaned);
     chart.timeScale().fitContent();
     const ro = new ResizeObserver((entries) => {
@@ -43,6 +41,11 @@ export function PriceChart({ data }: { data: { time: number; value: number }[] }
       if (cr) chart.resize(cr.width, cr.height);
     });
     ro.observe(el);
+    requestAnimationFrame(() => {
+      const r = el.getBoundingClientRect();
+      chart.resize(r.width, r.height);
+      chart.timeScale().fitContent();
+    });
     return () => { ro.disconnect(); chart.remove(); };
   }, [data]);
 
