@@ -495,7 +495,7 @@ function Landing() {
       <TokenMarquee reverse />
 
       <footer className="mx-auto max-w-7xl px-5 py-8 flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
-        <ChadLogo variant="light" size="md" />
+        <ChadLogo variant="dark" size="md" />
         <div>© {new Date().getFullYear()} ChadWallet · Solana</div>
       </footer>
     </div>
