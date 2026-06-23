@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Apple, Play, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { AppStoreBadge, PlayStoreBadge } from "@/components/store-badges";
 import heroImg from "@/assets/hero-astronaut.jpg";
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenMarquee } from "@/components/token-marquee";
+
 import screenSearch from "@/assets/app store/search.png";
 import screenToken from "@/assets/app store/token.png";
 import screenPortfolio from "@/assets/app store/portfolio.png";
