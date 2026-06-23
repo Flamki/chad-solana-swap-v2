@@ -156,7 +156,7 @@ function Landing() {
 
       {/* ============ ABOUT / MANIFESTO ============ */}
       <section className="relative border-t border-border/40 px-5 py-32 text-center">
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto max-w-3xl reveal">
           <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
             <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
             about chadwallet
@@ -185,7 +185,7 @@ function Landing() {
       {/* ============ FEATURES — phone screenshots ============ */}
       <section className="relative border-t border-border/40 px-5 py-32 overflow-hidden">
         <div className="mx-auto max-w-6xl">
-          <div className="grid gap-10 md:grid-cols-12 md:items-end">
+          <div className="grid gap-10 md:grid-cols-12 md:items-end reveal">
             <div className="md:col-span-7">
               <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
                 <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
@@ -203,7 +203,7 @@ function Landing() {
 
           <div className="mt-20 grid gap-6 md:grid-cols-12">
             {/* Big left feature */}
-            <article className="md:col-span-7 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-primary/[0.08] via-foreground/[0.03] to-transparent p-8 md:p-10">
+            <article className="reveal md:col-span-7 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-primary/[0.08] via-foreground/[0.03] to-transparent p-8 md:p-10">
               <div className="grid gap-8 md:grid-cols-2 md:items-center">
                 <div>
                   <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">discover</span>
@@ -221,7 +221,7 @@ function Landing() {
             </article>
 
             {/* Right tall portfolio */}
-            <article className="md:col-span-5 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-8 md:p-10">
+            <article className="reveal reveal-delay-1 md:col-span-5 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-8 md:p-10">
               <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">portfolio</span>
               <h3 className="mt-4 font-display text-2xl md:text-3xl font-semibold leading-tight tracking-tight">
                 Every bag.<br/>One pane of glass.
@@ -237,8 +237,8 @@ function Landing() {
               { img: screenToken, k: "trade", t: "Charts that don't lie.", d: "Sub-second routing on Jupiter, native swap UX." },
               { img: screenKol, k: "copy", t: "Mirror the printers.", d: "Track and copy KOL wallets in one tap." },
               { img: screenLaunch, k: "launch", t: "First on every launch.", d: "New pairs surfaced the second they go live." },
-            ].map(({ img, k, t, d }) => (
-              <article key={k} className="md:col-span-4 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-7">
+            ].map(({ img, k, t, d }, i) => (
+              <article key={k} className={`reveal reveal-delay-${i + 1} md:col-span-4 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-7`}>
                 <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">{k}</span>
                 <h3 className="mt-3 font-display text-xl md:text-2xl font-semibold leading-tight tracking-tight">{t}</h3>
                 <p className="mt-2 text-sm text-muted-foreground">{d}</p>
@@ -249,7 +249,7 @@ function Landing() {
             ))}
 
             {/* Deposit wide */}
-            <article className="md:col-span-12 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-r from-foreground/[0.05] to-transparent p-8 md:p-10">
+            <article className="reveal md:col-span-12 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-r from-foreground/[0.05] to-transparent p-8 md:p-10">
               <div className="grid gap-8 md:grid-cols-2 md:items-center">
                 <div>
                   <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">funding</span>
@@ -272,7 +272,7 @@ function Landing() {
       {/* ============ THE FLOW — editorial strip ============ */}
       <section className="relative border-t border-border/40 px-5 py-32">
         <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap items-end justify-between gap-6">
+          <div className="flex flex-wrap items-end justify-between gap-6 reveal">
             <div>
               <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
                 <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
@@ -295,8 +295,8 @@ function Landing() {
               { img: flowPortfolio, k: "04 — track", t: "Watch the bags move." },
               { img: flowLaunch, k: "05 — launch", t: "Be early. Every time." },
               { img: flowRelaunch, k: "06 — rotate", t: "Recycle into the next." },
-            ].map(({ img, k, t }) => (
-              <article key={k} className="group relative overflow-hidden rounded-2xl border border-border/50 bg-foreground/[0.02]">
+            ].map(({ img, k, t }, i) => (
+              <article key={k} className={`reveal reveal-delay-${(i % 5) + 1} group relative overflow-hidden rounded-2xl border border-border/50 bg-foreground/[0.02]`}>
                 <img src={img} alt={t} className="aspect-[16/9] w-full object-cover transition duration-700 group-hover:scale-[1.02]" />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-7">
@@ -313,7 +313,7 @@ function Landing() {
       <section className="relative border-t border-border/40 px-5 py-24">
         <div className="mx-auto max-w-6xl">
           <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">on the timeline</p>
-          <h2 className="mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight text-center">
+          <h2 className="reveal mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight text-center">
             what chads are saying.
           </h2>
           <div className="mt-16 grid gap-6 md:grid-cols-3">
@@ -321,8 +321,8 @@ function Landing() {
               { q: "switched from phantom and never looked back. fills are insane.", a: "@solwhale" },
               { q: "apple pay → SOL in 10 seconds. this shouldn't be legal.", a: "@degenmom" },
               { q: "first wallet that doesn't make me feel like i'm doing taxes.", a: "@chartfrog" },
-            ].map((t) => (
-              <figure key={t.a} className="rounded-2xl border border-border/40 bg-background/40 p-6">
+            ].map((t, i) => (
+              <figure key={t.a} className={`reveal reveal-delay-${i + 1} rounded-2xl border border-border/40 bg-background/40 p-6`}>
                 <blockquote className="text-base">"{t.q}"</blockquote>
                 <figcaption className="mt-4 text-sm text-muted-foreground">{t.a}</figcaption>
               </figure>
@@ -335,10 +335,10 @@ function Landing() {
       <section className="relative border-t border-border/40 px-5 py-24">
         <div className="mx-auto max-w-3xl">
           <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">faq</p>
-          <h2 className="mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight text-center">
+          <h2 className="reveal mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight text-center">
             questions, briefly.
           </h2>
-          <div className="mt-12 divide-y divide-border/40 border-y border-border/40">
+          <div className="reveal reveal-delay-1 mt-12 divide-y divide-border/40 border-y border-border/40">
             {[
               { q: "Is ChadWallet self-custody?", a: "Yes. Keys are generated and stored client-side via Privy. We never see them." },
               { q: "Which chains do you support?", a: "Solana, with more rolling out. SPL tokens and Jupiter routing are first-class." },
