@@ -1,8 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Apple, Play, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import { AppStoreBadge, PlayStoreBadge } from "@/components/store-badges";
 import heroImg from "@/assets/hero-astronaut.jpg";
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenMarquee } from "@/components/token-marquee";
+
 import screenSearch from "@/assets/app store/search.png";
 import screenToken from "@/assets/app store/token.png";
 import screenPortfolio from "@/assets/app store/portfolio.png";
@@ -55,21 +57,22 @@ function Landing() {
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5">
           <ChadLogo variant="dark" size="lg" />
           <div className="flex items-center gap-2">
-            <a href={IOS} target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 backdrop-blur px-3 py-1.5 hover:bg-background/70 transition">
-              <Apple className="h-4 w-4" />
-              <div className="text-left leading-tight">
-                <div className="text-[9px] text-muted-foreground">Download on the</div>
-                <div className="text-xs font-semibold">App Store</div>
-              </div>
-            </a>
-            <a href={ANDROID} target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 backdrop-blur px-3 py-1.5 hover:bg-background/70 transition">
-              <Play className="h-4 w-4" />
-              <div className="text-left leading-tight">
-                <div className="text-[9px] text-muted-foreground">Get it on</div>
-                <div className="text-xs font-semibold">Google Play</div>
-              </div>
-            </a>
+            <AppStoreBadge
+              variant="light"
+              href={IOS}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:flex scale-90 origin-right"
+            />
+            <PlayStoreBadge
+              variant="light"
+              href={ANDROID}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:flex scale-90 origin-right"
+            />
             <Link
+
               to="/trade/$mint"
               params={{ mint: "So11111111111111111111111111111111111111112" }}
               className="rounded-lg border border-border/60 bg-background/40 backdrop-blur px-4 py-2 text-sm font-medium hover:bg-background/70 transition"
@@ -125,6 +128,34 @@ function Landing() {
         </div>
       </section>
       </div>
+
+      {/* ============ ABOUT / MANIFESTO ============ */}
+      <section className="relative border-t border-border/40 px-5 py-32 text-center">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
+            <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
+            about chadwallet
+          </p>
+          <h2 className="mt-8 font-display text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight">
+            Hunt every<br />
+            <span className="text-muted-foreground">memecoin.</span> Every chain.<br />
+            One wallet.
+          </h2>
+          <p className="mt-8 text-lg md:text-xl text-foreground/70 leading-relaxed">
+            ChadWallet is the trader-first wallet for people who actually print. Built to outrun the bots, copy the wallets that matter, and turn every fill into rewards.
+          </p>
+          <a
+            href="#"
+            className="mt-10 inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition group"
+          >
+            Read the manifesto
+            <span className="text-muted-foreground">·</span>
+            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">v1.0 — live</span>
+            <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </a>
+        </div>
+      </section>
+
 
       {/* ============ FEATURES — phone screenshots ============ */}
       <section className="relative border-t border-border/40 px-5 py-32 overflow-hidden">
@@ -317,20 +348,8 @@ function Landing() {
             trade from anywhere.<br />never lose a beat.
           </h2>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-          <a href={IOS} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-border bg-background/40 backdrop-blur px-5 py-3 hover:bg-background/70 transition">
-            <Apple className="h-5 w-5" />
-            <div className="text-left leading-tight">
-              <div className="text-[10px] text-muted-foreground">Download on the</div>
-              <div className="text-sm font-semibold">App Store</div>
-            </div>
-          </a>
-          <a href={ANDROID} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-border bg-background/40 backdrop-blur px-5 py-3 hover:bg-background/70 transition">
-            <Play className="h-5 w-5" />
-            <div className="text-left leading-tight">
-              <div className="text-[10px] text-muted-foreground">Get it on</div>
-              <div className="text-sm font-semibold">Google Play</div>
-            </div>
-          </a>
+            <AppStoreBadge variant="light" href={IOS} target="_blank" rel="noreferrer" />
+            <PlayStoreBadge variant="light" href={ANDROID} target="_blank" rel="noreferrer" />
           </div>
         </div>
       </section>
