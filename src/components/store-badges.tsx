@@ -1,9 +1,14 @@
+import { cn } from "@/lib/utils";
+
 interface StoreBadgeProps {
   className?: string;
   variant?: "dark" | "light";
+  href?: string;
+  target?: string;
+  rel?: string;
 }
 
-export function AppStoreLogo({ className = "h-5 w-5" }: { className?: string }) {
+function AppStoreLogo({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -16,7 +21,7 @@ export function AppStoreLogo({ className = "h-5 w-5" }: { className?: string }) 
   );
 }
 
-export function PlayStoreLogo({ className = "h-5 w-5" }: { className?: string }) {
+function PlayStoreLogo({ className = "h-5 w-5" }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -29,34 +34,79 @@ export function PlayStoreLogo({ className = "h-5 w-5" }: { className?: string })
   );
 }
 
-export function AppStoreBadge({ className = "", variant = "dark" }: StoreBadgeProps) {
-  const bg = variant === "dark" ? "bg-black" : "bg-white";
-  const text = variant === "dark" ? "text-white" : "text-black";
-  const border = variant === "dark" ? "border-white/20" : "border-black/20";
+function Badge({
+  icon,
+  top,
+  bottom,
+  variant,
+  href,
+  target,
+  rel,
+  className,
+}: {
+  icon: React.ReactNode;
+  top: string;
+  bottom: string;
+  variant?: "dark" | "light";
+  href?: string;
+  target?: string;
+  rel?: string;
+  className?: string;
+}) {
+  const base =
+    "inline-flex items-center gap-3 rounded-xl border px-4 py-2.5 transition hover:opacity-90";
+  const theme =
+    variant === "light"
+      ? "bg-white text-black border-black/10"
+      : "bg-black text-white border-white/20";
 
-  return (
-    <div className={`inline-flex items-center gap-3 rounded-xl ${bg} ${text} ${border} border px-4 py-2.5 ${className}`}>
-      <AppStoreLogo className="h-7 w-7" />
+  const content = (
+    <>
+      {icon}
       <div className="text-left leading-tight">
-        <div className="text-[10px] opacity-80">Download on the</div>
-        <div className="text-[15px] font-semibold tracking-tight">App Store</div>
+        <div className="text-[10px] opacity-80">{top}</div>
+        <div className="text-[15px] font-semibold tracking-tight">{bottom}</div>
       </div>
-    </div>
+    </>
+  );
+
+  if (href) {
+    return (
+      <a href={href} target={target} rel={rel} className={cn(base, theme, className)}>
+        {content}
+      </a>
+    );
+  }
+
+  return <div className={cn(base, theme, className)}>{content}</div>;
+}
+
+export function AppStoreBadge({ className = "", variant = "dark", href, target, rel }: StoreBadgeProps) {
+  return (
+    <Badge
+      icon={<AppStoreLogo className="h-7 w-7" />}
+      top="Download on the"
+      bottom="App Store"
+      variant={variant}
+      href={href}
+      target={target}
+      rel={rel}
+      className={className}
+    />
   );
 }
 
-export function PlayStoreBadge({ className = "", variant = "dark" }: StoreBadgeProps) {
-  const bg = variant === "dark" ? "bg-black" : "bg-white";
-  const text = variant === "dark" ? "text-white" : "text-black";
-  const border = variant === "dark" ? "border-white/20" : "border-black/20";
-
+export function PlayStoreBadge({ className = "", variant = "dark", href, target, rel }: StoreBadgeProps) {
   return (
-    <div className={`inline-flex items-center gap-3 rounded-xl ${bg} ${text} ${border} border px-4 py-2.5 ${className}`}>
-      <PlayStoreLogo className="h-7 w-7" />
-      <div className="text-left leading-tight">
-        <div className="text-[10px] opacity-80">Get it on</div>
-        <div className="text-[15px] font-semibold tracking-tight">Google Play</div>
-      </div>
-    </div>
+    <Badge
+      icon={<PlayStoreLogo className="h-7 w-7" />}
+      top="Get it on"
+      bottom="Google Play"
+      variant={variant}
+      href={href}
+      target={target}
+      rel={rel}
+      className={className}
+    />
   );
 }
