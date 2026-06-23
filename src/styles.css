@@ -316,8 +316,7 @@ html {
   position: fixed;
   inset: 0;
   z-index: 90;
-  background: oklch(0 0 0 / 0.6);
-  backdrop-filter: blur(4px);
+  background: transparent;
   animation: search-fade-in 0.15s ease;
 }
 
@@ -412,6 +411,10 @@ html {
   padding: 2rem 1rem;
   font-size: 0.8125rem;
   color: var(--muted-foreground);
+}
+
+.token-search-status-compact {
+  padding: 1rem;
 }
 
 .token-search-spinner {

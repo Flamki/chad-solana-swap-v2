@@ -177,12 +177,9 @@ export function TokenSearch() {
 
   return (
     <>
-      {/* Backdrop */}
       <div className="token-search-backdrop" />
 
-      {/* Modal */}
       <div className="token-search-modal" ref={containerRef}>
-        {/* Search input */}
         <div className="token-search-input-wrap">
           <Search className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
           <input
@@ -210,7 +207,6 @@ export function TokenSearch() {
           )}
         </div>
 
-        {/* Results / Recents */}
         <div className="token-search-body">
           {loading && query.trim().length >= 2 && (
             <div className="token-search-status">
@@ -278,7 +274,7 @@ export function TokenSearch() {
           )}
 
           {query.trim().length < 2 && recents.length === 0 && (
-            <div className="token-search-status">
+            <div className="token-search-status token-search-status-compact">
               <span className="text-muted-foreground">Type a token name, symbol, or address</span>
             </div>
           )}
