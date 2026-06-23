@@ -65,7 +65,7 @@ export function Landing() {
           <video
             src={HERO_VIDEO}
             poster={assetUrl(heroAstronaut)}
-            preload="metadata"
+            preload="none"
             autoPlay
             muted
             playsInline
@@ -461,6 +461,7 @@ export function Landing() {
             autoPlay
             muted
             loop
+            preload="none"
             playsInline
             className="mx-auto mb-12 w-full max-w-3xl rounded-3xl border border-border/50 shadow-2xl shadow-primary/20"
           />

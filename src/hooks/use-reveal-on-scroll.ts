@@ -11,6 +11,11 @@ export function useRevealOnScroll() {
     const els = Array.from(document.querySelectorAll<HTMLElement>(".reveal"));
     if (!els.length) return;
 
+    const isInViewport = (el: HTMLElement) => {
+      const rect = el.getBoundingClientRect();
+      return rect.top < window.innerHeight && rect.bottom > 0;
+    };
+
     if (typeof IntersectionObserver === "undefined") {
       els.forEach((el) => el.classList.add("is-visible"));
       return;
@@ -28,7 +33,16 @@ export function useRevealOnScroll() {
       { threshold: 0.12, rootMargin: "0px 0px -8% 0px" },
     );
 
-    els.forEach((el) => io.observe(el));
+    els.forEach((el) => {
+      if (isInViewport(el)) {
+        el.classList.add("is-visible");
+        return;
+      }
+
+      el.classList.add("can-reveal");
+      io.observe(el);
+    });
+
     return () => io.disconnect();
   }, []);
 }
