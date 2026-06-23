@@ -277,8 +277,8 @@ html {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  min-width: 240px;
-  max-width: 380px;
+  width: clamp(320px, 42vw, 640px);
+  max-width: calc(100vw - 48px);
   padding: 0.425rem 0.75rem;
   border-radius: 9999px;
   border: 1px solid var(--border);
@@ -290,7 +290,7 @@ html {
 
 @media (max-width: 640px) {
   .token-search-trigger {
-    min-width: 0;
+    width: 44px;
     max-width: 44px;
     padding: 0.425rem 0.6rem;
     border-radius: 50%;
