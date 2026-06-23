@@ -19,6 +19,7 @@ import { TokenSearch } from "@/components/token-search";
 import { PriceChart } from "@/components/trade/price-chart";
 import { SwapPanel } from "@/components/trade/swap-panel";
 import {
+  type ChartInterval,
   useSolanaRpcHealth,
   useTokenHolders,
   useTokenMarket,
@@ -40,8 +41,9 @@ export function TradePage({ mint }: { mint: string }) {
   const market = useTokenMarket(initialToken.mint, initialToken);
   const { data: trending = TOKENS } = useTrendingTokens();
   const rpcHealth = useSolanaRpcHealth();
+  const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
   const token = market.data ?? initialToken;
-  const history = useTokenOhlcv(token.mint);
+  const history = useTokenOhlcv(token.mint, chartInterval);
   const up = token.change24h >= 0;
 
   return (
@@ -146,7 +148,12 @@ export function TradePage({ mint }: { mint: string }) {
 
           <div className="h-[420px] overflow-hidden rounded-2xl border border-border bg-card/40 p-3">
             {history.data?.length ? (
-              <PriceChart data={history.data} />
+              <PriceChart
+                data={history.data}
+                token={token}
+                interval={chartInterval}
+                onIntervalChange={setChartInterval}
+              />
             ) : (
               <LiveState
                 title={history.isFetching ? "Loading BirdEye chart" : "BirdEye chart unavailable"}
@@ -202,8 +209,9 @@ function TrendingToken({ token, active }: { token: Token; active: boolean }) {
 
 function TokenImage({ token, size = "sm" }: { token: Token; size?: "sm" | "lg" }) {
   const sizeClass = size === "lg" ? "h-12 w-12" : "h-8 w-8";
+  const logo = sanitizeImageUrl(token.logo);
 
-  if (!token.logo) {
+  if (!logo) {
     return (
       <div
         className={`${sizeClass} grid shrink-0 place-items-center rounded-full bg-primary/20 text-xs font-bold text-primary`}
@@ -215,7 +223,7 @@ function TokenImage({ token, size = "sm" }: { token: Token; size?: "sm" | "lg" }
 
   return (
     <img
-      src={token.logo}
+      src={logo}
       alt=""
       width={size === "lg" ? 48 : 32}
       height={size === "lg" ? 48 : 32}
@@ -226,6 +234,18 @@ function TokenImage({ token, size = "sm" }: { token: Token; size?: "sm" | "lg" }
       }}
     />
   );
+}
+
+function sanitizeImageUrl(url: string) {
+  if (!url || !/^https?:\/\//i.test(url)) return "";
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.pathname.includes("https//") || parsed.hostname.includes("http")) return "";
+    return parsed.href;
+  } catch {
+    return "";
+  }
 }
 
 function Stat({ label, value }: { label: string; value: string }) {

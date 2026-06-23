@@ -46,7 +46,17 @@ export type JupiterQuote = {
   source: "jupiter-v2" | "jupiter-lite";
 };
 
-export type PricePoint = { time: number; value: number };
+export type ChartInterval = "1m" | "5m" | "15m" | "1H" | "4H" | "1D";
+
+export type PricePoint = {
+  time: number;
+  value: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  close?: number;
+  volume?: number;
+};
 
 export type LiveTrade = {
   id: string;
@@ -178,8 +188,15 @@ export async function fetchTokenMarket(mint: string, signal?: AbortSignal) {
   return token;
 }
 
-export async function fetchTokenOhlcv(mint: string, signal?: AbortSignal) {
-  return fetchLocalJson<PricePoint[]>(`/api/market/ohlcv/${encodeURIComponent(mint)}`, signal);
+export async function fetchTokenOhlcv(
+  mint: string,
+  interval: ChartInterval = "15m",
+  signal?: AbortSignal,
+) {
+  return fetchLocalJson<PricePoint[]>(
+    `/api/market/ohlcv/${encodeURIComponent(mint)}?interval=${interval}`,
+    signal,
+  );
 }
 
 export async function fetchTokenTrades(mint: string, signal?: AbortSignal) {
@@ -425,10 +442,14 @@ export function useTokenMarket(mint: string, initialToken?: Token) {
   });
 }
 
-export function useTokenOhlcv(mint: string, initialData?: PricePoint[]) {
+export function useTokenOhlcv(
+  mint: string,
+  interval: ChartInterval = "15m",
+  initialData?: PricePoint[],
+) {
   return useQuery({
-    queryKey: ["token-ohlcv", mint],
-    queryFn: ({ signal }) => fetchTokenOhlcv(mint, signal),
+    queryKey: ["token-ohlcv", mint, interval],
+    queryFn: ({ signal }) => fetchTokenOhlcv(mint, interval, signal),
     initialData,
     refetchInterval: 30_000,
     staleTime: 15_000,

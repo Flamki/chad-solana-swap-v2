@@ -40,7 +40,12 @@ type BirdeyeTrendingToken = {
 };
 
 type BirdeyeOhlcvItem = {
+  o?: number;
+  h?: number;
+  l?: number;
   c?: number;
+  v?: number;
+  volume?: number;
   unixTime?: number;
 };
 
@@ -146,6 +151,11 @@ export function ohlcvToPoints(items: BirdeyeOhlcvItem[]) {
     .filter((item) => Number.isFinite(item.unixTime) && Number.isFinite(item.c))
     .map((item) => ({
       time: item.unixTime!,
+      open: item.o ?? item.c!,
+      high: item.h ?? item.c!,
+      low: item.l ?? item.c!,
+      close: item.c!,
+      volume: item.v ?? item.volume ?? 0,
       value: item.c!,
     }))
     .sort((a, b) => a.time - b.time);
