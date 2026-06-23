@@ -70,7 +70,6 @@ function Landing() {
             src={astronautHeroVideo.url}
             autoPlay
             muted
-            loop
             playsInline
             aria-hidden
             className="absolute inset-0 h-full w-full object-cover object-center"
