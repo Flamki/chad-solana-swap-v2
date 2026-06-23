@@ -67,9 +67,12 @@ function Landing() {
       <div className="relative overflow-hidden">
         {/* Space background — extends through stats */}
         <div ref={heroBgRef} className="pointer-events-none absolute inset-0 z-0 will-change-transform">
-          <img
-            src={heroImg}
-            alt=""
+          <video
+            src={astronautHeroVideo.url}
+            autoPlay
+            muted
+            loop
+            playsInline
             aria-hidden
             className="absolute inset-0 h-full w-full object-cover object-center"
           />
