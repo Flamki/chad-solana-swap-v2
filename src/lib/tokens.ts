@@ -183,7 +183,9 @@ export function mergeToken(token: Token, patch: Partial<Token>): Token {
   return {
     ...token,
     ...Object.fromEntries(
-      Object.entries(patch).filter(([, value]) => value !== undefined && value !== ""),
+      Object.entries(patch).filter(
+        ([, value]) => value !== undefined && value !== null && value !== "",
+      ),
     ),
   };
 }

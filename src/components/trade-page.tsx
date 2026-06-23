@@ -15,6 +15,7 @@ import {
 
 import { ChadLogo } from "@/components/chad-logo";
 import { SignInButton } from "@/components/sign-in-button";
+import { TokenSearch } from "@/components/token-search";
 import { PriceChart } from "@/components/trade/price-chart";
 import { SwapPanel } from "@/components/trade/swap-panel";
 import {
@@ -58,6 +59,11 @@ export function TradePage({ mint }: { mint: string }) {
             <div className="h-5 w-px bg-border" />
             <ChadLogo variant="dark" size="sm" />
           </div>
+
+          <div className="flex flex-1 justify-center px-4">
+            <TokenSearch />
+          </div>
+
           <div className="flex items-center gap-2">
             <div className="hidden items-center gap-1.5 rounded-full border border-border bg-card/50 px-3 py-1.5 text-xs text-muted-foreground md:flex">
               <RadioTower
