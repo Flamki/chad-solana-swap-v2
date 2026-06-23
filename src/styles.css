@@ -550,6 +550,58 @@ html {
 }
 
 /* ============ Thin dark premium scrollbar ============ */
+@media (min-width: 1024px) {
+  .trade-shell {
+    height: calc(100vh - 4rem);
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .trade-pane {
+    height: 100%;
+    min-height: 0;
+  }
+}
+
+.terminal-scroll {
+  scrollbar-gutter: stable;
+}
+
+.terminal-scroll-x {
+  scrollbar-gutter: auto;
+}
+
+.terminal-scroll::-webkit-scrollbar,
+.terminal-scroll-x::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.terminal-scroll::-webkit-scrollbar-track,
+.terminal-scroll-x::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb,
+.terminal-scroll-x::-webkit-scrollbar-thumb {
+  background: oklch(0.36 0.04 274 / 0.7);
+  border-radius: 999px;
+  border: 1px solid oklch(0.08 0.01 260 / 0.8);
+  background-clip: padding-box;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb:hover,
+.terminal-scroll-x::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.52 0.12 274 / 0.85);
+  background-clip: padding-box;
+}
+
+.terminal-scroll,
+.terminal-scroll-x {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.36 0.04 274 / 0.7) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

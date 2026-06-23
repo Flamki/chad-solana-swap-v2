@@ -48,7 +48,7 @@ export function TradePage({ mint }: { mint: string }) {
 
   return (
     <div className="flex min-h-screen flex-col bg-cosmic">
-      <header className="sticky top-0 z-30 border-b border-border bg-background/60 backdrop-blur-md">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-background/60 backdrop-blur-md">
         <div className="flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <Link
@@ -80,24 +80,40 @@ export function TradePage({ mint }: { mint: string }) {
         </div>
       </header>
 
-      <main className="grid gap-3 p-3 lg:grid-cols-[280px_1fr_360px]">
-        <aside className="flex min-h-[400px] flex-col overflow-hidden rounded-2xl border border-border bg-card/40 lg:min-h-0">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
-            <div>
-              <h2 className="text-sm font-semibold">Trending</h2>
-              <p className="text-[11px] text-muted-foreground">BirdEye live trending</p>
+      <main className="trade-shell grid gap-3 p-3 lg:grid-cols-[300px_minmax(0,1fr)_360px]">
+        <aside className="trade-pane flex min-h-[400px] flex-col overflow-hidden rounded-2xl border border-border bg-card/40">
+          <div className="shrink-0 border-b border-border">
+            <div className="flex items-center justify-between px-4 py-3">
+              <div>
+                <h2 className="text-sm font-semibold">Tokens</h2>
+                <p className="text-[11px] text-muted-foreground">BirdEye live trending</p>
+              </div>
+              <TrendingUp className="h-4 w-4 text-primary" />
             </div>
-            <TrendingUp className="h-4 w-4 text-primary" />
+            <div className="flex gap-1 overflow-x-auto px-3 pb-3 terminal-scroll-x">
+              {["Watchlist", "Trending", "Most held"].map((item) => (
+                <button
+                  key={item}
+                  className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
+                    item === "Trending"
+                      ? "border-primary/30 bg-primary/15 text-foreground"
+                      : "border-border bg-background/40 text-muted-foreground"
+                  }`}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
+          <div className="terminal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {trending.map((item) => (
               <TrendingToken key={item.mint} token={item} active={item.mint === token.mint} />
             ))}
           </div>
         </aside>
 
-        <section className="flex min-w-0 flex-col gap-3">
-          <div className="rounded-2xl border border-border bg-card/40 p-4">
+        <section className="trade-pane terminal-scroll flex min-w-0 flex-col gap-3 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+          <div className="shrink-0 rounded-2xl border border-border bg-card/40 p-4">
             <div className="flex flex-wrap items-center gap-4">
               <TokenImage token={token} size="lg" />
               <div>
@@ -146,7 +162,7 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
           </div>
 
-          <div className="h-[420px] overflow-hidden rounded-2xl border border-border bg-card/40 p-3">
+          <div className="h-[420px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card/40 p-3 xl:h-[460px]">
             {history.data?.length ? (
               <PriceChart
                 data={history.data}
@@ -169,7 +185,7 @@ export function TradePage({ mint }: { mint: string }) {
           <BottomTabs token={token} />
         </section>
 
-        <aside className="min-w-0">
+        <aside className="trade-pane terminal-scroll min-w-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           <SwapPanel token={token} />
         </aside>
       </main>
