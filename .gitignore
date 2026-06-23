@@ -16,6 +16,7 @@ dist-ssr
 .tanstack/**
 .nitro
 .vercel
+supabase/.temp/
 *.local
 
 # Wrangler / Cloudflare
@@ -32,4 +33,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-.vercel
