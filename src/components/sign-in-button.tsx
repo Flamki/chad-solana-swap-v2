@@ -1,63 +1,73 @@
-import { useState } from "react";
-import { Apple, Chrome, X } from "lucide-react";
+import { useLogin, useLogout, usePrivy } from "@privy-io/react-auth";
+import { useWallets } from "@privy-io/react-auth/solana";
+import { Apple, Chrome, LogOut, Wallet } from "lucide-react";
 
-const PRIVY_APP_ID = (import.meta.env.VITE_PRIVY_APP_ID as string | undefined) ?? "";
+import { hasPrivy } from "@/lib/env";
 
 export function SignInButton({ variant = "default" }: { variant?: "default" | "hero" }) {
-  const [open, setOpen] = useState(false);
+  if (!hasPrivy) {
+    return <PrivySetupButton variant={variant} />;
+  }
+
+  return <ConnectedPrivyButton variant={variant} />;
+}
+
+function ConnectedPrivyButton({ variant }: { variant: "default" | "hero" }) {
+  const { ready, authenticated, user } = usePrivy();
+  const { login } = useLogin();
+  const { logout } = useLogout();
+  const { wallets } = useWallets();
+
+  const wallet = wallets[0];
+  const address = wallet?.address ?? user?.wallet?.address;
   const base =
     variant === "hero"
       ? "rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground glow-green hover:opacity-90 px-6 py-3 text-base font-semibold"
       : "rounded-full border border-border bg-card/60 hover:bg-card px-4 py-2 text-sm font-medium";
-  return (
-    <>
-      <button onClick={() => setOpen(true)} className={base}>
+
+  if (!ready) {
+    return <button className={`${base} opacity-60`}>Loading</button>;
+  }
+
+  if (!authenticated) {
+    return (
+      <button onClick={() => login()} className={`${base} inline-flex items-center gap-2`}>
+        <Apple className="h-4 w-4" />
+        <Chrome className="h-4 w-4" />
         Sign in
       </button>
-      {open && (
-        <div
-          className="fixed inset-0 z-50 grid place-items-center bg-background/80 backdrop-blur-sm p-4"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="relative w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-2xl glow-purple"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={() => setOpen(false)}
-              className="absolute right-4 top-4 text-muted-foreground hover:text-foreground"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <h2 className="text-xl font-bold">Sign in to ChadWallet</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Powered by Privy. One-tap login, embedded Solana wallet.
-            </p>
-            <div className="mt-5 space-y-2">
-              <ProviderButton icon={<Apple className="h-4 w-4" />} label="Continue with Apple" />
-              <ProviderButton icon={<Chrome className="h-4 w-4" />} label="Continue with Google" />
-            </div>
-            {!PRIVY_APP_ID && (
-              <p className="mt-4 rounded-md border border-dashed border-border bg-background/40 p-3 text-xs text-muted-foreground">
-                Add <code className="font-mono text-primary">VITE_PRIVY_APP_ID</code> to enable real auth.
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-    </>
+    );
+  }
+
+  return (
+    <button onClick={() => logout()} className={`${base} inline-flex items-center gap-2`}>
+      <Wallet className="h-4 w-4" />
+      <span className="max-w-28 truncate">
+        {address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "Signed in"}
+      </span>
+      <LogOut className="h-3.5 w-3.5 text-muted-foreground" />
+    </button>
   );
 }
 
-function ProviderButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+function PrivySetupButton({ variant }: { variant: "default" | "hero" }) {
+  const base =
+    variant === "hero"
+      ? "rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground glow-green px-6 py-3 text-base font-semibold"
+      : "rounded-full border border-border bg-card/60 px-4 py-2 text-sm font-medium";
+
   return (
     <button
-      onClick={() => alert("Privy login — add VITE_PRIVY_APP_ID to wire this up.")}
-      className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background/60 px-4 py-3 text-sm font-medium hover:border-primary/60 hover:bg-background transition-colors"
+      onClick={() =>
+        alert(
+          "Add NEXT_PUBLIC_PRIVY_APP_ID to enable Privy login with Apple, Google, and Solana wallets.",
+        )
+      }
+      className={`${base} inline-flex items-center gap-2`}
     >
-      {icon}
-      {label}
+      <Apple className="h-4 w-4" />
+      <Chrome className="h-4 w-4" />
+      Sign in
     </button>
   );
 }

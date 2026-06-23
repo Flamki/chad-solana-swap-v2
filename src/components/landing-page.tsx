@@ -1,12 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+"use client";
+
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { AppStoreBadge, PlayStoreBadge } from "@/components/store-badges";
-import astronautHeroVideo from "@/assets/astronaut-hero.mp4.asset.json";
-import astronautPoster from "@/assets/astronaut-poster.jpg.asset.json";
 import { ChadLogo } from "@/components/chad-logo";
+import { SignInButton } from "@/components/sign-in-button";
 import { TokenMarquee } from "@/components/token-marquee";
 import { useEffect, useRef } from "react";
 import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
+import { assetUrl } from "@/lib/asset-url";
 
 import screenSearch from "@/assets/app store/search.png";
 import screenToken from "@/assets/app store/token.png";
@@ -20,24 +22,13 @@ import flowLaunch from "@/assets/flow/launch-4.png";
 import flowMeme from "@/assets/flow/memecoin-4.png";
 import flowPortfolio from "@/assets/flow/portfolio-4.png";
 import flowRelaunch from "@/assets/flow/relaunch-4.png";
-import chadVideo from "@/assets/video/chadwallet.mp4";
-
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "ChadWallet — Trade Solana Like a Chad" },
-      { name: "description", content: "The Solana wallet for traders. Buy, sell, and ape any token in seconds. Apple Pay, gasless, social-first." },
-      { property: "og:title", content: "ChadWallet — Trade Solana Like a Chad" },
-      { property: "og:description", content: "The Solana wallet for traders. Buy, sell, and ape any token in seconds." },
-    ],
-  }),
-  component: Landing,
-});
+import heroAstronaut from "@/assets/hero-astronaut.jpg";
 
 const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
 const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
+const CHAD_VIDEO = "/assets/video/chadwallet.mp4";
 
-function Landing() {
+export function Landing() {
   useRevealOnScroll();
   const heroBgRef = useRef<HTMLDivElement | null>(null);
 
@@ -66,14 +57,13 @@ function Landing() {
       {/* ============ HERO + STATS (shared scene) ============ */}
       <div className="relative overflow-hidden">
         {/* Space background — extends through stats */}
-        <div ref={heroBgRef} className="pointer-events-none absolute inset-0 z-0 will-change-transform">
-          <video
-            src={astronautHeroVideo.url}
-            poster={astronautPoster.url}
-            preload="auto"
-            autoPlay
-            muted
-            playsInline
+        <div
+          ref={heroBgRef}
+          className="pointer-events-none absolute inset-0 z-0 will-change-transform"
+        >
+          <img
+            src={assetUrl(heroAstronaut)}
+            alt=""
             aria-hidden
             className="absolute inset-0 h-full w-full object-cover object-center"
           />
@@ -84,78 +74,74 @@ function Landing() {
         <TokenMarquee />
 
         <header className="relative z-40">
-        <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5">
-          <ChadLogo variant="dark" size="lg" />
-          <div className="flex items-center gap-2">
-            <AppStoreBadge
-              variant="light"
-              href={IOS}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:flex scale-90 origin-right"
-            />
-            <PlayStoreBadge
-              variant="light"
-              href={ANDROID}
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:flex scale-90 origin-right"
-            />
-            <Link
-              to="/trade/$mint"
-              params={{ mint: "So11111111111111111111111111111111111111112" }}
-              className="inline-flex h-11 items-center justify-center rounded-lg border border-border/60 bg-background/40 backdrop-blur px-4 text-sm font-medium hover:bg-background/70 transition"
-            >
-              Login
-            </Link>
+          <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5">
+            <ChadLogo variant="dark" size="lg" />
+            <div className="flex items-center gap-2">
+              <AppStoreBadge
+                variant="light"
+                href={IOS}
+                target="_blank"
+                rel="noreferrer"
+                className="hidden sm:flex scale-90 origin-right"
+              />
+              <PlayStoreBadge
+                variant="light"
+                href={ANDROID}
+                target="_blank"
+                rel="noreferrer"
+                className="hidden sm:flex scale-90 origin-right"
+              />
+              <SignInButton />
+            </div>
           </div>
-        </div>
         </header>
 
         {/* Hero copy */}
         <section className="relative z-10 mx-auto max-w-3xl px-5 pt-24 pb-40 text-center">
-        <h1 className="reveal font-display text-7xl md:text-9xl font-semibold tracking-tight text-foreground/90">
-          ChadWallet
-        </h1>
-        <p className="reveal reveal-delay-1 mt-8 text-2xl md:text-3xl font-medium">
-          The fastest way to trade Solana.
-        </p>
-        <p className="reveal reveal-delay-2 mt-3 text-base text-muted-foreground">
-          Buy, sell, and copy-trade any token — from viral launches to the wallets that print.
-        </p>
-        <div className="reveal reveal-delay-3 mt-10 flex flex-wrap justify-center gap-3">
-          <Link
-            to="/trade/$mint"
-            params={{ mint: "So11111111111111111111111111111111111111112" }}
-            className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition"
-          >
-            Start trading
-          </Link>
-          <a
-            href="#download"
-            className="rounded-lg border border-border bg-background/40 backdrop-blur px-6 py-3 text-sm font-semibold hover:bg-background/70 transition"
-          >
-            Get the app
-          </a>
-        </div>
+          <h1 className="reveal font-display text-7xl md:text-9xl font-semibold tracking-tight text-foreground/90">
+            ChadWallet
+          </h1>
+          <p className="reveal reveal-delay-1 mt-8 text-2xl md:text-3xl font-medium">
+            The fastest way to trade Solana.
+          </p>
+          <p className="reveal reveal-delay-2 mt-3 text-base text-muted-foreground">
+            Buy, sell, and copy-trade any token — from viral launches to the wallets that print.
+          </p>
+          <div className="reveal reveal-delay-3 mt-10 flex flex-wrap justify-center gap-3">
+            <Link
+              href="/trade/So11111111111111111111111111111111111111112"
+              className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition"
+            >
+              Start trading
+            </Link>
+            <a
+              href="#download"
+              className="rounded-lg border border-border bg-background/40 backdrop-blur px-6 py-3 text-sm font-semibold hover:bg-background/70 transition"
+            >
+              Get the app
+            </a>
+          </div>
         </section>
 
-
-      {/* ============ STATS ============ */}
-      <section className="relative px-5 py-24">
-        <div className="mx-auto max-w-5xl grid gap-12 sm:grid-cols-3 text-center">
-          {[
-            { k: "$2.4B+", v: "volume routed" },
-            { k: "180k+", v: "chads onboarded" },
-            { k: "<400ms", v: "median swap" },
-          ].map((s, i) => (
-            <div key={s.v} className={`reveal reveal-delay-${i + 1}`}>
-              <div className="font-display text-5xl md:text-6xl font-semibold text-primary">{s.k}</div>
-              <div className="mt-2 text-sm text-muted-foreground uppercase tracking-widest">{s.v}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+        {/* ============ STATS ============ */}
+        <section className="relative px-5 py-24">
+          <div className="mx-auto max-w-5xl grid gap-12 sm:grid-cols-3 text-center">
+            {[
+              { k: "$2.4B+", v: "volume routed" },
+              { k: "180k+", v: "chads onboarded" },
+              { k: "<400ms", v: "median swap" },
+            ].map((s, i) => (
+              <div key={s.v} className={`reveal reveal-delay-${i + 1}`}>
+                <div className="font-display text-5xl md:text-6xl font-semibold text-primary">
+                  {s.k}
+                </div>
+                <div className="mt-2 text-sm text-muted-foreground uppercase tracking-widest">
+                  {s.v}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </div>
 
       {/* ============ ABOUT / MANIFESTO ============ */}
@@ -166,12 +152,15 @@ function Landing() {
             about chadwallet
           </p>
           <h2 className="mt-8 font-display text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight">
-            Hunt every<br />
-            <span className="text-muted-foreground">memecoin.</span> Every chain.<br />
+            Hunt every
+            <br />
+            <span className="text-muted-foreground">memecoin.</span> Every chain.
+            <br />
             One wallet.
           </h2>
           <p className="mt-8 text-lg md:text-xl text-foreground/70 leading-relaxed">
-            ChadWallet is the trader-first wallet for people who actually print. Built to outrun the bots, copy the wallets that matter, and turn every fill into rewards.
+            ChadWallet is the trader-first wallet for people who actually print. Built to outrun the
+            bots, copy the wallets that matter, and turn every fill into rewards.
           </p>
           <a
             href="#"
@@ -179,12 +168,13 @@ function Landing() {
           >
             Read the manifesto
             <span className="text-muted-foreground">·</span>
-            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">v1.0 — live</span>
+            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
+              v1.0 — live
+            </span>
             <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </a>
         </div>
       </section>
-
 
       {/* ============ FEATURES — phone screenshots ============ */}
       <section className="relative border-t border-border/40 px-5 py-32 overflow-hidden">
@@ -196,12 +186,14 @@ function Landing() {
                 inside the app
               </p>
               <h2 className="mt-6 font-display text-5xl md:text-6xl font-semibold leading-[0.95] tracking-tight">
-                Built for the<br/>
+                Built for the
+                <br />
                 <span className="text-muted-foreground">fastest fingers</span> on Solana.
               </h2>
             </div>
             <p className="md:col-span-5 text-base md:text-lg text-foreground/70 leading-relaxed">
-              Every screen ships with the trader in mind — discover, ape, track and cash out without ever leaving the wallet.
+              Every screen ships with the trader in mind — discover, ape, track and cash out without
+              ever leaving the wallet.
             </p>
           </div>
 
@@ -210,44 +202,88 @@ function Landing() {
             <article className="reveal md:col-span-7 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-primary/[0.08] via-foreground/[0.03] to-transparent p-8 md:p-10">
               <div className="grid gap-8 md:grid-cols-2 md:items-center">
                 <div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">discover</span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
+                    discover
+                  </span>
                   <h3 className="mt-4 font-display text-3xl md:text-4xl font-semibold leading-tight tracking-tight">
-                    Search anything.<br/>Ape in seconds.
+                    Search anything.
+                    <br />
+                    Ape in seconds.
                   </h3>
                   <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
                     Token, ticker, CA or wallet — surface the next move before the timeline does.
                   </p>
                 </div>
                 <div className="relative">
-                  <img src={screenSearch} alt="Search any token" className="mx-auto w-[220px] md:w-[260px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/20" />
+                  <img
+                    src={assetUrl(screenSearch)}
+                    alt="Search any token"
+                    className="mx-auto w-[220px] md:w-[260px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/20"
+                  />
                 </div>
               </div>
             </article>
 
             {/* Right tall portfolio */}
             <article className="reveal reveal-delay-1 md:col-span-5 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-8 md:p-10">
-              <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">portfolio</span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
+                portfolio
+              </span>
               <h3 className="mt-4 font-display text-2xl md:text-3xl font-semibold leading-tight tracking-tight">
-                Every bag.<br/>One pane of glass.
+                Every bag.
+                <br />
+                One pane of glass.
               </h3>
-              <p className="mt-3 text-sm text-muted-foreground">Live PnL, holdings, history. Zero spreadsheet.</p>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Live PnL, holdings, history. Zero spreadsheet.
+              </p>
               <div className="mt-6 flex justify-center">
-                <img src={screenPortfolio} alt="Portfolio" className="w-[200px] md:w-[230px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/10" />
+                <img
+                  src={assetUrl(screenPortfolio)}
+                  alt="Portfolio"
+                  className="w-[200px] md:w-[230px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/10"
+                />
               </div>
             </article>
 
             {/* Three smaller cards */}
             {[
-              { img: screenToken, k: "trade", t: "Charts that don't lie.", d: "Sub-second routing on Jupiter, native swap UX." },
-              { img: screenKol, k: "copy", t: "Mirror the printers.", d: "Track and copy KOL wallets in one tap." },
-              { img: screenLaunch, k: "launch", t: "First on every launch.", d: "New pairs surfaced the second they go live." },
+              {
+                img: screenToken,
+                k: "trade",
+                t: "Charts that don't lie.",
+                d: "Sub-second routing on Jupiter, native swap UX.",
+              },
+              {
+                img: screenKol,
+                k: "copy",
+                t: "Mirror the printers.",
+                d: "Track and copy KOL wallets in one tap.",
+              },
+              {
+                img: screenLaunch,
+                k: "launch",
+                t: "First on every launch.",
+                d: "New pairs surfaced the second they go live.",
+              },
             ].map(({ img, k, t, d }, i) => (
-              <article key={k} className={`reveal reveal-delay-${i + 1} md:col-span-4 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-7`}>
-                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">{k}</span>
-                <h3 className="mt-3 font-display text-xl md:text-2xl font-semibold leading-tight tracking-tight">{t}</h3>
+              <article
+                key={k}
+                className={`reveal reveal-delay-${i + 1} md:col-span-4 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-7`}
+              >
+                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
+                  {k}
+                </span>
+                <h3 className="mt-3 font-display text-xl md:text-2xl font-semibold leading-tight tracking-tight">
+                  {t}
+                </h3>
                 <p className="mt-2 text-sm text-muted-foreground">{d}</p>
                 <div className="mt-5 flex justify-center">
-                  <img src={img} alt={t} className="w-[170px] rounded-[1.5rem] border border-border/60 shadow-xl shadow-black/40" />
+                  <img
+                    src={assetUrl(img)}
+                    alt={t}
+                    className="w-[170px] rounded-[1.5rem] border border-border/60 shadow-xl shadow-black/40"
+                  />
                 </div>
               </article>
             ))}
@@ -256,16 +292,25 @@ function Landing() {
             <article className="reveal md:col-span-12 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-r from-foreground/[0.05] to-transparent p-8 md:p-10">
               <div className="grid gap-8 md:grid-cols-2 md:items-center">
                 <div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">funding</span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
+                    funding
+                  </span>
                   <h3 className="mt-4 font-display text-3xl md:text-4xl font-semibold leading-tight tracking-tight">
-                    Apple Pay → SOL.<br/><span className="text-muted-foreground">No tutorial required.</span>
+                    Apple Pay → SOL.
+                    <br />
+                    <span className="text-muted-foreground">No tutorial required.</span>
                   </h3>
                   <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-md">
-                    Top up with card, Apple Pay or transfer. Funds land trade-ready, not bridge-ready.
+                    Top up with card, Apple Pay or transfer. Funds land trade-ready, not
+                    bridge-ready.
                   </p>
                 </div>
                 <div className="flex justify-center md:justify-end">
-                  <img src={screenDeposit} alt="Deposit" className="w-[220px] md:w-[260px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/20" />
+                  <img
+                    src={assetUrl(screenDeposit)}
+                    alt="Deposit"
+                    className="w-[220px] md:w-[260px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/20"
+                  />
                 </div>
               </div>
             </article>
@@ -283,11 +328,14 @@ function Landing() {
                 the flow
               </p>
               <h2 className="mt-6 font-display text-5xl md:text-6xl font-semibold leading-[0.95] tracking-tight">
-                One wallet.<br/>Every play.
+                One wallet.
+                <br />
+                Every play.
               </h2>
             </div>
             <p className="max-w-sm text-sm md:text-base text-muted-foreground">
-              From the first deposit to the next launch — the entire trader loop, designed end-to-end.
+              From the first deposit to the next launch — the entire trader loop, designed
+              end-to-end.
             </p>
           </div>
 
@@ -300,12 +348,23 @@ function Landing() {
               { img: flowLaunch, k: "05 — launch", t: "Be early. Every time." },
               { img: flowRelaunch, k: "06 — rotate", t: "Recycle into the next." },
             ].map(({ img, k, t }, i) => (
-              <article key={k} className={`reveal reveal-delay-${(i % 5) + 1} group relative overflow-hidden rounded-2xl border border-border/50 bg-foreground/[0.02]`}>
-                <img src={img} alt={t} className="aspect-[16/9] w-full object-cover transition duration-700 group-hover:scale-[1.02]" />
+              <article
+                key={k}
+                className={`reveal reveal-delay-${(i % 5) + 1} group relative overflow-hidden rounded-2xl border border-border/50 bg-foreground/[0.02]`}
+              >
+                <img
+                  src={assetUrl(img)}
+                  alt={t}
+                  className="aspect-[16/9] w-full object-cover transition duration-700 group-hover:scale-[1.02]"
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6 md:p-7">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">{k}</span>
-                  <h3 className="mt-2 font-display text-2xl md:text-3xl font-semibold leading-tight tracking-tight">{t}</h3>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
+                    {k}
+                  </span>
+                  <h3 className="mt-2 font-display text-2xl md:text-3xl font-semibold leading-tight tracking-tight">
+                    {t}
+                  </h3>
                 </div>
               </article>
             ))}
@@ -316,17 +375,28 @@ function Landing() {
       {/* ============ TESTIMONIALS ============ */}
       <section className="relative border-t border-border/40 px-5 py-24">
         <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">on the timeline</p>
+          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">
+            on the timeline
+          </p>
           <h2 className="reveal mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight text-center">
             what chads are saying.
           </h2>
           <div className="mt-16 grid gap-6 md:grid-cols-3">
             {[
-              { q: "switched from phantom and never looked back. fills are insane.", a: "@solwhale" },
+              {
+                q: "switched from phantom and never looked back. fills are insane.",
+                a: "@solwhale",
+              },
               { q: "apple pay → SOL in 10 seconds. this shouldn't be legal.", a: "@degenmom" },
-              { q: "first wallet that doesn't make me feel like i'm doing taxes.", a: "@chartfrog" },
+              {
+                q: "first wallet that doesn't make me feel like i'm doing taxes.",
+                a: "@chartfrog",
+              },
             ].map((t, i) => (
-              <figure key={t.a} className={`reveal reveal-delay-${i + 1} rounded-2xl border border-border/40 bg-background/40 p-6`}>
+              <figure
+                key={t.a}
+                className={`reveal reveal-delay-${i + 1} rounded-2xl border border-border/40 bg-background/40 p-6`}
+              >
                 <blockquote className="text-base">"{t.q}"</blockquote>
                 <figcaption className="mt-4 text-sm text-muted-foreground">{t.a}</figcaption>
               </figure>
@@ -338,16 +408,30 @@ function Landing() {
       {/* ============ FAQ ============ */}
       <section className="relative border-t border-border/40 px-5 py-24">
         <div className="mx-auto max-w-3xl">
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">faq</p>
+          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">
+            faq
+          </p>
           <h2 className="reveal mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight text-center">
             questions, briefly.
           </h2>
           <div className="reveal reveal-delay-1 mt-12 divide-y divide-border/40 border-y border-border/40">
             {[
-              { q: "Is ChadWallet self-custody?", a: "Yes. Keys are generated and stored client-side via Privy. We never see them." },
-              { q: "Which chains do you support?", a: "Solana, with more rolling out. SPL tokens and Jupiter routing are first-class." },
-              { q: "Do I need a seed phrase?", a: "No. Sign in with Apple or Google. Export keys whenever you want." },
-              { q: "Fees?", a: "We pass through Jupiter and network fees. No swap markup on launch." },
+              {
+                q: "Is ChadWallet self-custody?",
+                a: "Yes. Keys are generated and stored client-side via Privy. We never see them.",
+              },
+              {
+                q: "Which chains do you support?",
+                a: "Solana, with more rolling out. SPL tokens and Jupiter routing are first-class.",
+              },
+              {
+                q: "Do I need a seed phrase?",
+                a: "No. Sign in with Apple or Google. Export keys whenever you want.",
+              },
+              {
+                q: "Fees?",
+                a: "We pass through Jupiter and network fees. No swap markup on launch.",
+              },
             ].map((f) => (
               <details key={f.q} className="group py-5">
                 <summary className="flex cursor-pointer items-center justify-between gap-4 text-base font-medium">
@@ -362,19 +446,26 @@ function Landing() {
       </section>
 
       {/* ============ DOWNLOAD ============ */}
-      <section id="download" className="relative border-t border-border/40 px-5 py-32 text-center overflow-hidden">
+      <section
+        id="download"
+        className="relative border-t border-border/40 px-5 py-32 text-center overflow-hidden"
+      >
         <div className="mx-auto max-w-5xl">
           <video
-            src={chadVideo}
+            src={CHAD_VIDEO}
             autoPlay
             muted
             loop
             playsInline
             className="mx-auto mb-12 w-full max-w-3xl rounded-3xl border border-border/50 shadow-2xl shadow-primary/20"
           />
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary">Now available on web & mobile</p>
+          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary">
+            Now available on web & mobile
+          </p>
           <h2 className="mt-4 font-display text-4xl md:text-6xl font-semibold tracking-tight">
-            trade from anywhere.<br />never lose a beat.
+            trade from anywhere.
+            <br />
+            never lose a beat.
           </h2>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
             <AppStoreBadge variant="light" href={IOS} target="_blank" rel="noreferrer" />
