@@ -26,6 +26,7 @@ import heroAstronaut from "@/assets/hero-astronaut.jpg";
 
 const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
 const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
+const HERO_VIDEO = "/assets/video/astronaut-hero.mp4";
 
 export function Landing() {
   useRevealOnScroll();
@@ -60,9 +61,14 @@ export function Landing() {
           ref={heroBgRef}
           className="pointer-events-none absolute inset-0 z-0 will-change-transform"
         >
-          <img
-            src={assetUrl(heroAstronaut)}
-            alt=""
+          <video
+            src={HERO_VIDEO}
+            poster={assetUrl(heroAstronaut)}
+            preload="metadata"
+            autoPlay
+            muted
+            loop
+            playsInline
             aria-hidden
             className="absolute inset-0 h-full w-full object-cover object-center"
           />
