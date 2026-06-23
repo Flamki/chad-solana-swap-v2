@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { AppStoreBadge, PlayStoreBadge } from "@/components/store-badges";
 import astronautHeroVideo from "@/assets/astronaut-hero.mp4.asset.json";
+import astronautPoster from "@/assets/astronaut-poster.jpg.asset.json";
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenMarquee } from "@/components/token-marquee";
 import { useEffect, useRef } from "react";
@@ -68,6 +69,8 @@ function Landing() {
         <div ref={heroBgRef} className="pointer-events-none absolute inset-0 z-0 will-change-transform">
           <video
             src={astronautHeroVideo.url}
+            poster={astronautPoster.url}
+            preload="auto"
             autoPlay
             muted
             playsInline
