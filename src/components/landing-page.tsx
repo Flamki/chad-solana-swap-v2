@@ -460,6 +460,7 @@ export function Landing() {
             src={CHAD_VIDEO}
             autoPlay
             muted
+            loop
             playsInline
             className="mx-auto mb-12 w-full max-w-3xl rounded-3xl border border-border/50 shadow-2xl shadow-primary/20"
           />
