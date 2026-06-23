@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowUpRight } from "lucide-react";
 import { AppStoreBadge, PlayStoreBadge } from "@/components/store-badges";
+import astronautHeroVideo from "@/assets/astronaut-hero.mp4.asset.json";
 import heroImg from "@/assets/hero-astronaut.jpg";
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenMarquee } from "@/components/token-marquee";
