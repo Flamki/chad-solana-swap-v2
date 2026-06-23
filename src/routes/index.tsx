@@ -116,13 +116,13 @@ function Landing() {
         {/* Hero copy */}
         <section className="relative z-10 mx-auto max-w-3xl px-5 pt-24 pb-40 text-center">
         <h1 className="reveal font-display text-7xl md:text-9xl font-semibold tracking-tight text-foreground/90">
-          chad
+          ChadWallet
         </h1>
         <p className="reveal reveal-delay-1 mt-8 text-2xl md:text-3xl font-medium">
-          where traders become legends.
+          The Solana wallet built to outrun the bots.
         </p>
         <p className="reveal reveal-delay-2 mt-3 text-base text-muted-foreground">
-          From memecoins to viral tokens, trade any Solana token in seconds.
+          Trade any token, copy the best wallets, and never miss a launch.
         </p>
         <div className="reveal reveal-delay-3 mt-10 flex flex-wrap justify-center gap-3">
           <Link
@@ -136,7 +136,7 @@ function Landing() {
             href="#download"
             className="rounded-lg border border-border bg-background/40 backdrop-blur px-6 py-3 text-sm font-semibold hover:bg-background/70 transition"
           >
-            Download app
+            Get the app
           </a>
         </div>
         </section>
