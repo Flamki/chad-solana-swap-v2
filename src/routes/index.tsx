@@ -320,20 +320,8 @@ function Landing() {
             trade from anywhere.<br />never lose a beat.
           </h2>
           <div className="mt-10 flex flex-wrap justify-center gap-3">
-          <a href={IOS} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-border bg-background/40 backdrop-blur px-5 py-3 hover:bg-background/70 transition">
-            <Apple className="h-5 w-5" />
-            <div className="text-left leading-tight">
-              <div className="text-[10px] text-muted-foreground">Download on the</div>
-              <div className="text-sm font-semibold">App Store</div>
-            </div>
-          </a>
-          <a href={ANDROID} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-border bg-background/40 backdrop-blur px-5 py-3 hover:bg-background/70 transition">
-            <Play className="h-5 w-5" />
-            <div className="text-left leading-tight">
-              <div className="text-[10px] text-muted-foreground">Get it on</div>
-              <div className="text-sm font-semibold">Google Play</div>
-            </div>
-          </a>
+            <AppStoreBadge variant="light" href={IOS} target="_blank" rel="noreferrer" />
+            <PlayStoreBadge variant="light" href={ANDROID} target="_blank" rel="noreferrer" />
           </div>
         </div>
       </section>
