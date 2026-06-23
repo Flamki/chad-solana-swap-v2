@@ -102,10 +102,9 @@ function Landing() {
               className="hidden sm:flex scale-90 origin-right"
             />
             <Link
-
               to="/trade/$mint"
               params={{ mint: "So11111111111111111111111111111111111111112" }}
-              className="rounded-lg border border-border/60 bg-background/40 backdrop-blur px-4 py-2 text-sm font-medium hover:bg-background/70 transition"
+              className="inline-flex h-11 items-center justify-center rounded-lg border border-border/60 bg-background/40 backdrop-blur px-4 text-sm font-medium hover:bg-background/70 transition"
             >
               Login
             </Link>
