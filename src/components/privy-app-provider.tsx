@@ -2,6 +2,8 @@ import { PrivyProvider } from "@privy-io/react-auth";
 import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 import type { ReactNode } from "react";
 
+import chadLogoIcon from "@/assets/logo/dark.png";
+import { assetUrl } from "@/lib/asset-url";
 import { env, hasPrivy } from "@/lib/env";
 
 export function PrivyAppProvider({ children }: { children: ReactNode }) {
@@ -16,7 +18,7 @@ export function PrivyAppProvider({ children }: { children: ReactNode }) {
       config={{
         appearance: {
           accentColor: "#7C3AED",
-          logo: "/favicon.ico",
+          logo: assetUrl(chadLogoIcon),
           showWalletLoginFirst: false,
           walletChainType: "ethereum-and-solana",
         },

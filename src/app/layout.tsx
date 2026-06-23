@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import chadLogoIcon from "@/assets/chad-logo.png";
+import chadLogoIcon from "@/assets/logo/dark.png";
 import { assetUrl } from "@/lib/asset-url";
 import { Providers } from "@/app/providers";
 import "@/styles.css";
@@ -21,7 +21,8 @@ export const metadata: Metadata = {
     site: "@chadwallet",
   },
   icons: {
-    icon: assetUrl(chadLogoIcon),
+    icon: [{ url: assetUrl(chadLogoIcon), type: "image/png" }],
+    apple: [{ url: assetUrl(chadLogoIcon), type: "image/png" }],
   },
 };
 
