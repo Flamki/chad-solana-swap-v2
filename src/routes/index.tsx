@@ -119,10 +119,10 @@ function Landing() {
           ChadWallet
         </h1>
         <p className="reveal reveal-delay-1 mt-8 text-2xl md:text-3xl font-medium">
-          The Solana wallet built to outrun the bots.
+          The fastest way to trade Solana.
         </p>
         <p className="reveal reveal-delay-2 mt-3 text-base text-muted-foreground">
-          Trade any token, copy the best wallets, and never miss a launch.
+          Buy, sell, and copy-trade any token — from viral launches to the wallets that print.
         </p>
         <div className="reveal reveal-delay-3 mt-10 flex flex-wrap justify-center gap-3">
           <Link
