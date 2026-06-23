@@ -20,7 +20,7 @@ import flowLaunch from "@/assets/flow/launch-4.png";
 import flowMeme from "@/assets/flow/memecoin-4.png";
 import flowPortfolio from "@/assets/flow/portfolio-4.png";
 import flowRelaunch from "@/assets/flow/relaunch-4.png";
-import chadVideo from "@/assets/video/chadwallet.mp4";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -364,14 +364,23 @@ function Landing() {
       {/* ============ DOWNLOAD ============ */}
       <section id="download" className="relative border-t border-border/40 px-5 py-32 text-center overflow-hidden">
         <div className="mx-auto max-w-5xl">
-          <video
-            src={chadVideo}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="mx-auto mb-12 w-full max-w-3xl rounded-3xl border border-border/50 shadow-2xl shadow-primary/20"
-          />
+          <div className="mx-auto mb-12 flex w-full max-w-3xl items-end justify-center gap-4 md:gap-8">
+            <img
+              src={screenPortfolio}
+              alt="Portfolio"
+              className="w-[28%] -rotate-6 translate-y-6 rounded-[2rem] border border-border/60 shadow-2xl shadow-black/40"
+            />
+            <img
+              src={screenToken}
+              alt="Token trading"
+              className="w-[34%] rounded-[2.25rem] border border-border/60 shadow-2xl shadow-primary/30"
+            />
+            <img
+              src={screenKol}
+              alt="Copy trade KOLs"
+              className="w-[28%] rotate-6 translate-y-6 rounded-[2rem] border border-border/60 shadow-2xl shadow-black/40"
+            />
+          </div>
           <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary">Now available on web & mobile</p>
           <h2 className="mt-4 font-display text-4xl md:text-6xl font-semibold tracking-tight">
             trade from anywhere.<br />never lose a beat.
