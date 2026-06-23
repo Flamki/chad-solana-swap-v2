@@ -110,16 +110,16 @@ function Landing() {
 
         {/* Hero copy */}
         <section className="relative z-10 mx-auto max-w-3xl px-5 pt-24 pb-40 text-center">
-        <h1 className="font-display text-7xl md:text-9xl font-semibold tracking-tight text-foreground/90">
+        <h1 className="reveal font-display text-7xl md:text-9xl font-semibold tracking-tight text-foreground/90">
           chad
         </h1>
-        <p className="mt-8 text-2xl md:text-3xl font-medium">
+        <p className="reveal reveal-delay-1 mt-8 text-2xl md:text-3xl font-medium">
           where traders become legends.
         </p>
-        <p className="mt-3 text-base text-muted-foreground">
+        <p className="reveal reveal-delay-2 mt-3 text-base text-muted-foreground">
           From memecoins to viral tokens, trade any Solana token in seconds.
         </p>
-        <div className="mt-10 flex flex-wrap justify-center gap-3">
+        <div className="reveal reveal-delay-3 mt-10 flex flex-wrap justify-center gap-3">
           <Link
             to="/trade/$mint"
             params={{ mint: "So11111111111111111111111111111111111111112" }}
@@ -144,8 +144,8 @@ function Landing() {
             { k: "$2.4B+", v: "volume routed" },
             { k: "180k+", v: "chads onboarded" },
             { k: "<400ms", v: "median swap" },
-          ].map((s) => (
-            <div key={s.v}>
+          ].map((s, i) => (
+            <div key={s.v} className={`reveal reveal-delay-${i + 1}`}>
               <div className="font-display text-5xl md:text-6xl font-semibold text-primary">{s.k}</div>
               <div className="mt-2 text-sm text-muted-foreground uppercase tracking-widest">{s.v}</div>
             </div>
