@@ -129,6 +129,34 @@ function Landing() {
       </section>
       </div>
 
+      {/* ============ ABOUT / MANIFESTO ============ */}
+      <section className="relative border-t border-border/40 px-5 py-32 text-center">
+        <div className="mx-auto max-w-3xl">
+          <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
+            <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
+            about chadwallet
+          </p>
+          <h2 className="mt-8 font-display text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight">
+            Hunt every<br />
+            <span className="text-muted-foreground">memecoin.</span> Every chain.<br />
+            One wallet.
+          </h2>
+          <p className="mt-8 text-lg md:text-xl text-foreground/70 leading-relaxed">
+            ChadWallet is the trader-first wallet for people who actually print. Built to outrun the bots, copy the wallets that matter, and turn every fill into rewards.
+          </p>
+          <a
+            href="#"
+            className="mt-10 inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition group"
+          >
+            Read the manifesto
+            <span className="text-muted-foreground">·</span>
+            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">v1.0 — live</span>
+            <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+          </a>
+        </div>
+      </section>
+
+
       {/* ============ FEATURES — phone screenshots ============ */}
       <section className="relative border-t border-border/40 px-5 py-32 overflow-hidden">
         <div className="mx-auto max-w-6xl">
