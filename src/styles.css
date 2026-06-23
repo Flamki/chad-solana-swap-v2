@@ -201,3 +201,47 @@
 @utility animate-pulse-glow {
   animation: pulse-glow 2.5s ease-in-out infinite;
 }
+
+/* ============ Premium scroll reveal ============ */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 32px, 0);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+
+.reveal {
+  opacity: 0;
+  transform: translate3d(0, 32px, 0);
+  filter: blur(8px);
+  will-change: opacity, transform, filter;
+}
+
+.reveal.is-visible {
+  animation: reveal-up 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.reveal-delay-1.is-visible { animation-delay: 0.08s; }
+.reveal-delay-2.is-visible { animation-delay: 0.16s; }
+.reveal-delay-3.is-visible { animation-delay: 0.24s; }
+.reveal-delay-4.is-visible { animation-delay: 0.32s; }
+.reveal-delay-5.is-visible { animation-delay: 0.40s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    animation: none !important;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
