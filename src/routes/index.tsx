@@ -57,21 +57,22 @@ function Landing() {
         <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5">
           <ChadLogo variant="dark" size="lg" />
           <div className="flex items-center gap-2">
-            <a href={IOS} target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 backdrop-blur px-3 py-1.5 hover:bg-background/70 transition">
-              <Apple className="h-4 w-4" />
-              <div className="text-left leading-tight">
-                <div className="text-[9px] text-muted-foreground">Download on the</div>
-                <div className="text-xs font-semibold">App Store</div>
-              </div>
-            </a>
-            <a href={ANDROID} target="_blank" rel="noreferrer" className="hidden sm:flex items-center gap-2 rounded-lg border border-border/60 bg-background/40 backdrop-blur px-3 py-1.5 hover:bg-background/70 transition">
-              <Play className="h-4 w-4" />
-              <div className="text-left leading-tight">
-                <div className="text-[9px] text-muted-foreground">Get it on</div>
-                <div className="text-xs font-semibold">Google Play</div>
-              </div>
-            </a>
+            <AppStoreBadge
+              variant="light"
+              href={IOS}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:flex scale-90 origin-right"
+            />
+            <PlayStoreBadge
+              variant="light"
+              href={ANDROID}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden sm:flex scale-90 origin-right"
+            />
             <Link
+
               to="/trade/$mint"
               params={{ mint: "So11111111111111111111111111111111111111112" }}
               className="rounded-lg border border-border/60 bg-background/40 backdrop-blur px-4 py-2 text-sm font-medium hover:bg-background/70 transition"
