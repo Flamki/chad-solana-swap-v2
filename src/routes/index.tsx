@@ -69,6 +69,8 @@ function Landing() {
         <div ref={heroBgRef} className="pointer-events-none absolute inset-0 z-0 will-change-transform">
           <video
             src={astronautHeroVideo.url}
+            poster={astronautPoster.url}
+            preload="auto"
             autoPlay
             muted
             playsInline
