@@ -34,7 +34,7 @@ export function TokenMarquee({ reverse = false }: { reverse?: boolean }) {
               <span className="font-semibold">{t.symbol}</span>
               <span className="font-mono text-muted-foreground">{formatUsd(t.price)}</span>
               {t.rank !== undefined && (
-                <span className="font-mono text-[10px] text-muted-foreground">#{t.rank + 1}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">#{t.rank}</span>
               )}
               <span className={`font-mono text-xs ${up ? "text-primary" : "text-destructive"}`}>
                 {up ? "+" : ""}

@@ -46,6 +46,37 @@ export type JupiterQuote = {
   source: "jupiter-v2" | "jupiter-lite";
 };
 
+export type PricePoint = { time: number; value: number };
+
+export type LiveTrade = {
+  id: string;
+  side: "buy" | "sell";
+  amountUsd: number;
+  tokens: number;
+  price: number;
+  wallet: string;
+  ago: string;
+  source?: string;
+};
+
+export type LiveHolder = {
+  rank: number;
+  wallet: string;
+  pct: number;
+  valueUsd: number;
+  tokens?: number;
+};
+
+async function fetchLocalJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(path, { signal });
+
+  if (!response.ok) {
+    throw new Error(`${path} failed (${response.status})`);
+  }
+
+  return (await response.json()) as T;
+}
+
 export async function fetchJupiterPrices(mints: string[], signal?: AbortSignal) {
   const ids = Array.from(new Set(mints)).filter(Boolean).slice(0, 50);
   if (!ids.length) return {};
@@ -64,6 +95,12 @@ export async function fetchJupiterPrices(mints: string[], signal?: AbortSignal) 
 }
 
 export async function fetchTrendingTokens(signal?: AbortSignal): Promise<Token[]> {
+  try {
+    return await fetchLocalJson<Token[]>("/api/market/trending", signal);
+  } catch {
+    // Fall through to the direct public endpoint/fallback path for local demos.
+  }
+
   if (!hasBirdeye) {
     return enrichTokensWithJupiter(TOKENS, signal);
   }
@@ -124,9 +161,27 @@ export async function enrichTokensWithJupiter(tokens: Token[], signal?: AbortSig
 }
 
 export async function fetchTokenMarket(mint: string, signal?: AbortSignal) {
+  try {
+    return await fetchLocalJson<Token>(`/api/market/token/${encodeURIComponent(mint)}`, signal);
+  } catch {
+    // Fall through to Jupiter/static fallback.
+  }
+
   const base = TOKENS.find((token) => token.mint === mint) ?? createFallbackToken(mint);
   const [token] = await enrichTokensWithJupiter([base], signal);
   return token;
+}
+
+export async function fetchTokenOhlcv(mint: string, signal?: AbortSignal) {
+  return fetchLocalJson<PricePoint[]>(`/api/market/ohlcv/${encodeURIComponent(mint)}`, signal);
+}
+
+export async function fetchTokenTrades(mint: string, signal?: AbortSignal) {
+  return fetchLocalJson<LiveTrade[]>(`/api/market/trades/${encodeURIComponent(mint)}`, signal);
+}
+
+export async function fetchTokenHolders(mint: string, signal?: AbortSignal) {
+  return fetchLocalJson<LiveHolder[]>(`/api/market/holders/${encodeURIComponent(mint)}`, signal);
 }
 
 export async function fetchJupiterQuote({
@@ -297,6 +352,38 @@ export function useTokenMarket(mint: string, initialToken?: Token) {
     queryFn: ({ signal }) => fetchTokenMarket(mint, signal),
     initialData: initialToken,
     staleTime: 30_000,
+  });
+}
+
+export function useTokenOhlcv(mint: string, initialData?: PricePoint[]) {
+  return useQuery({
+    queryKey: ["token-ohlcv", mint],
+    queryFn: ({ signal }) => fetchTokenOhlcv(mint, signal),
+    initialData,
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+}
+
+export function useTokenTrades(mint: string, enabled = true) {
+  return useQuery({
+    queryKey: ["token-trades", mint],
+    queryFn: ({ signal }) => fetchTokenTrades(mint, signal),
+    enabled,
+    refetchInterval: 15_000,
+    staleTime: 10_000,
+    retry: 1,
+  });
+}
+
+export function useTokenHolders(mint: string, enabled = true) {
+  return useQuery({
+    queryKey: ["token-holders", mint],
+    queryFn: ({ signal }) => fetchTokenHolders(mint, signal),
+    enabled,
+    refetchInterval: 60_000,
+    staleTime: 45_000,
+    retry: 1,
   });
 }
 

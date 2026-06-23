@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   Activity,
   ArrowLeft,
@@ -17,15 +17,19 @@ import { ChadLogo } from "@/components/chad-logo";
 import { SignInButton } from "@/components/sign-in-button";
 import { PriceChart } from "@/components/trade/price-chart";
 import { SwapPanel } from "@/components/trade/swap-panel";
-import { useSolanaRpcHealth, useTokenMarket, useTrendingTokens } from "@/lib/market-data";
+import {
+  useSolanaRpcHealth,
+  useTokenHolders,
+  useTokenMarket,
+  useTokenOhlcv,
+  useTokenTrades,
+  useTrendingTokens,
+} from "@/lib/market-data";
 import {
   TOKENS,
   createFallbackToken,
   formatCompact,
   formatUsd,
-  generateHolders,
-  generatePriceHistory,
-  generateTrades,
   getToken,
   type Token,
 } from "@/lib/tokens";
@@ -36,9 +40,7 @@ export function TradePage({ mint }: { mint: string }) {
   const { data: trending = TOKENS } = useTrendingTokens();
   const rpcHealth = useSolanaRpcHealth();
   const token = market.data ?? initialToken;
-  const history = useMemo(() => generatePriceHistory(token), [token]);
-  const trades = useMemo(() => generateTrades(token), [token]);
-  const holders = useMemo(() => generateHolders(token), [token]);
+  const history = useTokenOhlcv(token.mint);
   const up = token.change24h >= 0;
 
   return (
@@ -75,9 +77,7 @@ export function TradePage({ mint }: { mint: string }) {
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div>
               <h2 className="text-sm font-semibold">Trending</h2>
-              <p className="text-[11px] text-muted-foreground">
-                {trending[0]?.source === "birdeye" ? "BirdEye live feed" : "Curated Solana feed"}
-              </p>
+              <p className="text-[11px] text-muted-foreground">BirdEye live trending</p>
             </div>
             <TrendingUp className="h-4 w-4 text-primary" />
           </div>
@@ -139,10 +139,21 @@ export function TradePage({ mint }: { mint: string }) {
           </div>
 
           <div className="h-[420px] overflow-hidden rounded-2xl border border-border bg-card/40 p-3">
-            <PriceChart data={history} />
+            {history.data?.length ? (
+              <PriceChart data={history.data} />
+            ) : (
+              <LiveState
+                title={history.isFetching ? "Loading BirdEye chart" : "BirdEye chart unavailable"}
+                detail={
+                  history.isFetching
+                    ? "Pulling live OHLCV candles for this token."
+                    : "The provider did not return chart candles for this request."
+                }
+              />
+            )}
           </div>
 
-          <BottomTabs trades={trades} holders={holders} token={token} />
+          <BottomTabs token={token} />
         </section>
 
         <aside className="min-w-0">
@@ -222,16 +233,10 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BottomTabs({
-  trades,
-  holders,
-  token,
-}: {
-  trades: ReturnType<typeof generateTrades>;
-  holders: ReturnType<typeof generateHolders>;
-  token: Token;
-}) {
+function BottomTabs({ token }: { token: Token }) {
   const [tab, setTab] = useState<"trades" | "holders">("trades");
+  const trades = useTokenTrades(token.mint, tab === "trades");
+  const holders = useTokenHolders(token.mint, tab === "holders");
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card/40">
@@ -265,32 +270,44 @@ function BottomTabs({
               </tr>
             </thead>
             <tbody>
-              {trades.map((trade) => (
-                <tr key={trade.id} className="border-t border-border/60">
-                  <Td>
-                    <span
-                      className={
-                        trade.side === "buy"
-                          ? "font-semibold text-primary"
-                          : "font-semibold text-destructive"
-                      }
-                    >
-                      {trade.side.toUpperCase()}
-                    </span>
-                  </Td>
-                  <Td mono>{formatUsd(trade.amountUsd)}</Td>
-                  <Td mono>
-                    {trade.tokens.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  </Td>
-                  <Td mono>{formatUsd(trade.price)}</Td>
-                  <Td mono className="text-muted-foreground">
-                    {trade.wallet}
-                  </Td>
-                  <Td mono className="text-muted-foreground">
-                    {trade.ago}
-                  </Td>
-                </tr>
-              ))}
+              {trades.data?.length ? (
+                trades.data.map((trade) => (
+                  <tr key={trade.id} className="border-t border-border/60">
+                    <Td>
+                      <span
+                        className={
+                          trade.side === "buy"
+                            ? "font-semibold text-primary"
+                            : "font-semibold text-destructive"
+                        }
+                      >
+                        {trade.side.toUpperCase()}
+                      </span>
+                    </Td>
+                    <Td mono>{formatUsd(trade.amountUsd)}</Td>
+                    <Td mono>
+                      {trade.tokens.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </Td>
+                    <Td mono>{formatUsd(trade.price)}</Td>
+                    <Td mono className="text-muted-foreground">
+                      {trade.wallet}
+                    </Td>
+                    <Td mono className="text-muted-foreground">
+                      {trade.ago}
+                    </Td>
+                  </tr>
+                ))
+              ) : (
+                <TableState
+                  colSpan={6}
+                  title={trades.isFetching ? "Loading BirdEye trades" : "Live trades unavailable"}
+                  detail={
+                    trades.isFetching
+                      ? "Fetching recent token swaps from BirdEye."
+                      : "BirdEye did not return recent swaps for this request."
+                  }
+                />
+              )}
             </tbody>
           </table>
         ) : (
@@ -305,22 +322,70 @@ function BottomTabs({
               </tr>
             </thead>
             <tbody>
-              {holders.map((holder) => (
-                <tr key={holder.rank} className="border-t border-border/60">
-                  <Td mono>{holder.rank}</Td>
-                  <Td mono>{holder.wallet}</Td>
-                  <Td mono>{holder.pct.toFixed(2)}%</Td>
-                  <Td mono>{formatUsd(holder.valueUsd)}</Td>
-                  <Td>
-                    <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                  </Td>
-                </tr>
-              ))}
+              {holders.data?.length ? (
+                holders.data.map((holder) => (
+                  <tr key={holder.rank} className="border-t border-border/60">
+                    <Td mono>{holder.rank}</Td>
+                    <Td mono>{holder.wallet}</Td>
+                    <Td mono>{holder.pct > 0 ? `${holder.pct.toFixed(2)}%` : "-"}</Td>
+                    <Td mono>
+                      {holder.valueUsd > 0
+                        ? formatUsd(holder.valueUsd)
+                        : `${(holder.tokens ?? 0).toLocaleString(undefined, {
+                            maximumFractionDigits: 2,
+                          })} ${token.symbol}`}
+                    </Td>
+                    <Td>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                    </Td>
+                  </tr>
+                ))
+              ) : (
+                <TableState
+                  colSpan={5}
+                  title={holders.isFetching ? "Loading BirdEye holders" : "Top holders unavailable"}
+                  detail={
+                    holders.isFetching
+                      ? "Fetching top token holders from BirdEye."
+                      : "BirdEye did not return holder data for this request."
+                  }
+                />
+              )}
             </tbody>
           </table>
         )}
       </div>
     </div>
+  );
+}
+
+function LiveState({ title, detail }: { title: string; detail: string }) {
+  return (
+    <div className="grid h-full min-h-[300px] place-items-center text-center">
+      <div>
+        <div className="font-mono text-sm font-semibold text-foreground">{title}</div>
+        <div className="mt-2 max-w-sm text-xs text-muted-foreground">{detail}</div>
+      </div>
+    </div>
+  );
+}
+
+function TableState({
+  colSpan,
+  title,
+  detail,
+}: {
+  colSpan: number;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <tr className="border-t border-border/60">
+      <td colSpan={colSpan} className="px-3 py-8 text-center">
+        <div className="font-mono text-xs font-semibold text-foreground">{title}</div>
+        <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
+      </td>
+    </tr>
   );
 }
 
