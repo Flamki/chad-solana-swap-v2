@@ -12,13 +12,13 @@ export function PrivyAppProvider({ children }: { children: ReactNode }) {
   return (
     <PrivyProvider
       appId={env.privyAppId}
+      clientId={env.privyClientId}
       config={{
-        loginMethods: ["google", "apple", "wallet"],
         appearance: {
           accentColor: "#7C3AED",
           logo: "/favicon.ico",
           showWalletLoginFirst: false,
-          walletChainType: "solana-only",
+          walletChainType: "ethereum-and-solana",
         },
         externalWallets: {
           solana: {

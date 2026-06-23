@@ -14,7 +14,11 @@ export function SignInButton({ variant = "default" }: { variant?: "default" | "h
 
 function ConnectedPrivyButton({ variant }: { variant: "default" | "hero" }) {
   const { ready, authenticated, user } = usePrivy();
-  const { login } = useLogin();
+  const { login } = useLogin({
+    onError: (error) => {
+      alert(`Privy login failed: ${String(error)}`);
+    },
+  });
   const { logout } = useLogout();
   const { wallets } = useWallets();
 

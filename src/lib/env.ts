@@ -1,5 +1,6 @@
 export const env = {
   privyAppId: process.env.NEXT_PUBLIC_PRIVY_APP_ID,
+  privyClientId: process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID,
   birdeyeApiKey: process.env.NEXT_PUBLIC_BIRDEYE_API_KEY,
   jupiterApiKey: process.env.NEXT_PUBLIC_JUPITER_API_KEY,
   solanaRpcUrl:
