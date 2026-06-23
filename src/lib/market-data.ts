@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 
 import { env, hasBirdeye, hasJupiterKey, hasRpcEndpoint, hasSupabase } from "@/lib/env";
-import { TOKENS, type Token, createFallbackToken, mergeToken } from "@/lib/tokens";
+import { SOL_MINT, TOKENS, type Token, createFallbackToken, mergeToken } from "@/lib/tokens";
 
 const BIRDEYE_TRENDING_URL =
   "https://public-api.birdeye.so/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=20";
@@ -65,6 +65,12 @@ export type LiveHolder = {
   pct: number;
   valueUsd: number;
   tokens?: number;
+};
+
+export type TokenPosition = {
+  balance: number;
+  valueUsd: number;
+  source: string;
 };
 
 async function fetchLocalJson<T>(path: string, signal?: AbortSignal): Promise<T> {
@@ -273,40 +279,104 @@ export async function fetchJupiterQuote({
 }
 
 export async function fetchSolanaRpcHealth(signal?: AbortSignal) {
-  const request = async <T>(method: string, params: unknown[] = []) => {
-    const response = await fetch(env.solanaRpcUrl, {
-      method: "POST",
-      signal,
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: method,
-        method,
-        params,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`RPC ${method} failed (${response.status})`);
-    }
-
-    const payload = (await response.json()) as { result?: T; error?: { message?: string } };
-    if (payload.error) {
-      throw new Error(payload.error.message ?? `RPC ${method} failed`);
-    }
-
-    return payload.result as T;
-  };
-
   const [slot, version] = await Promise.all([
-    request<number>("getSlot", [{ commitment: "confirmed" }]),
-    request<{ "solana-core": string }>("getVersion"),
+    solanaRpc<number>("getSlot", [{ commitment: "confirmed" }], signal),
+    solanaRpc<{ "solana-core": string }>("getVersion", [], signal),
   ]);
 
   return {
     slot,
     version: version["solana-core"],
     endpoint: env.solanaRpcUrl.includes("alchemy.com") ? "Alchemy RPC" : "Solana RPC",
+  };
+}
+
+async function solanaRpc<T>(method: string, params: unknown[] = [], signal?: AbortSignal) {
+  const response = await fetch(env.solanaRpcUrl, {
+    method: "POST",
+    signal,
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: method,
+      method,
+      params,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`RPC ${method} failed (${response.status})`);
+  }
+
+  const payload = (await response.json()) as { result?: T; error?: { message?: string } };
+  if (payload.error) {
+    throw new Error(payload.error.message ?? `RPC ${method} failed`);
+  }
+
+  return payload.result as T;
+}
+
+export async function fetchTokenPosition({
+  owner,
+  mint,
+  decimals,
+  price,
+  signal,
+}: {
+  owner: string;
+  mint: string;
+  decimals: number;
+  price: number;
+  signal?: AbortSignal;
+}): Promise<TokenPosition> {
+  if (!hasRpcEndpoint) {
+    throw new Error("Missing Solana RPC endpoint");
+  }
+
+  if (mint === SOL_MINT) {
+    const result = await solanaRpc<{ value: number }>(
+      "getBalance",
+      [owner, { commitment: "confirmed" }],
+      signal,
+    );
+    const balance = result.value / 10 ** decimals;
+    return {
+      balance,
+      valueUsd: balance * price,
+      source: env.solanaRpcUrl.includes("alchemy.com") ? "Alchemy RPC" : "Solana RPC",
+    };
+  }
+
+  const result = await solanaRpc<{
+    value?: Array<{
+      account?: {
+        data?: {
+          parsed?: {
+            info?: {
+              tokenAmount?: {
+                uiAmount?: number | null;
+                uiAmountString?: string;
+              };
+            };
+          };
+        };
+      };
+    }>;
+  }>(
+    "getTokenAccountsByOwner",
+    [owner, { mint }, { encoding: "jsonParsed", commitment: "confirmed" }],
+    signal,
+  );
+
+  const balance = (result.value ?? []).reduce((total, item) => {
+    const amount = item.account?.data?.parsed?.info?.tokenAmount;
+    return total + Number(amount?.uiAmountString ?? amount?.uiAmount ?? 0);
+  }, 0);
+
+  return {
+    balance,
+    valueUsd: balance * price,
+    source: env.solanaRpcUrl.includes("alchemy.com") ? "Alchemy RPC" : "Solana RPC",
   };
 }
 
@@ -394,5 +464,33 @@ export function useSolanaRpcHealth() {
     enabled: hasRpcEndpoint,
     retry: 1,
     refetchInterval: 45_000,
+  });
+}
+
+export function useTokenPosition({
+  owner,
+  mint,
+  decimals,
+  price,
+}: {
+  owner?: string;
+  mint: string;
+  decimals: number;
+  price: number;
+}) {
+  return useQuery({
+    queryKey: ["token-position", owner, mint, decimals, price],
+    queryFn: ({ signal }) =>
+      fetchTokenPosition({
+        owner: owner!,
+        mint,
+        decimals,
+        price,
+        signal,
+      }),
+    enabled: Boolean(owner && hasRpcEndpoint),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+    retry: 1,
   });
 }

@@ -5,13 +5,20 @@ import { ArrowDownUp, Loader2, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { hasPrivy, hasSupabase } from "@/lib/env";
-import { fetchJupiterQuote, recordTokenIntent } from "@/lib/market-data";
+import { fetchJupiterQuote, recordTokenIntent, useTokenPosition } from "@/lib/market-data";
 import type { Token } from "@/lib/tokens";
 import { SOL_MINT, USDC_MINT, formatUsd, rawAmountFromUi } from "@/lib/tokens";
 
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 const SOL_PRICE = 184.32;
+
+function formatTokenAmount(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "0.00";
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits: value < 1 ? 6 : 2,
+  });
+}
 
 export function SwapPanel({ token }: { token: Token }) {
   if (hasPrivy) {
@@ -107,6 +114,12 @@ function SwapPanelCore({
     refetchInterval: 20_000,
     retry: 1,
   });
+  const positionQuery = useTokenPosition({
+    owner: walletAddress,
+    mint: token.mint,
+    decimals: token.decimals,
+    price: token.price,
+  });
 
   const inputUsd = quoteQuery.data?.inputUsd ?? amt * pair.inputPrice;
   const estimatedOut =
@@ -115,6 +128,15 @@ function SwapPanelCore({
       ? inputUsd / Math.max(token.price || 1, 0.00000001)
       : inputUsd / (pair.outputSymbol === "USDC" ? 1 : SOL_PRICE));
   const fee = inputUsd * 0.003;
+  const tokenBalance = positionQuery.data?.balance ?? 0;
+  const tokenValue = positionQuery.data?.valueUsd ?? 0;
+  const positionNote = !walletAddress
+    ? "Connect wallet to view live Solana balance."
+    : positionQuery.isFetching
+      ? "Loading live Solana balance..."
+      : positionQuery.isError
+        ? "Unable to read wallet balance from RPC."
+        : `${positionQuery.data?.source ?? "Solana RPC"} balance synced.`;
 
   const buttonLabel = !hasPrivy
     ? "Add Privy app id to swap"
@@ -122,7 +144,7 @@ function SwapPanelCore({
       ? `Connect wallet to ${side}`
       : quoteQuery.isFetching
         ? "Refreshing quote"
-        : `Preview ${side}`;
+        : `Save ${side} quote`;
 
   const handlePrimary = async () => {
     if (!hasPrivy || !authenticated) {
@@ -290,21 +312,23 @@ function SwapPanelCore({
           <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             Your position
           </div>
-          {hasSupabase ? (
+          {positionQuery.isFetching ? (
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          ) : hasSupabase ? (
             <ShieldCheck className="h-4 w-4 text-primary" />
           ) : (
             <Zap className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
         <div className="mt-2 flex items-baseline justify-between gap-3">
-          <div className="text-xl font-mono font-semibold">0.00 {token.symbol}</div>
-          <div className="text-sm font-mono text-muted-foreground">$0.00</div>
+          <div className="min-w-0 truncate text-xl font-mono font-semibold">
+            {formatTokenAmount(tokenBalance)} {token.symbol}
+          </div>
+          <div className="shrink-0 text-sm font-mono text-muted-foreground">
+            {formatUsd(tokenValue)}
+          </div>
         </div>
-        <div className="mt-1 text-xs text-muted-foreground">
-          {hasSupabase
-            ? "Trade intents sync to Supabase."
-            : "Add Supabase env vars to persist watchlists and intents."}
-        </div>
+        <div className="mt-1 text-xs text-muted-foreground">{positionNote}</div>
       </div>
     </div>
   );

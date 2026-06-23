@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { apiError, birdeyeJson } from "@/lib/server/birdeye";
-import { createFallbackToken, mergeToken, type Token } from "@/lib/tokens";
+import { TOKENS, createFallbackToken, mergeToken, type Token } from "@/lib/tokens";
 
 export const revalidate = 0;
 
@@ -68,6 +68,13 @@ function searchItems(data: BirdeyeSearchResponse, query: string) {
   );
 }
 
+function fallbackSearch(query: string) {
+  const needle = query.toLowerCase();
+  return TOKENS.filter((token) =>
+    [token.mint, token.symbol, token.name].some((value) => value.toLowerCase().includes(needle)),
+  );
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
@@ -92,6 +99,11 @@ export async function GET(request: Request) {
       const items = searchItems(data, query);
       return NextResponse.json(items.map(tokenFromSearch));
     } catch (fallbackError) {
+      const fallback = fallbackSearch(query);
+      if (fallback.length) {
+        return NextResponse.json(fallback);
+      }
+
       return apiError(fallbackError);
     }
   }
