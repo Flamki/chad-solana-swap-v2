@@ -4,6 +4,8 @@ import { AppStoreBadge, PlayStoreBadge } from "@/components/store-badges";
 import heroImg from "@/assets/hero-astronaut.jpg";
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenMarquee } from "@/components/token-marquee";
+import { useEffect, useRef } from "react";
+import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 
 import screenSearch from "@/assets/app store/search.png";
 import screenToken from "@/assets/app store/token.png";
@@ -35,12 +37,35 @@ const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.ww
 const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
 
 function Landing() {
+  useRevealOnScroll();
+  const heroBgRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const y = window.scrollY;
+        if (heroBgRef.current) {
+          heroBgRef.current.style.transform = `translate3d(0, ${y * 0.25}px, 0) scale(${1 + Math.min(y, 600) * 0.0002})`;
+        }
+      });
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ============ HERO + STATS (shared scene) ============ */}
       <div className="relative overflow-hidden">
         {/* Space background — extends through stats */}
-        <div className="pointer-events-none absolute inset-0 z-0">
+        <div ref={heroBgRef} className="pointer-events-none absolute inset-0 z-0 will-change-transform">
           <img
             src={heroImg}
             alt=""
