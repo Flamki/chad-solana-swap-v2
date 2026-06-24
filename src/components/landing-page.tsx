@@ -6,6 +6,7 @@ import { AppStoreBadge, PlayStoreBadge } from "@/components/store-badges";
 import { ChadLogo } from "@/components/chad-logo";
 import { SignInButton } from "@/components/sign-in-button";
 import { TokenMarquee } from "@/components/token-marquee";
+import { useEffect, useRef } from "react";
 import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 import { assetUrl } from "@/lib/asset-url";
 
@@ -30,14 +31,45 @@ const CHAD_VIDEO = "/assets/video/chadwallet.mp4";
 
 export function Landing() {
   useRevealOnScroll();
+  const heroBgRef = useRef<HTMLDivElement | null>(null);
   const heroPoster = assetUrl(heroAstronaut);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let raf = 0;
+
+    const updateHeroParallax = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        if (!heroBgRef.current) return;
+
+        const offset = prefersReducedMotion.matches ? 0 : Math.min(window.scrollY * 0.2, 160);
+        heroBgRef.current.style.transform = `translate3d(0, ${offset}px, 0)`;
+      });
+    };
+
+    updateHeroParallax();
+    window.addEventListener("scroll", updateHeroParallax, { passive: true });
+    prefersReducedMotion.addEventListener("change", updateHeroParallax);
+
+    return () => {
+      window.removeEventListener("scroll", updateHeroParallax);
+      prefersReducedMotion.removeEventListener("change", updateHeroParallax);
+      cancelAnimationFrame(raf);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ============ HERO + STATS (shared scene) ============ */}
       <div className="relative overflow-hidden">
         {/* Space background — extends through stats */}
-        <div className="pointer-events-none absolute inset-0 z-0">
+        <div
+          ref={heroBgRef}
+          className="pointer-events-none absolute inset-0 z-0 will-change-transform"
+        >
           <video
             src={HERO_VIDEO}
             poster={heroPoster}
