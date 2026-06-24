@@ -1,7 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import {
+  ArrowUpRight,
+  Bell,
+  Copy,
+  Flame,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  Wallet,
+  Zap,
+} from "lucide-react";
 import { AppStoreBadge, PlayStoreBadge } from "@/components/store-badges";
 import { ChadLogo } from "@/components/chad-logo";
 import { SignInButton } from "@/components/sign-in-button";
@@ -13,12 +24,14 @@ import { assetUrl } from "@/lib/asset-url";
 import screenSearch from "@/assets/app store/search.png";
 import screenPortfolio from "@/assets/app store/portfolio.png";
 import screenDeposit from "@/assets/app store/deposit.png";
+import screenDiscover from "@/assets/app store/discover.png";
+import screenToken from "@/assets/app store/token.png";
+import screenKol from "@/assets/app store/kol.png";
+import screenLaunch from "@/assets/app store/launch.png";
 import flowBuySell from "@/assets/flow/buy-sell-4.png";
 import flowKol from "@/assets/flow/kol-4.png";
 import flowLaunch from "@/assets/flow/launch-4.png";
 import flowMeme from "@/assets/flow/memecoin-4.png";
-import flowPortfolio from "@/assets/flow/portfolio-4.png";
-import flowRelaunch from "@/assets/flow/relaunch-4.png";
 import heroAstronaut from "@/assets/hero-astronaut.jpg";
 
 const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
@@ -27,19 +40,107 @@ const HERO_VIDEO = "/assets/video/astronaut-hero.mp4";
 const CHAD_VIDEO = "/assets/video/chadwallet.mp4";
 const FEATURE_VIDEO = "/assets/video/MAKE_VIDEO_NOT_IMAGE-Picsart-BackgroundRemover.webm";
 const FEATURE_VIDEO_FALLBACK = "/assets/video/MAKE_VIDEO_NOT_IMAGE.mp4";
+const SOL_TRADE = "/trade/So11111111111111111111111111111111111111112";
+
+const stats = [
+  { value: "sub-sec", label: "Jupiter quotes" },
+  { value: "live", label: "BirdEye tokens" },
+  { value: "Solana", label: "native wallet" },
+];
+
+const featureCards = [
+  {
+    label: "leaderboard",
+    title: "Find the wallets already printing.",
+    icon: Trophy,
+    image: screenKol,
+  },
+  {
+    label: "feed",
+    title: "Catch launches before they trend.",
+    icon: Flame,
+    image: screenDiscover,
+  },
+  {
+    label: "alerts",
+    title: "Know what top traders buy in real time.",
+    icon: Bell,
+    image: screenLaunch,
+  },
+  {
+    label: "one click",
+    title: "Fund, buy, sell, and rotate faster.",
+    icon: Wallet,
+    image: screenDeposit,
+  },
+];
+
+function PhoneShot({
+  src,
+  alt,
+  className = "",
+  priority = false,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  priority?: boolean;
+}) {
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading={priority ? "eager" : "lazy"}
+      className={`rounded-[2rem] border border-white/10 bg-black shadow-[0_28px_90px_rgba(0,0,0,0.58)] ${className}`}
+    />
+  );
+}
+
+function MiniTradeTape() {
+  const rows = [
+    { token: "BONK", side: "buy", amount: "$18.4K", change: "+24.6%" },
+    { token: "WIF", side: "sell", amount: "$7.2K", change: "-3.1%" },
+    { token: "JUP", side: "buy", amount: "$42.0K", change: "+8.9%" },
+  ];
+
+  return (
+    <div className="absolute -right-3 top-[18%] hidden w-56 rounded-2xl border border-white/10 bg-black/70 p-3 shadow-2xl shadow-black/60 backdrop-blur-xl md:block">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/45">
+          live tape
+        </span>
+        <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_16px_rgba(52,211,153,0.8)]" />
+      </div>
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <div key={`${row.token}-${row.side}`} className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-white">{row.token}</div>
+              <div className="font-mono text-[10px] uppercase text-white/40">{row.side}</div>
+            </div>
+            <div className="text-right">
+              <div className="font-mono text-xs text-white">{row.amount}</div>
+              <div
+                className={`font-mono text-[10px] ${row.change.startsWith("+") ? "text-emerald-300" : "text-red-300"}`}
+              >
+                {row.change}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function Landing() {
   useRevealOnScroll();
   const heroBgRef = useRef<HTMLDivElement | null>(null);
   const heroVideoRef = useRef<HTMLVideoElement | null>(null);
-  const heroAtmosphereRef = useRef<HTMLDivElement | null>(null);
-  const heroCopyRef = useRef<HTMLElement | null>(null);
-  const heroStatsRef = useRef<HTMLElement | null>(null);
-  const featureAnchorRef = useRef<HTMLDivElement | null>(null);
-  const featureFrameRef = useRef<HTMLDivElement | null>(null);
-  const featureVideoRef = useRef<HTMLVideoElement | null>(null);
-  const featureShadeRef = useRef<HTMLDivElement | null>(null);
-  const featureShadowRef = useRef<HTMLDivElement | null>(null);
+  const heroCopyRef = useRef<HTMLDivElement | null>(null);
+  const heroPhonesRef = useRef<HTMLDivElement | null>(null);
+  const productStageRef = useRef<HTMLDivElement | null>(null);
+  const productVideoRef = useRef<HTMLVideoElement | null>(null);
   const heroPoster = assetUrl(heroAstronaut);
 
   useEffect(() => {
@@ -51,35 +152,18 @@ export function Landing() {
     let raf = 0;
 
     const resetMotion = () => {
-      if (heroBgRef.current) {
-        heroBgRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
-      }
-      if (heroVideoRef.current) {
-        heroVideoRef.current.style.transform = "translate3d(0, 0, 0) scale(1.025)";
-      }
-      if (heroAtmosphereRef.current) {
-        heroAtmosphereRef.current.style.transform = "translate3d(0, 0, 0)";
-        heroAtmosphereRef.current.style.opacity = "1";
-      }
+      if (heroBgRef.current) heroBgRef.current.style.transform = "translate3d(0,0,0) scale(1)";
+      if (heroVideoRef.current) heroVideoRef.current.style.transform = "scale(1.03)";
       if (heroCopyRef.current) {
-        heroCopyRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
+        heroCopyRef.current.style.transform = "translate3d(0,0,0)";
         heroCopyRef.current.style.opacity = "1";
       }
-      if (heroStatsRef.current) {
-        heroStatsRef.current.style.transform = "translate3d(0, 0, 0)";
+      if (heroPhonesRef.current) heroPhonesRef.current.style.transform = "translate3d(0,0,0)";
+      if (productStageRef.current) {
+        productStageRef.current.style.transform = "rotateX(0deg) translate3d(0,0,0) scale(1)";
       }
-      if (featureFrameRef.current) {
-        featureFrameRef.current.style.transform = "rotateX(0deg) translate3d(0, 0, 0) scale(1)";
-      }
-      if (featureVideoRef.current) {
-        featureVideoRef.current.style.transform = "translate3d(0, 0, 60px) scale(1.34)";
-      }
-      if (featureShadeRef.current) {
-        featureShadeRef.current.style.opacity = "1";
-      }
-      if (featureShadowRef.current) {
-        featureShadowRef.current.style.transform = "translate3d(-50%, 0, 20px) scale(1)";
-        featureShadowRef.current.style.opacity = "0.55";
+      if (productVideoRef.current) {
+        productVideoRef.current.style.transform = "translate3d(0,0,68px) scale(1.08)";
       }
     };
 
@@ -91,56 +175,35 @@ export function Landing() {
         return;
       }
 
-      currentY += (targetY - currentY) * 0.11;
-
-      const intensity = window.innerWidth < 768 ? 0.68 : 1;
-      const progress = Math.min(currentY / 720, 1);
-      const depthScale = 1 + progress * 0.1 * intensity;
+      currentY += (targetY - currentY) * 0.12;
+      const intensity = window.innerWidth < 768 ? 0.55 : 1;
+      const progress = Math.min(currentY / 780, 1);
 
       if (heroBgRef.current) {
-        heroBgRef.current.style.transform = `translate3d(0, ${currentY * 0.27 * intensity}px, 0) scale(${depthScale})`;
+        heroBgRef.current.style.transform = `translate3d(0, ${currentY * 0.18 * intensity}px, 0) scale(${1.04 + progress * 0.05})`;
       }
       if (heroVideoRef.current) {
-        const videoScale = 1.025 + progress * 0.012 * intensity;
-        heroVideoRef.current.style.transform = `translate3d(0, ${currentY * -0.035 * intensity}px, 0) scale(${videoScale})`;
-      }
-      if (heroAtmosphereRef.current) {
-        heroAtmosphereRef.current.style.transform = `translate3d(0, ${currentY * 0.08 * intensity}px, 0)`;
-        heroAtmosphereRef.current.style.opacity = `${1 - progress * 0.22}`;
+        heroVideoRef.current.style.transform = `translate3d(0, ${currentY * -0.02 * intensity}px, 0) scale(${1.03 + progress * 0.02})`;
       }
       if (heroCopyRef.current) {
-        heroCopyRef.current.style.transform = `translate3d(0, ${currentY * -0.11 * intensity}px, 0) scale(${1 - progress * 0.025})`;
-        heroCopyRef.current.style.opacity = `${1 - progress * 0.62}`;
+        heroCopyRef.current.style.transform = `translate3d(0, ${currentY * -0.08 * intensity}px, 0)`;
+        heroCopyRef.current.style.opacity = `${1 - progress * 0.3}`;
       }
-      if (heroStatsRef.current) {
-        heroStatsRef.current.style.transform = `translate3d(0, ${currentY * -0.035 * intensity}px, 0)`;
+      if (heroPhonesRef.current) {
+        heroPhonesRef.current.style.transform = `translate3d(0, ${currentY * -0.045 * intensity}px, 0) rotate(${progress * -1.2}deg)`;
       }
-      if (featureAnchorRef.current && featureFrameRef.current && featureVideoRef.current) {
-        const rect = featureAnchorRef.current.getBoundingClientRect();
-        const featureProgress = Math.min(
+      if (productStageRef.current && productVideoRef.current) {
+        const rect = productStageRef.current.getBoundingClientRect();
+        const sceneProgress = Math.min(
           1,
           Math.max(0, (window.innerHeight - rect.top) / (window.innerHeight + rect.height)),
         );
-        const centeredProgress = featureProgress - 0.5;
-        const featureIntensity = window.innerWidth < 768 ? 0.62 : 1;
-        const centerFocus = 1 - Math.min(1, Math.abs(centeredProgress) * 2);
-        const focusScale = 1.3 + centerFocus * 0.1 * featureIntensity;
-
-        featureFrameRef.current.style.transform = `rotateX(${centeredProgress * -4 * featureIntensity}deg) translate3d(0, ${centeredProgress * -24 * featureIntensity}px, 0) scale(${0.99 + centerFocus * 0.015})`;
-        featureVideoRef.current.style.transform = `translate3d(0, ${centeredProgress * -6 * featureIntensity}%, ${45 + centerFocus * 55 * featureIntensity}px) scale(${focusScale})`;
-
-        if (featureShadeRef.current) {
-          featureShadeRef.current.style.opacity = `${0.68 + centerFocus * 0.32}`;
-        }
-        if (featureShadowRef.current) {
-          featureShadowRef.current.style.transform = `translate3d(-50%, ${centeredProgress * 16 * featureIntensity}px, 20px) scale(${0.84 + centerFocus * 0.18})`;
-          featureShadowRef.current.style.opacity = `${0.26 + centerFocus * 0.24}`;
-        }
+        const center = 1 - Math.min(1, Math.abs(sceneProgress - 0.48) * 2.2);
+        productStageRef.current.style.transform = `rotateX(${(sceneProgress - 0.5) * -5}deg) translate3d(0, ${(sceneProgress - 0.5) * -22}px, 0) scale(${0.985 + center * 0.025})`;
+        productVideoRef.current.style.transform = `translate3d(0, ${(sceneProgress - 0.5) * -5}%, ${54 + center * 58}px) scale(${1.04 + center * 0.13})`;
       }
 
-      if (Math.abs(targetY - currentY) > 0.1) {
-        raf = requestAnimationFrame(renderMotion);
-      }
+      if (Math.abs(targetY - currentY) > 0.1) raf = requestAnimationFrame(renderMotion);
     };
 
     const requestMotion = () => {
@@ -148,40 +211,23 @@ export function Landing() {
       if (!raf) raf = requestAnimationFrame(renderMotion);
     };
 
-    const handleMotionPreference = () => {
-      currentY = window.scrollY;
-      targetY = window.scrollY;
-      if (prefersReducedMotion.matches) {
-        cancelAnimationFrame(raf);
-        raf = 0;
-        resetMotion();
-      } else {
-        requestMotion();
-      }
-    };
-
     requestMotion();
     window.addEventListener("scroll", requestMotion, { passive: true });
     window.addEventListener("resize", requestMotion, { passive: true });
-    prefersReducedMotion.addEventListener("change", handleMotionPreference);
+    prefersReducedMotion.addEventListener("change", requestMotion);
 
     return () => {
       window.removeEventListener("scroll", requestMotion);
       window.removeEventListener("resize", requestMotion);
-      prefersReducedMotion.removeEventListener("change", handleMotionPreference);
+      prefersReducedMotion.removeEventListener("change", requestMotion);
       cancelAnimationFrame(raf);
     };
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* ============ HERO + STATS (shared scene) ============ */}
-      <div className="relative overflow-hidden">
-        {/* Space background — extends through stats */}
-        <div
-          ref={heroBgRef}
-          className="pointer-events-none absolute inset-0 z-0 will-change-transform"
-        >
+    <div className="min-h-screen overflow-hidden bg-background text-foreground">
+      <div className="relative min-h-screen overflow-hidden border-b border-white/10">
+        <div ref={heroBgRef} className="pointer-events-none absolute inset-0 will-change-transform">
           <video
             ref={heroVideoRef}
             src={HERO_VIDEO}
@@ -190,307 +236,307 @@ export function Landing() {
             autoPlay
             muted
             playsInline
-            style={{ backgroundImage: `url(${heroPoster})` }}
-            aria-hidden
-            className="absolute inset-0 h-full w-full bg-cover bg-center object-cover object-center will-change-transform"
+            className="absolute inset-0 h-full w-full bg-cover bg-center object-cover opacity-55 will-change-transform"
           />
-          <div ref={heroAtmosphereRef} className="absolute inset-0 will-change-transform">
-            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background/40 to-transparent" />
-            <div className="absolute inset-x-0 bottom-0 h-[32rem] bg-gradient-to-b from-transparent to-background" />
-          </div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(94,103,255,0.22),transparent_34%),linear-gradient(180deg,rgba(2,2,6,0.58),rgba(4,5,10,0.78)_48%,#050507_100%)]" />
+          <div className="absolute inset-x-0 bottom-0 h-56 bg-gradient-to-b from-transparent to-background" />
         </div>
 
         <TokenMarquee />
 
-        <header className="relative z-40">
-          <div className="flex h-20 w-full items-center justify-between px-4 sm:px-6">
-            <ChadLogo variant="dark" size="lg" />
-            <div className="ml-auto flex items-center justify-end gap-2">
+        <header className="relative z-40 px-4 pt-5 sm:px-6">
+          <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-[1.35rem] border border-white/10 bg-black/34 px-3 shadow-2xl shadow-black/35 backdrop-blur-xl sm:px-5">
+            <ChadLogo variant="dark" size="md" />
+            <div className="ml-auto flex items-center justify-end gap-2.5">
               <AppStoreBadge
                 variant="light"
                 href={IOS}
                 target="_blank"
                 rel="noreferrer"
-                className="hidden sm:flex"
+                className="hidden lg:flex scale-[0.88]"
               />
               <PlayStoreBadge
                 variant="light"
                 href={ANDROID}
                 target="_blank"
                 rel="noreferrer"
-                className="hidden sm:flex"
+                className="hidden lg:flex scale-[0.88]"
               />
-              <SignInButton redirectTo="/trade/So11111111111111111111111111111111111111112" />
+              <SignInButton redirectTo={SOL_TRADE} />
             </div>
           </div>
         </header>
 
-        {/* Hero copy */}
-        <section
-          ref={heroCopyRef}
-          className="relative z-10 mx-auto max-w-3xl px-5 pt-24 pb-40 text-center will-change-transform"
-        >
-          <h1 className="reveal font-display text-7xl md:text-9xl font-semibold tracking-tight text-foreground/90">
-            ChadWallet
-          </h1>
-          <p className="reveal reveal-delay-1 mt-8 text-2xl md:text-3xl font-medium">
-            The fastest way to trade Solana.
-          </p>
-          <p className="reveal reveal-delay-2 mt-3 text-base text-muted-foreground">
-            Buy, sell, and copy-trade any token — from viral launches to the wallets that print.
-          </p>
-          <div className="reveal reveal-delay-3 mt-10 flex flex-wrap justify-center gap-3">
-            <Link
-              href="/trade/So11111111111111111111111111111111111111112"
-              className="rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition"
-            >
-              Start trading
-            </Link>
-            <a
-              href="#download"
-              className="rounded-lg border border-border bg-background/40 backdrop-blur px-6 py-3 text-sm font-semibold hover:bg-background/70 transition"
-            >
-              Get the app
-            </a>
-          </div>
-        </section>
-
-        {/* ============ STATS ============ */}
-        <section ref={heroStatsRef} className="relative px-5 py-24 will-change-transform">
-          <div className="mx-auto max-w-5xl grid gap-12 sm:grid-cols-3 text-center">
-            {[
-              { k: "$2.4B+", v: "volume routed" },
-              { k: "180k+", v: "chads onboarded" },
-              { k: "<400ms", v: "median swap" },
-            ].map((s, i) => (
-              <div key={s.v} className={`reveal reveal-delay-${i + 1}`}>
-                <div className="font-display text-5xl md:text-6xl font-semibold text-primary">
-                  {s.k}
+        <section className="relative z-10 mx-auto grid min-h-[calc(100vh-8.25rem)] max-w-7xl gap-12 px-5 pb-20 pt-14 md:grid-cols-[0.94fr_1.06fr] md:items-center md:px-6 md:pt-8">
+          <div ref={heroCopyRef} className="max-w-3xl will-change-transform">
+            <div className="reveal inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-white/70 backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.8)]" />
+              Social Solana trading app
+            </div>
+            <h1 className="reveal reveal-delay-1 mt-6 font-display text-[4.5rem] font-black leading-[0.82] tracking-tight text-white sm:text-[6rem] md:text-[7rem] lg:text-[8.5rem]">
+              where traders become chads.
+            </h1>
+            <p className="reveal reveal-delay-2 mt-7 max-w-2xl text-lg font-medium leading-8 text-white/70 md:text-xl">
+              Trade viral Solana tokens, copy wallets that print, and move from discovery to
+              execution before the timeline catches up.
+            </p>
+            <div className="reveal reveal-delay-3 mt-9 flex flex-wrap items-center gap-3">
+              <Link
+                href={SOL_TRADE}
+                className="inline-flex h-12 items-center justify-center rounded-xl bg-white px-6 text-sm font-bold text-black transition hover:scale-[1.02] hover:bg-white/90"
+              >
+                Start trading
+              </Link>
+              <a
+                href="#download"
+                className="inline-flex h-12 items-center justify-center rounded-xl border border-white/12 bg-white/[0.06] px-6 text-sm font-bold text-white backdrop-blur transition hover:bg-white/[0.1]"
+              >
+                Download app
+              </a>
+            </div>
+            <div className="reveal reveal-delay-4 mt-12 grid max-w-xl grid-cols-3 gap-3">
+              {stats.map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-2xl border border-white/10 bg-black/28 p-4"
+                >
+                  <div className="font-display text-2xl font-black text-white">{item.value}</div>
+                  <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.16em] text-white/40">
+                    {item.label}
+                  </div>
                 </div>
-                <div className="mt-2 text-sm text-muted-foreground uppercase tracking-widest">
-                  {s.v}
+              ))}
+            </div>
+          </div>
+
+          <div ref={heroPhonesRef} className="relative min-h-[520px] will-change-transform">
+            <div className="absolute left-[12%] top-[10%] h-[72%] w-[68%] rounded-[3rem] bg-primary/20 blur-3xl" />
+            <PhoneShot
+              src={assetUrl(screenSearch)}
+              alt="ChadWallet token search"
+              priority
+              className="absolute left-[7%] top-[18%] z-10 w-[42%] rotate-[-10deg] opacity-95"
+            />
+            <PhoneShot
+              src={assetUrl(screenToken)}
+              alt="ChadWallet token screen"
+              priority
+              className="absolute left-[29%] top-[4%] z-20 w-[47%]"
+            />
+            <PhoneShot
+              src={assetUrl(screenPortfolio)}
+              alt="ChadWallet portfolio screen"
+              priority
+              className="absolute right-[3%] top-[21%] z-10 w-[40%] rotate-[9deg] opacity-95"
+            />
+            <MiniTradeTape />
+            <div className="absolute bottom-[8%] left-[11%] z-30 hidden rounded-2xl border border-white/10 bg-black/70 p-4 shadow-2xl shadow-black/60 backdrop-blur-xl sm:block">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-primary/20 text-primary">
+                  <Zap className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold text-white">Jupiter route locked</div>
+                  <div className="font-mono text-[11px] text-white/40">metis - 382ms quote</div>
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </section>
       </div>
 
-      {/* ============ ABOUT / MANIFESTO ============ */}
-      <section className="relative border-t border-border/40 px-5 py-32 text-center">
-        <div className="mx-auto max-w-3xl reveal">
-          <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
-            <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
-            about chadwallet
-          </p>
-          <h2 className="mt-8 font-display text-5xl md:text-7xl font-semibold leading-[0.95] tracking-tight">
-            Hunt every
-            <br />
-            <span className="text-muted-foreground">memecoin.</span> Every chain.
-            <br />
-            One wallet.
-          </h2>
-          <p className="mt-8 text-lg md:text-xl text-foreground/70 leading-relaxed">
-            ChadWallet is the trader-first wallet for people who actually print. Built to outrun the
-            bots, copy the wallets that matter, and turn every fill into rewards.
-          </p>
-          <a
-            href="#"
-            className="mt-10 inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80 transition group"
-          >
-            Read the manifesto
-            <span className="text-muted-foreground">·</span>
-            <span className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-              v1.0 — live
-            </span>
-            <ArrowUpRight className="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </a>
+      <section className="relative border-b border-white/10 px-5 py-24 md:py-32">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-10 md:grid-cols-[0.92fr_1.08fr] md:items-center">
+            <div className="reveal">
+              <p className="font-mono text-xs uppercase tracking-[0.26em] text-primary">
+                now available on web
+              </p>
+              <h2 className="mt-5 font-display text-5xl font-black leading-[0.9] tracking-tight text-white md:text-7xl">
+                trade from anywhere.
+                <br />
+                never lose a beat.
+              </h2>
+              <p className="mt-6 max-w-xl text-lg leading-8 text-white/58">
+                Open a token on your phone, close the trade on desktop, and keep the same wallet,
+                watchlist, receipts, and positions in one flow.
+              </p>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <AppStoreBadge variant="dark" href={IOS} target="_blank" rel="noreferrer" />
+                <PlayStoreBadge variant="dark" href={ANDROID} target="_blank" rel="noreferrer" />
+              </div>
+            </div>
+
+            <div className="reveal reveal-delay-2 relative min-h-[420px]">
+              <div className="absolute inset-x-[8%] top-[17%] h-[62%] rounded-[2.5rem] border border-white/10 bg-white/[0.035] shadow-[0_30px_120px_rgba(0,0,0,0.46)]" />
+              <PhoneShot
+                src={assetUrl(screenDiscover)}
+                alt="Discover tokens"
+                className="absolute left-[5%] top-[17%] w-[30%] rotate-[-8deg]"
+              />
+              <PhoneShot
+                src={assetUrl(screenPortfolio)}
+                alt="Portfolio"
+                className="absolute left-[35%] top-[4%] z-10 w-[32%]"
+              />
+              <PhoneShot
+                src={assetUrl(screenDeposit)}
+                alt="Deposit"
+                className="absolute right-[5%] top-[17%] w-[30%] rotate-[8deg]"
+              />
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* ============ FEATURES — phone screenshots ============ */}
-      <section className="relative border-t border-border/40 px-5 py-32 overflow-hidden">
-        <div className="mx-auto max-w-6xl">
-          <div className="grid gap-10 md:grid-cols-12 md:items-end reveal">
-            <div className="md:col-span-7">
-              <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
-                <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
-                inside the app
-              </p>
-              <h2 className="mt-6 font-display text-5xl md:text-6xl font-semibold leading-[0.95] tracking-tight">
-                Built for the
-                <br />
-                <span className="text-muted-foreground">fastest fingers</span> on Solana.
-              </h2>
-            </div>
-            <p className="md:col-span-5 text-base md:text-lg text-foreground/70 leading-relaxed">
-              Every screen ships with the trader in mind — discover, ape, track and cash out without
-              ever leaving the wallet.
+      <section className="relative border-b border-white/10 px-5 py-24 md:py-32">
+        <div className="mx-auto max-w-7xl">
+          <div className="reveal mx-auto max-w-3xl text-center">
+            <p className="font-mono text-xs uppercase tracking-[0.26em] text-primary">
+              never miss out again
             </p>
+            <h2 className="mt-5 font-display text-5xl font-black leading-[0.9] tracking-tight text-white md:text-7xl">
+              the social-first trading app for Solana.
+            </h2>
           </div>
 
-          <div className="mt-20 grid gap-6 md:grid-cols-12">
-            {/* Big left feature */}
-            <article className="reveal md:col-span-7 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-br from-primary/[0.08] via-foreground/[0.03] to-transparent p-8 md:p-10">
-              <div className="grid gap-8 md:grid-cols-2 md:items-center">
-                <div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
-                    discover
-                  </span>
-                  <h3 className="mt-4 font-display text-3xl md:text-4xl font-semibold leading-tight tracking-tight">
-                    Search anything.
-                    <br />
-                    Ape in seconds.
-                  </h3>
-                  <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
-                    Token, ticker, CA or wallet — surface the next move before the timeline does.
-                  </p>
-                </div>
-                <div className="relative">
-                  <img
-                    src={assetUrl(screenSearch)}
-                    alt="Search any token"
-                    className="mx-auto w-[220px] md:w-[260px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/20"
-                  />
-                </div>
-              </div>
-            </article>
-
-            {/* Right tall portfolio */}
-            <article className="reveal reveal-delay-1 md:col-span-5 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-8 md:p-10">
-              <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
-                portfolio
-              </span>
-              <h3 className="mt-4 font-display text-2xl md:text-3xl font-semibold leading-tight tracking-tight">
-                Every bag.
-                <br />
-                One pane of glass.
-              </h3>
-              <p className="mt-3 text-sm text-muted-foreground">
-                Live PnL, holdings, history. Zero spreadsheet.
-              </p>
-              <div className="mt-6 flex justify-center">
-                <img
-                  src={assetUrl(screenPortfolio)}
-                  alt="Portfolio"
-                  className="w-[200px] md:w-[230px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/10"
-                />
-              </div>
-            </article>
-
-            <div
-              ref={featureAnchorRef}
-              className="reveal reveal-delay-1 md:col-span-12 md:-mx-10 xl:-mx-24 [perspective:1400px]"
-            >
-              <div
-                ref={featureFrameRef}
-                className="relative h-[400px] sm:h-[480px] lg:h-[560px] [transform-style:preserve-3d] will-change-transform"
-              >
-                <div className="absolute inset-x-[5%] top-[10%] bottom-[9%] overflow-hidden rounded-lg border border-border/70 bg-[radial-gradient(circle_at_50%_42%,rgba(20,241,149,0.12),transparent_35%),linear-gradient(180deg,#0a0a0d,#020203)] shadow-2xl shadow-black">
-                  <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] [background-size:48px_48px]" />
-                  <div className="absolute inset-x-0 bottom-0 h-px bg-primary/70 shadow-[0_0_28px_rgba(20,241,149,0.8)]" />
-                </div>
-                <video
-                  ref={featureVideoRef}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  preload="metadata"
-                  aria-label="ChadWallet trading, copy trading, and token launch experience"
-                  className="pointer-events-none absolute inset-0 z-20 h-full w-full object-contain object-center will-change-transform"
+          <div className="mt-16 grid gap-4 md:grid-cols-4">
+            {featureCards.map((item, index) => {
+              const Icon = item.icon;
+              return (
+                <article
+                  key={item.label}
+                  className={`reveal reveal-delay-${(index % 4) + 1} group relative min-h-[520px] overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.035] p-5 shadow-2xl shadow-black/20`}
                 >
-                  <source src={FEATURE_VIDEO} type="video/webm" />
-                  <source src={FEATURE_VIDEO_FALLBACK} type="video/mp4" />
-                </video>
-                <div
-                  ref={featureShadeRef}
-                  className="pointer-events-none absolute inset-x-[5%] top-[10%] bottom-[9%] z-10 rounded-lg shadow-[inset_0_0_80px_rgba(0,0,0,0.75)] will-change-[opacity]"
-                />
-                <div
-                  ref={featureShadowRef}
-                  className="pointer-events-none absolute bottom-[5%] left-1/2 z-10 h-9 w-[28%] -translate-x-1/2 rounded-[50%] bg-black/75 blur-2xl will-change-transform"
-                />
-                <div className="pointer-events-none absolute inset-x-[10%] bottom-[8%] z-30 h-px bg-white/15" />
-              </div>
-            </div>
-
-            {/* Deposit wide */}
-            <article className="reveal md:col-span-12 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-r from-foreground/[0.05] to-transparent p-8 md:p-10">
-              <div className="grid gap-8 md:grid-cols-2 md:items-center">
-                <div>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
-                    funding
-                  </span>
-                  <h3 className="mt-4 font-display text-3xl md:text-4xl font-semibold leading-tight tracking-tight">
-                    Apple Pay → SOL.
-                    <br />
-                    <span className="text-muted-foreground">No tutorial required.</span>
+                  <div className="relative z-10 flex items-center gap-2">
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-primary/14 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-white/42">
+                      {item.label}
+                    </span>
+                  </div>
+                  <h3 className="relative z-10 mt-5 font-display text-2xl font-black leading-tight text-white">
+                    {item.title}
                   </h3>
-                  <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-md">
-                    Top up with card, Apple Pay or transfer. Funds land trade-ready, not
-                    bridge-ready.
-                  </p>
-                </div>
-                <div className="flex justify-center md:justify-end">
                   <img
-                    src={assetUrl(screenDeposit)}
-                    alt="Deposit"
-                    className="w-[220px] md:w-[260px] rounded-[2rem] border border-border/60 shadow-2xl shadow-primary/20"
+                    src={assetUrl(item.image)}
+                    alt={item.title}
+                    loading="lazy"
+                    className="absolute bottom-[-7%] left-1/2 w-[76%] -translate-x-1/2 rounded-[2rem] border border-white/10 bg-black shadow-[0_28px_80px_rgba(0,0,0,0.55)] transition duration-700 group-hover:bottom-[-4%]"
                   />
-                </div>
-              </div>
-            </article>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>
 
-      {/* ============ THE FLOW — editorial strip ============ */}
-      <section className="relative border-t border-border/40 px-5 py-32">
-        <div className="mx-auto max-w-6xl">
-          <div className="flex flex-wrap items-end justify-between gap-6 reveal">
-            <div>
-              <p className="text-[11px] font-mono uppercase tracking-[0.28em] text-primary">
-                <span className="inline-block h-1 w-1 rounded-full bg-primary mr-2 align-middle" />
-                the flow
+      <section className="relative border-b border-white/10 px-5 py-24 md:py-32">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-12 lg:grid-cols-[0.74fr_1.26fr] lg:items-center">
+            <div className="reveal">
+              <p className="font-mono text-xs uppercase tracking-[0.26em] text-primary">
+                real market rails
               </p>
-              <h2 className="mt-6 font-display text-5xl md:text-6xl font-semibold leading-[0.95] tracking-tight">
-                One wallet.
+              <h2 className="mt-5 font-display text-5xl font-black leading-[0.9] tracking-tight text-white md:text-7xl">
+                charts, quotes, wallets.
                 <br />
-                Every play.
+                no fake theater.
+              </h2>
+              <p className="mt-6 max-w-xl text-lg leading-8 text-white/58">
+                BirdEye feeds the market surface, Alchemy checks the chain, Jupiter routes the
+                trade, and ChadWallet turns the signed swap into a receipt you can verify.
+              </p>
+            </div>
+
+            <div className="reveal reveal-delay-2 grid gap-4 md:grid-cols-2">
+              {[
+                {
+                  icon: Search,
+                  title: "Search any token",
+                  copy: "Name, ticker, or contract address with live fallback routing.",
+                },
+                {
+                  icon: Copy,
+                  title: "Copy wallets",
+                  copy: "Follow the traders already moving volume before the crowd.",
+                },
+                {
+                  icon: ShieldCheck,
+                  title: "Receipts on chain",
+                  copy: "Signature, slot, route, wallet, and Solscan link after execution.",
+                },
+                {
+                  icon: Sparkles,
+                  title: "Edge fast market reads",
+                  copy: "Cloudflare caches read-only market data while trades stay uncached.",
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+                return (
+                  <article
+                    key={item.title}
+                    className="rounded-[1.6rem] border border-white/10 bg-black/28 p-6"
+                  >
+                    <span className="grid h-11 w-11 place-items-center rounded-full bg-white/[0.06] text-primary">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <h3 className="mt-5 text-xl font-black text-white">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-6 text-white/52">{item.copy}</p>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="relative border-b border-white/10 px-5 py-24 md:py-32">
+        <div className="mx-auto max-w-7xl">
+          <div className="reveal flex flex-wrap items-end justify-between gap-6">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-[0.26em] text-primary">
+                the trader loop
+              </p>
+              <h2 className="mt-5 font-display text-5xl font-black leading-[0.9] tracking-tight text-white md:text-7xl">
+                hunt.
+                <br />
+                execute.
+                <br />
+                rotate.
               </h2>
             </div>
-            <p className="max-w-sm text-sm md:text-base text-muted-foreground">
-              From the first deposit to the next launch — the entire trader loop, designed
-              end-to-end.
+            <p className="max-w-md text-base leading-7 text-white/55">
+              A landing page should sell the product in seconds. These are the actual flows inside
+              the wallet.
             </p>
           </div>
 
-          <div className="mt-16 grid gap-5 md:grid-cols-2">
+          <div className="mt-14 grid gap-4 md:grid-cols-3">
             {[
-              { img: flowMeme, k: "01 — hunt", t: "Find the next memecoin." },
-              { img: flowBuySell, k: "02 — execute", t: "Buy & sell in one tap." },
-              { img: flowKol, k: "03 — copy", t: "Mirror the winners." },
-              { img: flowPortfolio, k: "04 — track", t: "Watch the bags move." },
-              { img: flowLaunch, k: "05 — launch", t: "Be early. Every time." },
-              { img: flowRelaunch, k: "06 — rotate", t: "Recycle into the next." },
-            ].map(({ img, k, t }, i) => (
+              { img: flowMeme, eyebrow: "hunt", title: "Spot the new pair." },
+              { img: flowBuySell, eyebrow: "execute", title: "Route through Jupiter." },
+              { img: flowKol, eyebrow: "copy", title: "Follow the wallet." },
+              { img: flowLaunch, eyebrow: "launch", title: "Be first on every launch." },
+            ].map((item, index) => (
               <article
-                key={k}
-                className={`reveal reveal-delay-${(i % 5) + 1} group relative overflow-hidden rounded-2xl border border-border/50 bg-foreground/[0.02]`}
+                key={item.title}
+                className={`reveal reveal-delay-${(index % 4) + 1} group relative min-h-[360px] overflow-hidden rounded-[1.6rem] border border-white/10 bg-black/30 ${index === 0 ? "md:col-span-2" : ""}`}
               >
                 <img
-                  src={assetUrl(img)}
-                  alt={t}
-                  className="aspect-[16/9] w-full object-cover transition duration-700 group-hover:scale-[1.02]"
+                  src={assetUrl(item.img)}
+                  alt={item.title}
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover opacity-78 transition duration-700 group-hover:scale-[1.03]"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-7">
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/45 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-7">
                   <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
-                    {k}
+                    {item.eyebrow}
                   </span>
-                  <h3 className="mt-2 font-display text-2xl md:text-3xl font-semibold leading-tight tracking-tight">
-                    {t}
+                  <h3 className="mt-2 font-display text-3xl font-black leading-tight text-white">
+                    {item.title}
                   </h3>
                 </div>
               </article>
@@ -499,85 +545,53 @@ export function Landing() {
         </div>
       </section>
 
-      {/* ============ TESTIMONIALS ============ */}
-      <section className="relative border-t border-border/40 px-5 py-24">
-        <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">
-            on the timeline
-          </p>
-          <h2 className="reveal mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight text-center">
-            what chads are saying.
-          </h2>
-          <div className="mt-16 grid gap-6 md:grid-cols-3">
-            {[
-              {
-                q: "switched from phantom and never looked back. fills are insane.",
-                a: "@solwhale",
-              },
-              { q: "apple pay → SOL in 10 seconds. this shouldn't be legal.", a: "@degenmom" },
-              {
-                q: "first wallet that doesn't make me feel like i'm doing taxes.",
-                a: "@chartfrog",
-              },
-            ].map((t, i) => (
-              <figure
-                key={t.a}
-                className={`reveal reveal-delay-${i + 1} rounded-2xl border border-border/40 bg-background/40 p-6`}
+      <section className="relative border-b border-white/10 px-5 py-24 md:py-32">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:items-center">
+            <div className="reveal">
+              <p className="font-mono text-xs uppercase tracking-[0.26em] text-primary">
+                mobile native
+              </p>
+              <h2 className="mt-5 font-display text-5xl font-black leading-[0.9] tracking-tight text-white md:text-7xl">
+                a wallet that feels like a trading app.
+              </h2>
+              <p className="mt-6 max-w-xl text-lg leading-8 text-white/58">
+                Not a browser extension wearing a suit. ChadWallet is built around the behavior of
+                token traders: fast search, fast funding, fast routes, and a clean profile.
+              </p>
+            </div>
+            <div
+              ref={productStageRef}
+              className="reveal reveal-delay-2 relative h-[420px] overflow-visible [perspective:1400px] will-change-transform sm:h-[500px] lg:h-[580px]"
+            >
+              <div className="absolute inset-x-[4%] top-[12%] bottom-[9%] overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_50%_42%,rgba(99,102,241,0.2),transparent_38%),linear-gradient(180deg,#0a0a0f,#020203)] shadow-2xl shadow-black">
+                <div className="absolute inset-0 opacity-18 [background-image:linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] [background-size:48px_48px]" />
+              </div>
+              <video
+                ref={productVideoRef}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                aria-label="ChadWallet mobile trading experience"
+                className="pointer-events-none absolute inset-0 z-20 h-full w-full object-contain object-center will-change-transform"
               >
-                <blockquote className="text-base">"{t.q}"</blockquote>
-                <figcaption className="mt-4 text-sm text-muted-foreground">{t.a}</figcaption>
-              </figure>
-            ))}
+                <source src={FEATURE_VIDEO} type="video/webm" />
+                <source src={FEATURE_VIDEO_FALLBACK} type="video/mp4" />
+              </video>
+              <div className="pointer-events-none absolute bottom-[8%] left-1/2 z-10 h-10 w-[34%] -translate-x-1/2 rounded-[50%] bg-black/80 blur-2xl" />
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ============ FAQ ============ */}
-      <section className="relative border-t border-border/40 px-5 py-24">
-        <div className="mx-auto max-w-3xl">
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary text-center">
-            faq
-          </p>
-          <h2 className="reveal mt-4 font-display text-4xl md:text-5xl font-semibold tracking-tight text-center">
-            questions, briefly.
-          </h2>
-          <div className="reveal reveal-delay-1 mt-12 divide-y divide-border/40 border-y border-border/40">
-            {[
-              {
-                q: "Is ChadWallet self-custody?",
-                a: "Yes. Keys are generated and stored client-side via Privy. We never see them.",
-              },
-              {
-                q: "Which chains do you support?",
-                a: "Solana, with more rolling out. SPL tokens and Jupiter routing are first-class.",
-              },
-              {
-                q: "Do I need a seed phrase?",
-                a: "No. Sign in with Apple or Google. Export keys whenever you want.",
-              },
-              {
-                q: "Fees?",
-                a: "We pass through Jupiter and network fees. No swap markup on launch.",
-              },
-            ].map((f) => (
-              <details key={f.q} className="group py-5">
-                <summary className="flex cursor-pointer items-center justify-between gap-4 text-base font-medium">
-                  {f.q}
-                  <span className="text-primary transition group-open:rotate-45">+</span>
-                </summary>
-                <p className="mt-3 text-sm text-muted-foreground">{f.a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ============ DOWNLOAD ============ */}
       <section
         id="download"
-        className="relative border-t border-border/40 px-5 py-32 text-center overflow-hidden"
+        className="relative overflow-hidden border-b border-white/10 px-5 py-24 text-center md:py-32"
       >
-        <div className="mx-auto max-w-5xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(99,102,241,0.16),transparent_34%)]" />
+        <div className="relative mx-auto max-w-5xl">
           <video
             src={CHAD_VIDEO}
             autoPlay
@@ -585,29 +599,37 @@ export function Landing() {
             loop
             preload="none"
             playsInline
-            className="mx-auto mb-12 w-full max-w-3xl rounded-3xl border border-border/50 shadow-2xl shadow-primary/20"
+            className="reveal mx-auto mb-12 aspect-video w-full max-w-4xl rounded-[2rem] border border-white/10 object-cover shadow-2xl shadow-black/40"
           />
-          <p className="text-xs font-mono uppercase tracking-[0.2em] text-primary">
-            Now available on web & mobile
+          <p className="font-mono text-xs uppercase tracking-[0.26em] text-primary">
+            available on web and mobile
           </p>
-          <h2 className="mt-4 font-display text-4xl md:text-6xl font-semibold tracking-tight">
-            trade from anywhere.
-            <br />
-            never lose a beat.
+          <h2 className="mt-5 font-display text-5xl font-black leading-[0.9] tracking-tight text-white md:text-7xl">
+            trade like the timeline is watching.
           </h2>
-          <div className="mt-10 flex flex-wrap justify-center gap-3">
-            <AppStoreBadge variant="light" href={IOS} target="_blank" rel="noreferrer" />
-            <PlayStoreBadge variant="light" href={ANDROID} target="_blank" rel="noreferrer" />
+          <div className="mt-9 flex flex-wrap justify-center gap-3">
+            <Link
+              href={SOL_TRADE}
+              className="inline-flex h-12 items-center gap-2 rounded-xl bg-white px-6 text-sm font-bold text-black transition hover:bg-white/90"
+            >
+              Start trading
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+            <AppStoreBadge variant="dark" href={IOS} target="_blank" rel="noreferrer" />
+            <PlayStoreBadge variant="dark" href={ANDROID} target="_blank" rel="noreferrer" />
           </div>
         </div>
       </section>
 
-      {/* Bottom marquee */}
       <TokenMarquee reverse />
 
-      <footer className="mx-auto max-w-7xl px-5 py-8 flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
+      <footer className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-5 px-5 py-8 text-xs text-muted-foreground">
         <ChadLogo variant="dark" size="md" />
-        <div>© {new Date().getFullYear()} ChadWallet · Solana</div>
+        <div className="flex flex-wrap items-center gap-4">
+          <span>© {new Date().getFullYear()} ChadWallet</span>
+          <span>Solana native</span>
+          <span>Powered by Privy, BirdEye, Jupiter, Alchemy</span>
+        </div>
       </footer>
     </div>
   );

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { apiError, birdeyeJson } from "@/lib/server/birdeye";
+import { birdeyeJson, tokenFromOverview } from "@/lib/server/birdeye";
+import { tokenFromFallbackProviders } from "@/lib/server/market-fallback";
 import { TOKENS, createFallbackToken, mergeToken, type Token } from "@/lib/tokens";
 
 export const revalidate = 0;
@@ -75,6 +76,55 @@ function fallbackSearch(query: string) {
   );
 }
 
+function looksLikeMint(query: string) {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(query);
+}
+
+function uniqueTokens(tokens: Token[]) {
+  const seen = new Set<string>();
+  return tokens.filter((token) => {
+    if (seen.has(token.mint)) return false;
+    seen.add(token.mint);
+    return true;
+  });
+}
+
+async function directMintSearch(query: string) {
+  if (!looksLikeMint(query)) return null;
+
+  const known = TOKENS.find((token) => token.mint === query);
+  if (known) return known;
+
+  try {
+    const overview = await birdeyeJson<Parameters<typeof tokenFromOverview>[1]>(
+      `/defi/token_overview?address=${encodeURIComponent(query)}`,
+    );
+    return tokenFromOverview(query, overview);
+  } catch {
+    try {
+      return await tokenFromFallbackProviders(query);
+    } catch {
+      return createFallbackToken(query);
+    }
+  }
+}
+
+async function birdeyeSearch(query: string) {
+  try {
+    const data = await birdeyeJson<BirdeyeSearchResponse>(
+      `/defi/v3/search?keyword=${encodeURIComponent(query)}&chain=solana&target=token&search_mode=fuzzy&sort_by=volume_24h_usd&sort_type=desc&offset=0&limit=12`,
+    );
+
+    return searchItems(data, query).map(tokenFromSearch);
+  } catch {
+    const data = await birdeyeJson<{ tokens?: BirdeyeSearchToken[] }>(
+      `/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=12&search=${encodeURIComponent(query)}`,
+    );
+
+    return searchItems(data, query).map(tokenFromSearch);
+  }
+}
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const query = searchParams.get("q")?.trim();
@@ -83,28 +133,17 @@ export async function GET(request: Request) {
     return NextResponse.json([]);
   }
 
+  const curated = fallbackSearch(query);
+  const directToken = await directMintSearch(query);
+
   try {
-    const data = await birdeyeJson<BirdeyeSearchResponse>(
-      `/defi/v3/search?keyword=${encodeURIComponent(query)}&chain=solana&target=token&search_mode=fuzzy&sort_by=volume_24h_usd&sort_type=desc&offset=0&limit=8`,
+    const live = await birdeyeSearch(query);
+    return NextResponse.json(
+      uniqueTokens([directToken, ...curated, ...live].filter(Boolean) as Token[]).slice(0, 12),
     );
-
-    const items = searchItems(data, query);
-    return NextResponse.json(items.map(tokenFromSearch));
   } catch {
-    try {
-      const data = await birdeyeJson<{ tokens?: BirdeyeSearchToken[] }>(
-        `/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=8&search=${encodeURIComponent(query)}`,
-      );
-
-      const items = searchItems(data, query);
-      return NextResponse.json(items.map(tokenFromSearch));
-    } catch (fallbackError) {
-      const fallback = fallbackSearch(query);
-      if (fallback.length) {
-        return NextResponse.json(fallback);
-      }
-
-      return apiError(fallbackError);
-    }
+    return NextResponse.json(
+      uniqueTokens([directToken, ...curated].filter(Boolean) as Token[]).slice(0, 12),
+    );
   }
 }
