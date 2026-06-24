@@ -7,20 +7,18 @@ import {
   ArrowLeft,
   Copy,
   ExternalLink,
-  RadioTower,
   TrendingDown,
   TrendingUp,
   Users,
 } from "lucide-react";
 
 import { ChadLogo } from "@/components/chad-logo";
-import { SignInButton } from "@/components/sign-in-button";
 import { TokenSearch } from "@/components/token-search";
+import { TradeAccount } from "@/components/trade-account";
 import { PriceChart } from "@/components/trade/price-chart";
 import { SwapPanel } from "@/components/trade/swap-panel";
 import {
   type ChartInterval,
-  useSolanaRpcHealth,
   useTokenHolders,
   useTokenMarket,
   useTokenOhlcv,
@@ -45,7 +43,6 @@ export function TradePage({ mint }: { mint: string }) {
     initialToken.mint === SOL_MINT ? initialToken : undefined,
   );
   const { data: trending = TOKENS } = useTrendingTokens();
-  const rpcHealth = useSolanaRpcHealth();
   const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
   const token = market.data ?? initialToken;
   const solPrice = solMarket.data?.price || (token.mint === SOL_MINT ? token.price : 0);
@@ -73,15 +70,7 @@ export function TradePage({ mint }: { mint: string }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-1.5 rounded-full border border-border bg-card/50 px-3 py-1.5 text-xs text-muted-foreground md:flex">
-              <RadioTower
-                className={`h-3.5 w-3.5 ${rpcHealth.isSuccess ? "text-primary" : "text-muted-foreground"}`}
-              />
-              {rpcHealth.isSuccess
-                ? `${rpcHealth.data.endpoint} slot ${formatCompact(rpcHealth.data.slot)}`
-                : "Solana RPC"}
-            </div>
-            <SignInButton />
+            <TradeAccount solPrice={solPrice} />
           </div>
         </div>
       </header>
