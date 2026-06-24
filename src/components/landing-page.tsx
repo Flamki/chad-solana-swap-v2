@@ -34,6 +34,10 @@ export function Landing() {
   const heroAtmosphereRef = useRef<HTMLDivElement | null>(null);
   const heroCopyRef = useRef<HTMLElement | null>(null);
   const heroStatsRef = useRef<HTMLElement | null>(null);
+  const featureAnchorRef = useRef<HTMLDivElement | null>(null);
+  const featureFrameRef = useRef<HTMLDivElement | null>(null);
+  const featureVideoRef = useRef<HTMLVideoElement | null>(null);
+  const featureShadeRef = useRef<HTMLDivElement | null>(null);
   const heroPoster = assetUrl(heroAstronaut);
 
   useEffect(() => {
@@ -61,6 +65,15 @@ export function Landing() {
       }
       if (heroStatsRef.current) {
         heroStatsRef.current.style.transform = "translate3d(0, 0, 0)";
+      }
+      if (featureFrameRef.current) {
+        featureFrameRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
+      }
+      if (featureVideoRef.current) {
+        featureVideoRef.current.style.transform = "translate3d(0, 0, 0) scale(1.3)";
+      }
+      if (featureShadeRef.current) {
+        featureShadeRef.current.style.opacity = "1";
       }
     };
 
@@ -95,6 +108,23 @@ export function Landing() {
       }
       if (heroStatsRef.current) {
         heroStatsRef.current.style.transform = `translate3d(0, ${currentY * -0.035 * intensity}px, 0)`;
+      }
+      if (featureAnchorRef.current && featureFrameRef.current && featureVideoRef.current) {
+        const rect = featureAnchorRef.current.getBoundingClientRect();
+        const featureProgress = Math.min(
+          1,
+          Math.max(0, (window.innerHeight - rect.top) / (window.innerHeight + rect.height)),
+        );
+        const centeredProgress = featureProgress - 0.5;
+        const featureIntensity = window.innerWidth < 768 ? 0.62 : 1;
+        const focusScale = 1.28 + (1 - Math.min(1, Math.abs(centeredProgress) * 2)) * 0.055;
+
+        featureFrameRef.current.style.transform = `translate3d(0, ${centeredProgress * -34 * featureIntensity}px, 0) scale(${1 + (1 - Math.abs(centeredProgress) * 2) * 0.012})`;
+        featureVideoRef.current.style.transform = `translate3d(0, ${centeredProgress * -92 * featureIntensity}px, 0) scale(${focusScale})`;
+
+        if (featureShadeRef.current) {
+          featureShadeRef.current.style.opacity = `${0.86 + (1 - Math.abs(centeredProgress) * 2) * 0.14}`;
+        }
       }
 
       if (Math.abs(targetY - currentY) > 0.1) {
@@ -337,17 +367,31 @@ export function Landing() {
               </div>
             </article>
 
-            <div className="reveal reveal-delay-1 md:col-span-12 overflow-hidden rounded-3xl border border-border/50 bg-black shadow-2xl shadow-primary/10">
-              <video
-                src={FEATURE_VIDEO}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                aria-label="ChadWallet trading, copy trading, and token launch experience"
-                className="aspect-video w-full object-cover"
-              />
+            <div
+              ref={featureAnchorRef}
+              className="reveal reveal-delay-1 md:col-span-12 md:-mx-10 xl:-mx-24"
+            >
+              <div
+                ref={featureFrameRef}
+                className="relative overflow-hidden rounded-lg border border-border/60 bg-black shadow-2xl shadow-primary/15 will-change-transform"
+              >
+                <video
+                  ref={featureVideoRef}
+                  src={FEATURE_VIDEO}
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  aria-label="ChadWallet trading, copy trading, and token launch experience"
+                  className="h-[68vw] min-h-[360px] max-h-[760px] w-full object-cover object-center will-change-transform sm:h-[62vw] md:h-[58vw] lg:h-[52vw] xl:h-[680px]"
+                />
+                <div
+                  ref={featureShadeRef}
+                  className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.38),transparent_18%,transparent_82%,rgba(0,0,0,0.38))] will-change-[opacity]"
+                />
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/40 to-transparent" />
+              </div>
             </div>
 
             {/* Deposit wide */}
