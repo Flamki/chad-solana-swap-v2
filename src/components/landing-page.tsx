@@ -45,8 +45,14 @@ export function Landing() {
       raf = requestAnimationFrame(() => {
         if (!heroBgRef.current) return;
 
-        const offset = prefersReducedMotion.matches ? 0 : Math.min(window.scrollY * 0.2, 160);
-        heroBgRef.current.style.transform = `translate3d(0, ${offset}px, 0)`;
+        if (prefersReducedMotion.matches) {
+          heroBgRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
+          return;
+        }
+
+        const y = window.scrollY;
+        const scale = 1 + Math.min(y, 600) * 0.0002;
+        heroBgRef.current.style.transform = `translate3d(0, ${y * 0.25}px, 0) scale(${scale})`;
       });
     };
 
