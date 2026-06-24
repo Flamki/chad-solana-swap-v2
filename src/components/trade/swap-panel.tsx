@@ -1,11 +1,17 @@
 import { useLogin, usePrivy } from "@privy-io/react-auth";
-import { useWallets } from "@privy-io/react-auth/solana";
-import { useQuery } from "@tanstack/react-query";
-import { ArrowDownUp, Loader2, ShieldCheck, Wallet, Zap } from "lucide-react";
+import { useSignTransaction, useWallets } from "@privy-io/react-auth/solana";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowDownUp, ExternalLink, Loader2, ShieldCheck, Wallet, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { hasPrivy, hasSupabase } from "@/lib/env";
-import { fetchJupiterQuote, recordTokenIntent, useTokenPosition } from "@/lib/market-data";
+import {
+  createJupiterSwapOrder,
+  executeJupiterSwap,
+  fetchJupiterQuote,
+  recordTokenIntent,
+  useTokenPosition,
+} from "@/lib/market-data";
 import type { Token } from "@/lib/tokens";
 import { SOL_MINT, USDC_MINT, formatUsd, rawAmountFromUi } from "@/lib/tokens";
 
@@ -31,15 +37,19 @@ function PrivySwapPanel({ token, solPrice }: { token: Token; solPrice: number })
   const { authenticated } = usePrivy();
   const { login } = useLogin();
   const { wallets } = useWallets();
-  const walletAddress = wallets[0]?.address;
+  const wallet = wallets[0];
+  const walletAddress = wallet?.address;
+  const { signTransaction } = useSignTransaction();
 
   return (
     <SwapPanelCore
       token={token}
       solPrice={solPrice}
       authenticated={authenticated}
+      wallet={wallet}
       walletAddress={walletAddress}
       onLogin={() => login()}
+      onSignTransaction={signTransaction}
     />
   );
 }
@@ -48,19 +58,26 @@ function SwapPanelCore({
   token,
   solPrice,
   authenticated = false,
+  wallet,
   walletAddress,
   onLogin,
+  onSignTransaction,
 }: {
   token: Token;
   solPrice: number;
   authenticated?: boolean;
+  wallet?: ReturnType<typeof useWallets>["wallets"][number];
   walletAddress?: string;
   onLogin?: () => void;
+  onSignTransaction?: ReturnType<typeof useSignTransaction>["signTransaction"];
 }) {
+  const queryClient = useQueryClient();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState(token.mint === SOL_MINT ? "25" : "0.5");
   const [slippage, setSlippage] = useState("1");
-  const [isRecording, setIsRecording] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [tradeError, setTradeError] = useState("");
+  const [signature, setSignature] = useState("");
 
   const pair = useMemo(() => {
     const tradingSol = token.mint === SOL_MINT;
@@ -116,6 +133,12 @@ function SwapPanelCore({
     refetchInterval: 20_000,
     retry: 1,
   });
+  const inputPositionQuery = useTokenPosition({
+    owner: walletAddress,
+    mint: pair.inputMint,
+    decimals: pair.inputDecimals,
+    price: pair.inputPrice,
+  });
   const positionQuery = useTokenPosition({
     owner: walletAddress,
     mint: token.mint,
@@ -129,7 +152,10 @@ function SwapPanelCore({
     (side === "buy"
       ? inputUsd / Math.max(token.price || 1, 0.00000001)
       : inputUsd / (pair.outputSymbol === "USDC" ? 1 : Math.max(solPrice, 0.00000001)));
-  const fee = inputUsd * 0.003;
+  const networkFeeUsd = ((quoteQuery.data?.feeLamports ?? 5_000) / 1_000_000_000) * solPrice;
+  const inputBalance = inputPositionQuery.data?.balance ?? 0;
+  const inputBalanceReady = !authenticated || !walletAddress || Boolean(inputPositionQuery.data);
+  const hasInputBalance = !authenticated || !walletAddress || inputBalance + 1e-9 >= amt;
   const tokenBalance = positionQuery.data?.balance ?? 0;
   const tokenValue = positionQuery.data?.valueUsd ?? 0;
   const positionNote = !walletAddress
@@ -144,9 +170,15 @@ function SwapPanelCore({
     ? "Add Privy app id to swap"
     : !authenticated
       ? `Connect wallet to ${side}`
-      : quoteQuery.isFetching
-        ? "Refreshing quote"
-        : `Save ${side} quote`;
+      : !wallet || !onSignTransaction
+        ? "Wallet unavailable"
+        : quoteQuery.isFetching
+          ? "Refreshing quote"
+          : !inputBalanceReady
+            ? "Checking balance"
+            : !hasInputBalance
+              ? `Deposit ${pair.inputSymbol} first`
+              : `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
 
   const handlePrimary = async () => {
     if (!hasPrivy || !authenticated) {
@@ -154,8 +186,53 @@ function SwapPanelCore({
       return;
     }
 
-    setIsRecording(true);
+    if (!wallet || !walletAddress || !onSignTransaction) {
+      setTradeError("Wallet is not ready yet.");
+      return;
+    }
+
+    if (!inputBalanceReady) {
+      setTradeError("Wallet balance is still loading.");
+      return;
+    }
+
+    if (!hasInputBalance) {
+      setTradeError(`Insufficient ${pair.inputSymbol} balance.`);
+      return;
+    }
+
+    if (!quoteQuery.data || rawAmount <= 0n) {
+      setTradeError("Live Jupiter quote is not ready.");
+      return;
+    }
+
+    setIsExecuting(true);
+    setTradeError("");
+    setSignature("");
     try {
+      const order = await createJupiterSwapOrder({
+        inputMint: pair.inputMint,
+        outputMint: pair.outputMint,
+        amount: rawAmount,
+        outputDecimals: pair.outputDecimals,
+        slippageBps,
+        taker: walletAddress,
+      });
+      const { signedTransaction } = await onSignTransaction({
+        wallet,
+        chain: "solana:mainnet",
+        transaction: base64ToBytes(order.transaction),
+      });
+      const result = await executeJupiterSwap({
+        signedTransaction: bytesToBase64(signedTransaction),
+        requestId: order.requestId,
+        lastValidBlockHeight: order.lastValidBlockHeight,
+      });
+      if (!result.signature) {
+        throw new Error("Jupiter executed the swap but did not return a signature.");
+      }
+
+      setSignature(result.signature);
       await recordTokenIntent({
         wallet: walletAddress,
         mint: token.mint,
@@ -163,11 +240,14 @@ function SwapPanelCore({
         side,
         amount,
       });
-      alert(
-        "Quote captured. Jupiter execution can be enabled after adding the production API key and transaction signer flow.",
-      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["token-position", walletAddress] }),
+        quoteQuery.refetch(),
+      ]);
+    } catch (swapError) {
+      setTradeError(normalizeSwapError(swapError));
     } finally {
-      setIsRecording(false);
+      setIsExecuting(false);
     }
   };
 
@@ -200,9 +280,7 @@ function SwapPanelCore({
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>You {side === "buy" ? "pay" : "sell"}</span>
           <span>
-            {walletAddress
-              ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`
-              : "No wallet"}
+            {walletAddress ? `${formatTokenAmount(inputBalance)} ${pair.inputSymbol}` : "No wallet"}
           </span>
         </div>
         <div className="mt-1 flex items-center gap-2">
@@ -275,7 +353,7 @@ function SwapPanelCore({
           label="Quote latency"
           value={quoteQuery.data?.responseMs ? `${quoteQuery.data.responseMs}ms` : "live"}
         />
-        <Row label="Network fee est." value={formatUsd(fee)} />
+        <Row label="Network fee est." value={formatUsd(networkFeeUsd)} />
         <div className="flex items-center justify-between">
           <span className="text-muted-foreground">Slippage</span>
           <div className="flex gap-1">
@@ -298,16 +376,42 @@ function SwapPanelCore({
 
       <button
         onClick={handlePrimary}
-        disabled={isRecording || quoteQuery.isFetching}
+        disabled={
+          isExecuting ||
+          quoteQuery.isFetching ||
+          (!!authenticated &&
+            (!wallet || !onSignTransaction || !inputBalanceReady || !hasInputBalance))
+        }
         className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary py-3.5 font-semibold text-primary-foreground glow-green transition hover:opacity-90 disabled:opacity-60"
       >
-        {isRecording || quoteQuery.isFetching ? (
+        {isExecuting || quoteQuery.isFetching ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <Wallet className="h-4 w-4" />
         )}
         {buttonLabel}
       </button>
+
+      {tradeError && (
+        <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+          {tradeError}
+        </div>
+      )}
+
+      {signature && (
+        <a
+          href={`https://solscan.io/tx/${signature}`}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-3 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs font-semibold text-primary"
+        >
+          Swap confirmed
+          <span className="inline-flex items-center gap-1 font-mono">
+            {signature.slice(0, 6)}...{signature.slice(-6)}
+            <ExternalLink className="h-3.5 w-3.5" />
+          </span>
+        </a>
+      )}
 
       <div className="mt-5 rounded-xl border border-border bg-background/40 p-3">
         <div className="flex items-center justify-between">
@@ -334,6 +438,28 @@ function SwapPanelCore({
       </div>
     </div>
   );
+}
+
+function base64ToBytes(value: string) {
+  const binary = window.atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return window.btoa(binary);
+}
+
+function normalizeSwapError(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  return "Swap failed. Check wallet balance, slippage, and route liquidity.";
 }
 
 function Row({ label, value, good }: { label: string; value: string; good?: boolean }) {

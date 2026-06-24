@@ -39,11 +39,29 @@ export type JupiterQuote = {
   outUiAmount: number;
   inputUsd?: number;
   outputUsd?: number;
+  feeLamports?: number;
   priceImpactPct: number;
   route: string;
   router: string;
   responseMs?: number;
   source: "jupiter-v2" | "jupiter-lite";
+};
+
+export type JupiterSwapOrder = JupiterQuote & {
+  transaction: string;
+  requestId: string;
+  lastValidBlockHeight?: string;
+  quoteId?: string;
+};
+
+export type JupiterSwapExecution = {
+  status?: "Success" | "Failed";
+  signature?: string;
+  slot?: string;
+  error?: string;
+  code?: number;
+  inputAmountResult?: string;
+  outputAmountResult?: string;
 };
 
 export type ChartInterval = "1m" | "5m" | "15m" | "1H" | "4H" | "1D";
@@ -248,51 +266,51 @@ export async function fetchJupiterQuote({
     swapMode: "ExactIn",
   });
 
-  if (hasJupiterKey) {
-    if (taker) params.set("taker", taker);
-    const started = performance.now();
-    const response = await fetch(`https://api.jup.ag/swap/v2/order?${params}`, {
-      signal,
-      headers: { "x-api-key": env.jupiterApiKey! },
-    });
+  params.set("outputDecimals", String(outputDecimals));
+  if (taker) params.set("taker", taker);
 
-    if (!response.ok) {
-      throw new Error(`Jupiter order failed (${response.status})`);
-    }
-
-    const quote = await response.json();
-    const route = Array.isArray(quote.routePlan)
-      ? quote.routePlan
-          .map(
-            (leg: { swapInfo?: { label?: string }; percent?: number }) =>
-              `${leg.swapInfo?.label ?? "DEX"} ${leg.percent ?? 100}%`,
-          )
-          .join(" + ")
-      : "Jupiter";
-
-    return {
-      outAmount: quote.outAmount,
-      outUiAmount: Number(quote.outAmount ?? 0) / 10 ** outputDecimals,
-      inputUsd: quote.inUsdValue,
-      outputUsd: quote.outUsdValue,
-      priceImpactPct: Math.abs(Number(quote.priceImpact ?? quote.priceImpactPct ?? 0)) * 100,
-      route,
-      router: quote.router ?? quote.mode ?? "Jupiter",
-      responseMs: Math.round(performance.now() - started),
-      source: "jupiter-v2",
-    };
-  }
-
-  const started = performance.now();
-  const response = await fetch(`https://lite-api.jup.ag/swap/v1/quote?${params}`, { signal });
-
+  const response = await fetch(`/api/trade/quote?${params}`, { signal });
   if (!response.ok) {
-    throw new Error(`Jupiter lite quote failed (${response.status})`);
+    throw new Error(`Jupiter quote failed (${response.status})`);
   }
 
-  const quote = await response.json();
-  const route = Array.isArray(quote.routePlan)
-    ? quote.routePlan
+  return (await response.json()) as JupiterQuote;
+}
+
+export async function createJupiterSwapOrder({
+  inputMint,
+  outputMint,
+  amount,
+  outputDecimals,
+  slippageBps,
+  taker,
+}: {
+  inputMint: string;
+  outputMint: string;
+  amount: bigint;
+  outputDecimals: number;
+  slippageBps: number;
+  taker: string;
+}): Promise<JupiterSwapOrder> {
+  const response = await fetch("/api/trade/order", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      inputMint,
+      outputMint,
+      amount: amount.toString(),
+      slippageBps,
+      taker,
+    }),
+  });
+
+  const order = await response.json();
+  if (!response.ok) {
+    throw new Error(order?.error ?? `Jupiter order failed (${response.status})`);
+  }
+
+  const route = Array.isArray(order.routePlan)
+    ? order.routePlan
         .map(
           (leg: { swapInfo?: { label?: string }; percent?: number }) =>
             `${leg.swapInfo?.label ?? "DEX"} ${leg.percent ?? 100}%`,
@@ -301,14 +319,55 @@ export async function fetchJupiterQuote({
     : "Jupiter";
 
   return {
-    outAmount: quote.outAmount,
-    outUiAmount: Number(quote.outAmount ?? 0) / 10 ** outputDecimals,
-    priceImpactPct: Math.abs(Number(quote.priceImpactPct ?? 0)) * 100,
+    outAmount: order.outAmount,
+    outUiAmount: Number(order.outAmount ?? 0) / 10 ** outputDecimals,
+    inputUsd: order.inUsdValue,
+    outputUsd: order.outUsdValue,
+    feeLamports:
+      Number(order.signatureFeeLamports ?? 0) +
+      Number(order.prioritizationFeeLamports ?? 0) +
+      Number(order.rentFeeLamports ?? 0),
+    priceImpactPct: Math.abs(Number(order.priceImpact ?? order.priceImpactPct ?? 0)) * 100,
     route,
-    router: "Metis",
-    responseMs: Math.round(performance.now() - started),
-    source: "jupiter-lite",
+    router: order.router ?? order.mode ?? "Jupiter",
+    responseMs: order.totalTime,
+    source: "jupiter-v2",
+    transaction: order.transaction,
+    requestId: order.requestId,
+    lastValidBlockHeight: order.lastValidBlockHeight,
+    quoteId: order.quoteId,
   };
+}
+
+export async function executeJupiterSwap({
+  signedTransaction,
+  requestId,
+  lastValidBlockHeight,
+}: {
+  signedTransaction: string;
+  requestId: string;
+  lastValidBlockHeight?: string;
+}): Promise<JupiterSwapExecution> {
+  const response = await fetch("/api/trade/execute", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      signedTransaction,
+      requestId,
+      lastValidBlockHeight,
+    }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result?.error ?? `Jupiter execution failed (${response.status})`);
+  }
+
+  if (result.status === "Failed" || result.error) {
+    throw new Error(result.error || `Jupiter execution failed (${result.code ?? "unknown"})`);
+  }
+
+  return result as JupiterSwapExecution;
 }
 
 export async function fetchSolanaRpcHealth(signal?: AbortSignal) {
