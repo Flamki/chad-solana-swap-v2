@@ -107,7 +107,7 @@ export function TradePage({ mint }: { mint: string }) {
           </div>
         </aside>
 
-        <section className="trade-pane terminal-scroll flex min-w-0 flex-col gap-3 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+        <section className="trade-pane terminal-scroll trade-center-pane flex min-w-0 flex-col gap-3 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           <div className="shrink-0 rounded-2xl border border-border bg-card/40 p-4">
             <div className="flex flex-wrap items-center gap-4">
               <TokenImage token={token} size="lg" />
@@ -151,7 +151,7 @@ export function TradePage({ mint }: { mint: string }) {
               <Stat label="24h volume" value={`$${formatCompact(token.volume24h)}`} />
               <Stat
                 label="Holders"
-                value={token.holders > 0 ? formatCompact(token.holders) : "—"}
+                value={token.holders > 0 ? formatCompact(token.holders) : "-"}
               />
               <Stat
                 label="Liquidity"
@@ -160,7 +160,7 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
           </div>
 
-          <div className="h-[420px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card/40 p-3 xl:h-[460px]">
+          <div className="trade-chart-card h-[360px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card/40 p-3 xl:h-[400px] 2xl:h-[460px]">
             {history.data?.data.length ? (
               <PriceChart
                 data={history.data.data}
@@ -190,7 +190,7 @@ export function TradePage({ mint }: { mint: string }) {
             )}
           </div>
 
-          <BottomTabs token={token} />
+          <MarketActivity token={token} />
         </section>
 
         <aside className="trade-pane terminal-scroll min-w-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
@@ -283,31 +283,43 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function BottomTabs({ token }: { token: Token }) {
-  const [tab, setTab] = useState<"trades" | "holders">("trades");
-  const trades = useTokenTrades(token.mint, tab === "trades");
-  const holders = useTokenHolders(token.mint, tab === "holders");
+function MarketActivity({ token }: { token: Token }) {
+  const trades = useTokenTrades(token.mint, true);
+  const holders = useTokenHolders(token.mint, true);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-card/40">
-      <div className="flex items-center border-b border-border">
-        <TabBtn
-          active={tab === "trades"}
-          onClick={() => setTab("trades")}
-          icon={<Activity className="h-3.5 w-3.5" />}
-        >
-          Live trades
-        </TabBtn>
-        <TabBtn
-          active={tab === "holders"}
-          onClick={() => setTab("holders")}
-          icon={<Users className="h-3.5 w-3.5" />}
-        >
-          Top holders
-        </TabBtn>
+    <div className="shrink-0 rounded-2xl border border-border bg-card/40">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div>
+          <h2 className="text-sm font-semibold">Market activity</h2>
+          <p className="text-[11px] text-muted-foreground">
+            Live swaps and holder concentration for this token
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <FreshnessPill
+            icon={<Activity className="h-3.5 w-3.5" />}
+            label="Trades"
+            status={trades.data?.status}
+            provider={trades.data?.provider}
+          />
+          <FreshnessPill
+            icon={<Users className="h-3.5 w-3.5" />}
+            label="Holders"
+            status={holders.data?.status}
+            provider={holders.data?.provider}
+          />
+        </div>
       </div>
-      <div className="max-h-[260px] overflow-y-auto">
-        {tab === "trades" ? (
+
+      <div className="grid gap-0 xl:grid-cols-2">
+        <ActivityTable
+          title="Live trades"
+          subtitle="Recent swaps"
+          updatedAt={trades.data?.updatedAt}
+          provider={trades.data?.provider}
+          status={trades.data?.status}
+        >
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-card/90 text-xs text-muted-foreground backdrop-blur">
               <tr>
@@ -321,8 +333,8 @@ function BottomTabs({ token }: { token: Token }) {
             </thead>
             <tbody>
               {trades.data?.data.length ? (
-                trades.data.data.map((trade) => (
-                  <tr key={trade.id} className="border-t border-border/60">
+                trades.data.data.slice(0, 18).map((trade, index) => (
+                  <tr key={`${trade.id}-${index}`} className="border-t border-border/60">
                     <Td>
                       <span
                         className={
@@ -372,7 +384,16 @@ function BottomTabs({ token }: { token: Token }) {
               )}
             </tbody>
           </table>
-        ) : (
+        </ActivityTable>
+
+        <ActivityTable
+          title="Top holders"
+          subtitle="Largest token accounts"
+          updatedAt={holders.data?.updatedAt}
+          provider={holders.data?.provider}
+          status={holders.data?.status}
+          className="border-t border-border xl:border-l xl:border-t-0"
+        >
           <table className="w-full text-sm">
             <thead className="sticky top-0 bg-card/90 text-xs text-muted-foreground backdrop-blur">
               <tr>
@@ -385,7 +406,7 @@ function BottomTabs({ token }: { token: Token }) {
             </thead>
             <tbody>
               {holders.data?.data.length ? (
-                holders.data.data.map((holder) => (
+                holders.data.data.slice(0, 18).map((holder) => (
                   <tr key={holder.rank} className="border-t border-border/60">
                     <Td mono>{holder.rank}</Td>
                     <Td mono>{holder.wallet}</Td>
@@ -415,14 +436,76 @@ function BottomTabs({ token }: { token: Token }) {
               )}
             </tbody>
           </table>
-        )}
+        </ActivityTable>
       </div>
-      <DataFreshness
-        status={tab === "trades" ? trades.data?.status : holders.data?.status}
-        updatedAt={tab === "trades" ? trades.data?.updatedAt : holders.data?.updatedAt}
-        provider={tab === "trades" ? trades.data?.provider : holders.data?.provider}
-      />
     </div>
+  );
+}
+
+function ActivityTable({
+  title,
+  subtitle,
+  updatedAt,
+  provider,
+  status,
+  className = "",
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  updatedAt?: string;
+  provider?: "birdeye" | "geckoterminal" | "solana-rpc";
+  status?: "live" | "cached" | "unavailable";
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={`min-w-0 ${className}`}>
+      <div className="flex items-center justify-between gap-2 px-3 py-2">
+        <div>
+          <h3 className="text-xs font-semibold uppercase tracking-wide">{title}</h3>
+          <p className="text-[11px] text-muted-foreground">{subtitle}</p>
+        </div>
+        <DataFreshness status={status} updatedAt={updatedAt} provider={provider} compact />
+      </div>
+      <div className="terminal-scroll max-h-[300px] overflow-y-auto">{children}</div>
+    </section>
+  );
+}
+
+function FreshnessPill({
+  icon,
+  label,
+  status,
+  provider,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  status?: "live" | "cached" | "unavailable";
+  provider?: "birdeye" | "geckoterminal" | "solana-rpc";
+}) {
+  const live = status === "live";
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+        live
+          ? "border-primary/30 bg-primary/10 text-primary"
+          : "border-border bg-background/50 text-muted-foreground"
+      }`}
+    >
+      {icon}
+      {label}
+      <span className="font-mono">
+        {provider === "solana-rpc"
+          ? "RPC"
+          : provider === "geckoterminal"
+            ? "GT"
+            : provider === "birdeye"
+              ? "BE"
+              : "WAIT"}
+      </span>
+    </span>
   );
 }
 
@@ -430,15 +513,21 @@ function DataFreshness({
   status,
   updatedAt,
   provider,
+  compact = false,
 }: {
   status?: "live" | "cached" | "unavailable";
   updatedAt?: string;
   provider?: "birdeye" | "geckoterminal" | "solana-rpc";
+  compact?: boolean;
 }) {
   if (!status) return null;
 
   return (
-    <div className="flex items-center justify-between border-t border-border/60 px-3 py-2 font-mono text-[10px] text-muted-foreground">
+    <div
+      className={`flex items-center justify-between gap-2 font-mono text-[10px] text-muted-foreground ${
+        compact ? "text-right" : "border-t border-border/60 px-3 py-2"
+      }`}
+    >
       <span className={status === "live" ? "text-primary" : ""}>
         {provider === "solana-rpc"
           ? "Solana RPC"
@@ -479,32 +568,6 @@ function TableState({
         <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
       </td>
     </tr>
-  );
-}
-
-function TabBtn({
-  active,
-  onClick,
-  children,
-  icon,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  icon: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
-        active
-          ? "border-primary text-foreground"
-          : "border-transparent text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {icon}
-      {children}
-    </button>
   );
 }
 

@@ -552,7 +552,7 @@ html {
 /* ============ Thin dark premium scrollbar ============ */
 @media (min-width: 1024px) {
   .trade-shell {
-    height: calc(100vh - 4rem);
+    height: calc(100dvh - 4rem);
     min-height: 0;
     overflow: hidden;
   }
@@ -560,6 +560,14 @@ html {
   .trade-pane {
     height: 100%;
     min-height: 0;
+  }
+
+  .trade-center-pane {
+    scroll-padding-block: 0.75rem;
+  }
+
+  .trade-chart-card {
+    min-height: min(360px, 42dvh);
   }
 }
 

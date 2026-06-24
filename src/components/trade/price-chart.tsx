@@ -133,6 +133,17 @@ export function PriceChart({
         rightOffset: 5,
         barSpacing: 9,
       },
+      handleScroll: {
+        mouseWheel: false,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        mouseWheel: false,
+        pinch: true,
+        axisPressedMouseMove: true,
+      },
       crosshair: {
         mode: CrosshairMode.Normal,
         horzLine: { color: "rgba(139, 92, 246, 0.45)" },
@@ -272,7 +283,7 @@ export function PriceChart({
         <div className="pointer-events-none absolute left-14 top-3 z-10 rounded-lg bg-background/50 px-3 py-2 font-mono text-xs backdrop-blur">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-semibold text-foreground">
-              {priceLabel} ({metricLabel}) · {interval.replace("H", "h")} ·{" "}
+              {priceLabel} ({metricLabel}) / {interval.replace("H", "h")} /{" "}
               {provider === "birdeye" ? "BirdEye" : "GeckoTerminal"}
             </span>
             <span className={up ? "text-primary" : "text-destructive"}>
