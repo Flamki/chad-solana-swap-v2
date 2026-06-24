@@ -67,10 +67,26 @@ type BirdeyeTxItem = {
 };
 
 type NextFetchInit = RequestInit & {
+  cacheKey?: string;
   next?: {
     revalidate?: number;
   };
 };
+
+type BirdeyeCacheEntry = {
+  data: unknown;
+  updatedAt: string;
+  expiresAt: number;
+};
+
+export type BirdeyeResult<T> = {
+  data: T;
+  status: "live" | "cached";
+  updatedAt: string;
+};
+
+const birdeyeCache = new Map<string, BirdeyeCacheEntry>();
+const pendingRequests = new Map<string, Promise<BirdeyeResult<unknown>>>();
 
 class MarketDataError extends Error {
   status: number;
@@ -87,29 +103,82 @@ function getBirdeyeKey() {
 }
 
 export async function birdeyeJson<T>(path: string, init?: NextFetchInit): Promise<T> {
+  const result = await birdeyeJsonWithMeta<T>(path, init);
+  return result.data;
+}
+
+export async function birdeyeJsonWithMeta<T>(
+  path: string,
+  init?: NextFetchInit,
+): Promise<BirdeyeResult<T>> {
   const key = getBirdeyeKey();
 
   if (!key) {
     throw new MarketDataError("Missing BirdEye API key", 500);
   }
 
-  const response = await fetch(`${BIRDEYE_BASE}${path}`, {
-    ...init,
-    next: init?.next ?? { revalidate: 10 },
-    headers: {
-      accept: "application/json",
-      "x-chain": "solana",
-      "X-API-KEY": key,
-      ...init?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    throw new MarketDataError(`BirdEye ${path} failed (${response.status})`, response.status);
+  const cacheKey = init?.cacheKey ?? path;
+  const cached = birdeyeCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return {
+      data: cached.data as T,
+      status: "cached",
+      updatedAt: cached.updatedAt,
+    };
   }
 
-  const payload = (await response.json()) as { data?: T; success?: boolean };
-  return (payload.data ?? payload) as T;
+  const pending = pendingRequests.get(cacheKey);
+  if (pending) {
+    return pending as Promise<BirdeyeResult<T>>;
+  }
+
+  const request = (async () => {
+    const fetchInit = { ...init };
+    delete fetchInit.cacheKey;
+    const response = await fetch(`${BIRDEYE_BASE}${path}`, {
+      ...fetchInit,
+      cache: "no-store",
+      headers: {
+        accept: "application/json",
+        "x-chain": "solana",
+        "X-API-KEY": key,
+        ...init?.headers,
+      },
+    });
+
+    if (!response.ok) {
+      if (cached) {
+        return {
+          data: cached.data,
+          status: "cached" as const,
+          updatedAt: cached.updatedAt,
+        };
+      }
+
+      throw new MarketDataError(`BirdEye ${path} failed (${response.status})`, response.status);
+    }
+
+    const payload = (await response.json()) as { data?: T; success?: boolean };
+    const data = (payload.data ?? payload) as T;
+    const updatedAt = new Date().toISOString();
+    const ttlSeconds = Math.max(10, init?.next?.revalidate ?? 15);
+
+    birdeyeCache.set(cacheKey, {
+      data,
+      updatedAt,
+      expiresAt: Date.now() + ttlSeconds * 1000,
+    });
+
+    return { data, status: "live" as const, updatedAt };
+  })();
+
+  pendingRequests.set(cacheKey, request as Promise<BirdeyeResult<unknown>>);
+
+  try {
+    return (await request) as BirdeyeResult<T>;
+  } finally {
+    pendingRequests.delete(cacheKey);
+  }
 }
 
 export function tokenFromOverview(mint: string, overview: BirdeyeTokenOverview): Token {
@@ -195,6 +264,7 @@ export function tradesFromBirdeye(items: BirdeyeTxItem[], mint: string) {
 
     return {
       id: item.txHash ?? `${mint}-${index}`,
+      txHash: item.txHash,
       side: item.side === "sell" ? "sell" : "buy",
       amountUsd: tokens * price,
       tokens,

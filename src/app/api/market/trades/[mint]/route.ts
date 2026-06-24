@@ -1,18 +1,31 @@
 import { NextResponse } from "next/server";
 
-import { apiError, birdeyeJson, tradesFromBirdeye } from "@/lib/server/birdeye";
+import { birdeyeJsonWithMeta, tradesFromBirdeye } from "@/lib/server/birdeye";
 
 export const revalidate = 10;
 
 export async function GET(_request: Request, context: { params: Promise<{ mint: string }> }) {
   try {
     const { mint } = await context.params;
-    const data = await birdeyeJson<{
+    const result = await birdeyeJsonWithMeta<{
       items?: Parameters<typeof tradesFromBirdeye>[0];
-    }>(`/defi/txs/token?address=${encodeURIComponent(mint)}&offset=0&limit=25&tx_type=swap`);
+    }>(`/defi/txs/token?address=${encodeURIComponent(mint)}&offset=0&limit=25&tx_type=swap`, {
+      next: { revalidate: 15 },
+    });
 
-    return NextResponse.json(tradesFromBirdeye(data.items ?? [], mint));
+    return NextResponse.json({
+      data: tradesFromBirdeye(result.data.items ?? [], mint),
+      status: result.status,
+      updatedAt: result.updatedAt,
+      provider: "birdeye",
+    });
   } catch (error) {
-    return apiError(error);
+    console.error("BirdEye trades unavailable", error);
+    return NextResponse.json({
+      data: [],
+      status: "unavailable",
+      updatedAt: new Date().toISOString(),
+      provider: "birdeye",
+    });
   }
 }

@@ -3,6 +3,7 @@ import {
   ColorType,
   CrosshairMode,
   HistogramSeries,
+  PriceScaleMode,
   type CandlestickData,
   type HistogramData,
   type IChartApi,
@@ -10,42 +11,31 @@ import {
   type Time,
   createChart,
 } from "lightweight-charts";
-import {
-  ChartCandlestick,
-  Crosshair,
-  Grid2X2,
-  MousePointer2,
-  PencilRuler,
-  Ruler,
-  Settings2,
-} from "lucide-react";
+import { ChartCandlestick, Crosshair, Maximize2, Settings2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import type { ChartInterval, PricePoint } from "@/lib/market-data";
+import type { ChartInterval, MarketDataStatus, PricePoint } from "@/lib/market-data";
 import { formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
-const SOL_PRICE = 184.32;
 const intervals: ChartInterval[] = ["1m", "5m", "15m", "1H", "4H", "1D"];
-const toolIcons = [
-  { icon: Crosshair, label: "Crosshair" },
-  { icon: MousePointer2, label: "Cursor" },
-  { icon: Ruler, label: "Measure" },
-  { icon: PencilRuler, label: "Draw" },
-  { icon: Grid2X2, label: "Layout" },
-  { icon: Settings2, label: "Chart settings" },
-];
 
 type ChartMetric = "price" | "mcap";
 type QuoteCurrency = "usd" | "sol";
 
 export function PriceChart({
   data,
+  dataStatus,
+  updatedAt,
   token,
+  solPrice,
   interval,
   onIntervalChange,
 }: {
   data: PricePoint[];
+  dataStatus: MarketDataStatus;
+  updatedAt: string;
   token: Token;
+  solPrice: number;
   interval: ChartInterval;
   onIntervalChange: (interval: ChartInterval) => void;
 }) {
@@ -55,6 +45,8 @@ export function PriceChart({
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const [metric, setMetric] = useState<ChartMetric>("price");
   const [quote, setQuote] = useState<QuoteCurrency>("usd");
+  const [crosshairEnabled, setCrosshairEnabled] = useState(true);
+  const [logScale, setLogScale] = useState(false);
 
   const tokenSupply = token.price > 0 && token.marketCap > 0 ? token.marketCap / token.price : 0;
   const priceLabel = `${token.symbol}/${quote.toUpperCase()}`;
@@ -65,7 +57,7 @@ export function PriceChart({
     let previousClose = data[0]?.value ?? 0;
     const transform = (value: number) => {
       const priced = metric === "mcap" && tokenSupply > 0 ? value * tokenSupply : value;
-      return quote === "sol" ? priced / SOL_PRICE : priced;
+      return quote === "sol" && solPrice > 0 ? priced / solPrice : priced;
     };
 
     const candleData: CandlestickData[] = data
@@ -106,7 +98,7 @@ export function PriceChart({
       latest: candleData.at(-1),
       first: candleData[0],
     };
-  }, [data, metric, quote, tokenSupply]);
+  }, [data, metric, quote, solPrice, tokenSupply]);
 
   const change = latest && first ? latest.close - first.open : 0;
   const changePct = latest && first && first.open > 0 ? (change / first.open) * 100 : 0;
@@ -192,6 +184,20 @@ export function PriceChart({
     chartRef.current?.timeScale().fitContent();
   }, [candles, metric, quote, volumes]);
 
+  useEffect(() => {
+    chartRef.current?.applyOptions({
+      crosshair: {
+        mode: crosshairEnabled ? CrosshairMode.Normal : CrosshairMode.Hidden,
+      },
+    });
+  }, [crosshairEnabled]);
+
+  useEffect(() => {
+    chartRef.current?.priceScale("right").applyOptions({
+      mode: logScale ? PriceScaleMode.Logarithmic : PriceScaleMode.Normal,
+    });
+  }, [logScale]);
+
   return (
     <div className="relative flex h-full min-h-[300px] w-full flex-col overflow-hidden rounded-xl bg-background/25">
       <div className="flex min-h-12 items-center gap-2 overflow-x-auto border-b border-border/70 px-3 py-2 text-xs">
@@ -233,20 +239,33 @@ export function PriceChart({
           <ChartCandlestick className="h-3.5 w-3.5 text-primary" />
           Vol <span className="font-mono text-foreground">${formatCompact(latestVolume)}</span>
         </div>
+        <div className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[10px]">
+          <span className={dataStatus === "live" ? "text-primary" : "text-amber-400"}>
+            BirdEye {dataStatus.toUpperCase()}
+          </span>
+          <span className="text-muted-foreground">{new Date(updatedAt).toLocaleTimeString()}</span>
+        </div>
       </div>
 
       <div className="relative min-h-0 flex-1">
         <div className="absolute left-0 top-0 z-10 flex h-full w-11 flex-col items-center gap-2 border-r border-border/50 bg-background/35 py-4 backdrop-blur">
-          {toolIcons.map(({ icon: Icon, label }) => (
-            <button
-              key={label}
-              title={label}
-              aria-label={label}
-              className="grid h-7 w-7 place-items-center rounded-md text-muted-foreground transition hover:bg-card hover:text-foreground"
-            >
-              <Icon className="h-4 w-4" />
-            </button>
-          ))}
+          <ChartTool
+            label="Toggle crosshair"
+            active={crosshairEnabled}
+            onClick={() => setCrosshairEnabled((value) => !value)}
+            icon={<Crosshair className="h-4 w-4" />}
+          />
+          <ChartTool
+            label="Toggle logarithmic scale"
+            active={logScale}
+            onClick={() => setLogScale((value) => !value)}
+            icon={<Settings2 className="h-4 w-4" />}
+          />
+          <ChartTool
+            label="Fit chart"
+            onClick={() => chartRef.current?.timeScale().fitContent()}
+            icon={<Maximize2 className="h-4 w-4" />}
+          />
         </div>
         <div className="pointer-events-none absolute left-14 top-3 z-10 rounded-lg bg-background/50 px-3 py-2 font-mono text-xs backdrop-blur">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
@@ -280,6 +299,33 @@ export function PriceChart({
         </a>
       </div>
     </div>
+  );
+}
+
+function ChartTool({
+  label,
+  icon,
+  active = false,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      title={label}
+      aria-label={label}
+      onClick={onClick}
+      className={`grid h-7 w-7 place-items-center rounded-md transition ${
+        active
+          ? "bg-primary/15 text-primary"
+          : "text-muted-foreground hover:bg-card hover:text-foreground"
+      }`}
+    >
+      {icon}
+    </button>
   );
 }
 

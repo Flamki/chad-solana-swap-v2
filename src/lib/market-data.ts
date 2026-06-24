@@ -58,8 +58,18 @@ export type PricePoint = {
   volume?: number;
 };
 
+export type MarketDataStatus = "live" | "cached" | "unavailable";
+
+export type MarketDataset<T> = {
+  data: T;
+  status: MarketDataStatus;
+  updatedAt: string;
+  provider: "birdeye";
+};
+
 export type LiveTrade = {
   id: string;
+  txHash?: string;
   side: "buy" | "sell";
   amountUsd: number;
   tokens: number;
@@ -193,18 +203,24 @@ export async function fetchTokenOhlcv(
   interval: ChartInterval = "15m",
   signal?: AbortSignal,
 ) {
-  return fetchLocalJson<PricePoint[]>(
+  return fetchLocalJson<MarketDataset<PricePoint[]>>(
     `/api/market/ohlcv/${encodeURIComponent(mint)}?interval=${interval}`,
     signal,
   );
 }
 
 export async function fetchTokenTrades(mint: string, signal?: AbortSignal) {
-  return fetchLocalJson<LiveTrade[]>(`/api/market/trades/${encodeURIComponent(mint)}`, signal);
+  return fetchLocalJson<MarketDataset<LiveTrade[]>>(
+    `/api/market/trades/${encodeURIComponent(mint)}`,
+    signal,
+  );
 }
 
 export async function fetchTokenHolders(mint: string, signal?: AbortSignal) {
-  return fetchLocalJson<LiveHolder[]>(`/api/market/holders/${encodeURIComponent(mint)}`, signal);
+  return fetchLocalJson<MarketDataset<LiveHolder[]>>(
+    `/api/market/holders/${encodeURIComponent(mint)}`,
+    signal,
+  );
 }
 
 export async function fetchJupiterQuote({
@@ -442,17 +458,13 @@ export function useTokenMarket(mint: string, initialToken?: Token) {
   });
 }
 
-export function useTokenOhlcv(
-  mint: string,
-  interval: ChartInterval = "15m",
-  initialData?: PricePoint[],
-) {
+export function useTokenOhlcv(mint: string, interval: ChartInterval = "15m") {
   return useQuery({
     queryKey: ["token-ohlcv", mint, interval],
     queryFn: ({ signal }) => fetchTokenOhlcv(mint, interval, signal),
-    initialData,
     refetchInterval: 30_000,
     staleTime: 15_000,
+    retry: 1,
   });
 }
 

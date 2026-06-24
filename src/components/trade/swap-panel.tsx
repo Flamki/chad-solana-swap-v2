@@ -11,7 +11,6 @@ import { SOL_MINT, USDC_MINT, formatUsd, rawAmountFromUi } from "@/lib/tokens";
 
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
-const SOL_PRICE = 184.32;
 
 function formatTokenAmount(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "0.00";
@@ -20,15 +19,15 @@ function formatTokenAmount(value: number) {
   });
 }
 
-export function SwapPanel({ token }: { token: Token }) {
+export function SwapPanel({ token, solPrice }: { token: Token; solPrice: number }) {
   if (hasPrivy) {
-    return <PrivySwapPanel token={token} />;
+    return <PrivySwapPanel token={token} solPrice={solPrice} />;
   }
 
-  return <SwapPanelCore token={token} />;
+  return <SwapPanelCore token={token} solPrice={solPrice} />;
 }
 
-function PrivySwapPanel({ token }: { token: Token }) {
+function PrivySwapPanel({ token, solPrice }: { token: Token; solPrice: number }) {
   const { authenticated } = usePrivy();
   const { login } = useLogin();
   const { wallets } = useWallets();
@@ -37,6 +36,7 @@ function PrivySwapPanel({ token }: { token: Token }) {
   return (
     <SwapPanelCore
       token={token}
+      solPrice={solPrice}
       authenticated={authenticated}
       walletAddress={walletAddress}
       onLogin={() => login()}
@@ -46,11 +46,13 @@ function PrivySwapPanel({ token }: { token: Token }) {
 
 function SwapPanelCore({
   token,
+  solPrice,
   authenticated = false,
   walletAddress,
   onLogin,
 }: {
   token: Token;
+  solPrice: number;
   authenticated?: boolean;
   walletAddress?: string;
   onLogin?: () => void;
@@ -71,7 +73,7 @@ function SwapPanelCore({
         outputSymbol: token.symbol,
         inputDecimals: tradingSol ? USDC_DECIMALS : SOL_DECIMALS,
         outputDecimals: token.decimals,
-        inputPrice: tradingSol ? 1 : SOL_PRICE,
+        inputPrice: tradingSol ? 1 : solPrice,
       };
     }
 
@@ -84,7 +86,7 @@ function SwapPanelCore({
       outputDecimals: tradingSol ? USDC_DECIMALS : SOL_DECIMALS,
       inputPrice: token.price || 0,
     };
-  }, [side, token]);
+  }, [side, solPrice, token]);
 
   const amt = Number.parseFloat(amount) || 0;
   const rawAmount = rawAmountFromUi(amt, pair.inputDecimals);
@@ -126,7 +128,7 @@ function SwapPanelCore({
     quoteQuery.data?.outUiAmount ??
     (side === "buy"
       ? inputUsd / Math.max(token.price || 1, 0.00000001)
-      : inputUsd / (pair.outputSymbol === "USDC" ? 1 : SOL_PRICE));
+      : inputUsd / (pair.outputSymbol === "USDC" ? 1 : Math.max(solPrice, 0.00000001)));
   const fee = inputUsd * 0.003;
   const tokenBalance = positionQuery.data?.balance ?? 0;
   const tokenValue = positionQuery.data?.valueUsd ?? 0;

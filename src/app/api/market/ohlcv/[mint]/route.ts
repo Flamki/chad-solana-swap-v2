@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { birdeyeJson, ohlcvToPoints } from "@/lib/server/birdeye";
-import { createFallbackToken, getToken } from "@/lib/tokens";
+import { birdeyeJsonWithMeta, ohlcvToPoints } from "@/lib/server/birdeye";
 
 export const revalidate = 15;
 
@@ -19,38 +18,6 @@ function getInterval(request: Request) {
   return interval in intervalWindows ? interval : "15m";
 }
 
-function fallbackOhlcv(mint: string, interval: string) {
-  const token = getToken(mint) ?? createFallbackToken(mint);
-  const points = 180;
-  const now = Math.floor(Date.now() / 1000);
-  const step = intervalWindows[interval] / points;
-  const startPrice = Math.max(token.price || 0.000001, 0.000001) * (1 - token.change24h / 100);
-  let close = startPrice;
-  let seed = token.mint.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-
-  return Array.from({ length: points }, (_, index) => {
-    seed = (seed * 9301 + 49297) % 233280;
-    const random = seed / 233280 - 0.5;
-    const drift = token.change24h / 100 / points;
-    const open = close;
-    close = Math.max(open * (1 + drift + random * 0.018), 0.000000001);
-    const wick = Math.max(Math.abs(close - open), open * (0.006 + Math.abs(random) * 0.02));
-    const high = Math.max(open, close) + wick;
-    const low = Math.max(Math.min(open, close) - wick, 0.000000001);
-    const volume = Math.max(token.volume24h / points, 1000) * (0.6 + Math.abs(random) * 1.8);
-
-    return {
-      time: Math.floor(now - (points - index) * step),
-      open,
-      high,
-      low,
-      close,
-      volume,
-      value: close,
-    };
-  });
-}
-
 export async function GET(request: Request, context: { params: Promise<{ mint: string }> }) {
   const { mint } = await context.params;
   const interval = getInterval(request);
@@ -58,14 +25,28 @@ export async function GET(request: Request, context: { params: Promise<{ mint: s
   try {
     const now = Math.floor(Date.now() / 1000);
     const from = now - intervalWindows[interval];
-    const data = await birdeyeJson<{
+    const result = await birdeyeJsonWithMeta<{
       items?: Parameters<typeof ohlcvToPoints>[0];
     }>(
       `/defi/ohlcv?address=${encodeURIComponent(mint)}&type=${interval}&currency=usd&time_from=${from}&time_to=${now}`,
+      {
+        cacheKey: `ohlcv:${mint}:${interval}`,
+        next: { revalidate: 15 },
+      },
     );
 
-    return NextResponse.json(ohlcvToPoints(data.items ?? []));
+    return NextResponse.json({
+      data: ohlcvToPoints(result.data.items ?? []),
+      status: result.status,
+      updatedAt: result.updatedAt,
+      provider: "birdeye",
+    });
   } catch {
-    return NextResponse.json(fallbackOhlcv(mint, interval));
+    return NextResponse.json({
+      data: [],
+      status: "unavailable",
+      updatedAt: new Date().toISOString(),
+      provider: "birdeye",
+    });
   }
 }

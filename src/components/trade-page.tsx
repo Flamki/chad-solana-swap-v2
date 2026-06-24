@@ -28,6 +28,7 @@ import {
   useTrendingTokens,
 } from "@/lib/market-data";
 import {
+  SOL_MINT,
   TOKENS,
   createFallbackToken,
   formatCompact,
@@ -39,10 +40,15 @@ import {
 export function TradePage({ mint }: { mint: string }) {
   const initialToken = getToken(mint) ?? createFallbackToken(mint);
   const market = useTokenMarket(initialToken.mint, initialToken);
+  const solMarket = useTokenMarket(
+    SOL_MINT,
+    initialToken.mint === SOL_MINT ? initialToken : undefined,
+  );
   const { data: trending = TOKENS } = useTrendingTokens();
   const rpcHealth = useSolanaRpcHealth();
   const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
   const token = market.data ?? initialToken;
+  const solPrice = solMarket.data?.price || (token.mint === SOL_MINT ? token.price : 0);
   const history = useTokenOhlcv(token.mint, chartInterval);
   const up = token.change24h >= 0;
 
@@ -163,20 +169,29 @@ export function TradePage({ mint }: { mint: string }) {
           </div>
 
           <div className="h-[420px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card/40 p-3 xl:h-[460px]">
-            {history.data?.length ? (
+            {history.data?.data.length ? (
               <PriceChart
-                data={history.data}
+                data={history.data.data}
+                dataStatus={history.data.status}
+                updatedAt={history.data.updatedAt}
                 token={token}
+                solPrice={solPrice}
                 interval={chartInterval}
                 onIntervalChange={setChartInterval}
               />
             ) : (
               <LiveState
-                title={history.isFetching ? "Loading BirdEye chart" : "BirdEye chart unavailable"}
+                title={
+                  history.isFetching
+                    ? "Loading BirdEye chart"
+                    : history.data?.status === "unavailable"
+                      ? "BirdEye temporarily unavailable"
+                      : "BirdEye chart unavailable"
+                }
                 detail={
                   history.isFetching
                     ? "Pulling live OHLCV candles for this token."
-                    : "The provider did not return chart candles for this request."
+                    : "No synthetic candles are shown. The chart will retry the live feed automatically."
                 }
               />
             )}
@@ -186,7 +201,7 @@ export function TradePage({ mint }: { mint: string }) {
         </section>
 
         <aside className="trade-pane terminal-scroll min-w-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
-          <SwapPanel token={token} />
+          <SwapPanel token={token} solPrice={solPrice} />
         </aside>
       </main>
     </div>
@@ -312,8 +327,8 @@ function BottomTabs({ token }: { token: Token }) {
               </tr>
             </thead>
             <tbody>
-              {trades.data?.length ? (
-                trades.data.map((trade) => (
+              {trades.data?.data.length ? (
+                trades.data.data.map((trade) => (
                   <tr key={trade.id} className="border-t border-border/60">
                     <Td>
                       <span
@@ -332,7 +347,19 @@ function BottomTabs({ token }: { token: Token }) {
                     </Td>
                     <Td mono>{formatUsd(trade.price)}</Td>
                     <Td mono className="text-muted-foreground">
-                      {trade.wallet}
+                      {trade.txHash ? (
+                        <a
+                          href={`https://solscan.io/tx/${trade.txHash}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 hover:text-foreground"
+                        >
+                          {trade.wallet}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : (
+                        trade.wallet
+                      )}
                     </Td>
                     <Td mono className="text-muted-foreground">
                       {trade.ago}
@@ -364,8 +391,8 @@ function BottomTabs({ token }: { token: Token }) {
               </tr>
             </thead>
             <tbody>
-              {holders.data?.length ? (
-                holders.data.map((holder) => (
+              {holders.data?.data.length ? (
+                holders.data.data.map((holder) => (
                   <tr key={holder.rank} className="border-t border-border/60">
                     <Td mono>{holder.rank}</Td>
                     <Td mono>{holder.wallet}</Td>
@@ -397,6 +424,29 @@ function BottomTabs({ token }: { token: Token }) {
           </table>
         )}
       </div>
+      <DataFreshness
+        status={tab === "trades" ? trades.data?.status : holders.data?.status}
+        updatedAt={tab === "trades" ? trades.data?.updatedAt : holders.data?.updatedAt}
+      />
+    </div>
+  );
+}
+
+function DataFreshness({
+  status,
+  updatedAt,
+}: {
+  status?: "live" | "cached" | "unavailable";
+  updatedAt?: string;
+}) {
+  if (!status) return null;
+
+  return (
+    <div className="flex items-center justify-between border-t border-border/60 px-3 py-2 font-mono text-[10px] text-muted-foreground">
+      <span className={status === "live" ? "text-primary" : ""}>
+        BirdEye {status.toUpperCase()}
+      </span>
+      {updatedAt && <span>Updated {new Date(updatedAt).toLocaleTimeString()}</span>}
     </div>
   );
 }
