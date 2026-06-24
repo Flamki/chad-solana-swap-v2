@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { TradePage } from "@/components/trade-page";
 import { birdeyeJsonWithMeta, tokenFromOverview } from "@/lib/server/birdeye";
-import { createFallbackToken, formatUsd, getToken } from "@/lib/tokens";
+import { createFallbackToken, getToken } from "@/lib/tokens";
 
 type TradeParams = {
   params: Promise<{ mint: string }>;
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: TradeParams): Promise<Metadat
   }
 
   return {
-    title: `${token.symbol} ${formatUsd(token.price)} - ChadWallet`,
+    title: `${token.symbol} - ChadWallet`,
     description: `Trade ${token.name} (${token.symbol}) on Solana with ChadWallet.`,
   };
 }
