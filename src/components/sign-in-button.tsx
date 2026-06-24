@@ -16,6 +16,10 @@ function ConnectedPrivyButton({ variant }: { variant: "default" | "hero" }) {
   const { ready, authenticated, user } = usePrivy();
   const { login } = useLogin({
     onError: (error) => {
+      if (isLoginCancellation(error)) {
+        return;
+      }
+
       alert(`Privy login failed: ${String(error)}`);
     },
   });
@@ -52,6 +56,17 @@ function ConnectedPrivyButton({ variant }: { variant: "default" | "hero" }) {
       <LogOut className="h-3.5 w-3.5 text-muted-foreground" />
     </button>
   );
+}
+
+function isLoginCancellation(error: unknown) {
+  const message =
+    error instanceof Error
+      ? `${error.name} ${error.message}`
+      : typeof error === "object" && error !== null
+        ? JSON.stringify(error)
+        : String(error);
+
+  return /exited_auth_flow|user_canceled|user_cancelled|login_cancelled/i.test(message);
 }
 
 function PrivySetupButton({ variant }: { variant: "default" | "hero" }) {
