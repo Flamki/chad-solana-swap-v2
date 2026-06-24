@@ -25,7 +25,8 @@ const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.ww
 const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
 const HERO_VIDEO = "/assets/video/astronaut-hero.mp4";
 const CHAD_VIDEO = "/assets/video/chadwallet.mp4";
-const FEATURE_VIDEO = "/assets/video/MAKE_VIDEO_NOT_IMAGE.mp4";
+const FEATURE_VIDEO = "/assets/video/MAKE_VIDEO_NOT_IMAGE-Picsart-BackgroundRemover.webm";
+const FEATURE_VIDEO_FALLBACK = "/assets/video/MAKE_VIDEO_NOT_IMAGE.mp4";
 
 export function Landing() {
   useRevealOnScroll();
@@ -38,6 +39,7 @@ export function Landing() {
   const featureFrameRef = useRef<HTMLDivElement | null>(null);
   const featureVideoRef = useRef<HTMLVideoElement | null>(null);
   const featureShadeRef = useRef<HTMLDivElement | null>(null);
+  const featureShadowRef = useRef<HTMLDivElement | null>(null);
   const heroPoster = assetUrl(heroAstronaut);
 
   useEffect(() => {
@@ -67,13 +69,17 @@ export function Landing() {
         heroStatsRef.current.style.transform = "translate3d(0, 0, 0)";
       }
       if (featureFrameRef.current) {
-        featureFrameRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
+        featureFrameRef.current.style.transform = "rotateX(0deg) translate3d(0, 0, 0) scale(1)";
       }
       if (featureVideoRef.current) {
-        featureVideoRef.current.style.transform = "translate3d(0, 0, 0) scale(1.3)";
+        featureVideoRef.current.style.transform = "translate3d(0, -2%, 120px) scale(1.72)";
       }
       if (featureShadeRef.current) {
         featureShadeRef.current.style.opacity = "1";
+      }
+      if (featureShadowRef.current) {
+        featureShadowRef.current.style.transform = "translate3d(-50%, 0, 20px) scale(1)";
+        featureShadowRef.current.style.opacity = "0.55";
       }
     };
 
@@ -117,13 +123,18 @@ export function Landing() {
         );
         const centeredProgress = featureProgress - 0.5;
         const featureIntensity = window.innerWidth < 768 ? 0.62 : 1;
-        const focusScale = 1.28 + (1 - Math.min(1, Math.abs(centeredProgress) * 2)) * 0.055;
+        const centerFocus = 1 - Math.min(1, Math.abs(centeredProgress) * 2);
+        const focusScale = 1.64 + centerFocus * 0.18 * featureIntensity;
 
-        featureFrameRef.current.style.transform = `translate3d(0, ${centeredProgress * -34 * featureIntensity}px, 0) scale(${1 + (1 - Math.abs(centeredProgress) * 2) * 0.012})`;
-        featureVideoRef.current.style.transform = `translate3d(0, ${centeredProgress * -92 * featureIntensity}px, 0) scale(${focusScale})`;
+        featureFrameRef.current.style.transform = `rotateX(${centeredProgress * -7 * featureIntensity}deg) translate3d(0, ${centeredProgress * -38 * featureIntensity}px, 0) scale(${0.985 + centerFocus * 0.025})`;
+        featureVideoRef.current.style.transform = `translate3d(0, ${-2 + centeredProgress * -9 * featureIntensity}%, ${90 + centerFocus * 90 * featureIntensity}px) scale(${focusScale})`;
 
         if (featureShadeRef.current) {
-          featureShadeRef.current.style.opacity = `${0.86 + (1 - Math.abs(centeredProgress) * 2) * 0.14}`;
+          featureShadeRef.current.style.opacity = `${0.68 + centerFocus * 0.32}`;
+        }
+        if (featureShadowRef.current) {
+          featureShadowRef.current.style.transform = `translate3d(-50%, ${centeredProgress * 24 * featureIntensity}px, 20px) scale(${0.88 + centerFocus * 0.24})`;
+          featureShadowRef.current.style.opacity = `${0.32 + centerFocus * 0.32}`;
         }
       }
 
@@ -369,28 +380,43 @@ export function Landing() {
 
             <div
               ref={featureAnchorRef}
-              className="reveal reveal-delay-1 md:col-span-12 md:-mx-10 xl:-mx-24"
+              className="reveal reveal-delay-1 md:col-span-12 md:-mx-10 xl:-mx-24 [perspective:1400px]"
             >
               <div
                 ref={featureFrameRef}
-                className="relative overflow-hidden rounded-lg border border-border/60 bg-black shadow-2xl shadow-primary/15 will-change-transform"
+                className="relative h-[520px] sm:h-[620px] lg:h-[720px] [transform-style:preserve-3d] will-change-transform"
               >
+                <div className="absolute inset-x-[2%] top-[10%] bottom-[8%] overflow-hidden rounded-lg border border-border/70 bg-black shadow-2xl shadow-black">
+                  <div
+                    className="absolute inset-0 scale-110 bg-cover bg-center opacity-65"
+                    style={{ backgroundImage: `url(${heroPoster})` }}
+                  />
+                  <div className="absolute inset-0 bg-black/35" />
+                  <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:52px_52px]" />
+                  <div className="absolute inset-x-0 bottom-0 h-px bg-primary/70 shadow-[0_0_28px_rgba(20,241,149,0.8)]" />
+                </div>
                 <video
                   ref={featureVideoRef}
-                  src={FEATURE_VIDEO}
                   autoPlay
                   muted
                   loop
                   playsInline
                   preload="metadata"
                   aria-label="ChadWallet trading, copy trading, and token launch experience"
-                  className="h-[68vw] min-h-[360px] max-h-[760px] w-full object-cover object-center will-change-transform sm:h-[62vw] md:h-[58vw] lg:h-[52vw] xl:h-[680px]"
-                />
+                  className="pointer-events-none absolute inset-0 z-20 h-full w-full object-contain object-center will-change-transform"
+                >
+                  <source src={FEATURE_VIDEO} type="video/webm" />
+                  <source src={FEATURE_VIDEO_FALLBACK} type="video/mp4" />
+                </video>
                 <div
                   ref={featureShadeRef}
-                  className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,0.38),transparent_18%,transparent_82%,rgba(0,0,0,0.38))] will-change-[opacity]"
+                  className="pointer-events-none absolute inset-x-[2%] top-[10%] bottom-[8%] z-10 rounded-lg shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] will-change-[opacity]"
                 />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/40 to-transparent" />
+                <div
+                  ref={featureShadowRef}
+                  className="pointer-events-none absolute bottom-[4%] left-1/2 z-10 h-12 w-[34%] -translate-x-1/2 rounded-[50%] bg-black/80 blur-2xl will-change-transform"
+                />
+                <div className="pointer-events-none absolute inset-x-[7%] bottom-[7%] z-30 h-px bg-white/20" />
               </div>
             </div>
 
