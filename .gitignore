@@ -16,6 +16,7 @@ dist-ssr
 .tanstack/**
 .nitro
 .vercel
+.vercel-submitted-link/
 supabase/.temp/
 *.local
 
