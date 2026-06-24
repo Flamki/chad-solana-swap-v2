@@ -2,15 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import {
-  Activity,
-  ArrowLeft,
-  Copy,
-  ExternalLink,
-  TrendingDown,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+import { Activity, Copy, ExternalLink, TrendingDown, TrendingUp, Users } from "lucide-react";
 
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenSearch } from "@/components/token-search";
@@ -54,14 +46,6 @@ export function TradePage({ mint }: { mint: string }) {
       <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-background/60 backdrop-blur-md">
         <div className="flex h-16 items-center justify-between px-4">
           <div className="flex items-center gap-4">
-            <Link
-              href="/"
-              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden sm:inline">Home</span>
-            </Link>
-            <div className="h-5 w-px bg-border" />
             <ChadLogo variant="dark" size="sm" />
           </div>
 
