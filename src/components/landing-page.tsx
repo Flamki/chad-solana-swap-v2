@@ -72,7 +72,7 @@ export function Landing() {
         featureFrameRef.current.style.transform = "rotateX(0deg) translate3d(0, 0, 0) scale(1)";
       }
       if (featureVideoRef.current) {
-        featureVideoRef.current.style.transform = "translate3d(0, -2%, 120px) scale(1.72)";
+        featureVideoRef.current.style.transform = "translate3d(0, 0, 60px) scale(1.34)";
       }
       if (featureShadeRef.current) {
         featureShadeRef.current.style.opacity = "1";
@@ -124,17 +124,17 @@ export function Landing() {
         const centeredProgress = featureProgress - 0.5;
         const featureIntensity = window.innerWidth < 768 ? 0.62 : 1;
         const centerFocus = 1 - Math.min(1, Math.abs(centeredProgress) * 2);
-        const focusScale = 1.64 + centerFocus * 0.18 * featureIntensity;
+        const focusScale = 1.3 + centerFocus * 0.1 * featureIntensity;
 
-        featureFrameRef.current.style.transform = `rotateX(${centeredProgress * -7 * featureIntensity}deg) translate3d(0, ${centeredProgress * -38 * featureIntensity}px, 0) scale(${0.985 + centerFocus * 0.025})`;
-        featureVideoRef.current.style.transform = `translate3d(0, ${-2 + centeredProgress * -9 * featureIntensity}%, ${90 + centerFocus * 90 * featureIntensity}px) scale(${focusScale})`;
+        featureFrameRef.current.style.transform = `rotateX(${centeredProgress * -4 * featureIntensity}deg) translate3d(0, ${centeredProgress * -24 * featureIntensity}px, 0) scale(${0.99 + centerFocus * 0.015})`;
+        featureVideoRef.current.style.transform = `translate3d(0, ${centeredProgress * -6 * featureIntensity}%, ${45 + centerFocus * 55 * featureIntensity}px) scale(${focusScale})`;
 
         if (featureShadeRef.current) {
           featureShadeRef.current.style.opacity = `${0.68 + centerFocus * 0.32}`;
         }
         if (featureShadowRef.current) {
-          featureShadowRef.current.style.transform = `translate3d(-50%, ${centeredProgress * 24 * featureIntensity}px, 20px) scale(${0.88 + centerFocus * 0.24})`;
-          featureShadowRef.current.style.opacity = `${0.32 + centerFocus * 0.32}`;
+          featureShadowRef.current.style.transform = `translate3d(-50%, ${centeredProgress * 16 * featureIntensity}px, 20px) scale(${0.84 + centerFocus * 0.18})`;
+          featureShadowRef.current.style.opacity = `${0.26 + centerFocus * 0.24}`;
         }
       }
 
@@ -384,15 +384,10 @@ export function Landing() {
             >
               <div
                 ref={featureFrameRef}
-                className="relative h-[520px] sm:h-[620px] lg:h-[720px] [transform-style:preserve-3d] will-change-transform"
+                className="relative h-[400px] sm:h-[480px] lg:h-[560px] [transform-style:preserve-3d] will-change-transform"
               >
-                <div className="absolute inset-x-[2%] top-[10%] bottom-[8%] overflow-hidden rounded-lg border border-border/70 bg-black shadow-2xl shadow-black">
-                  <div
-                    className="absolute inset-0 scale-110 bg-cover bg-center opacity-65"
-                    style={{ backgroundImage: `url(${heroPoster})` }}
-                  />
-                  <div className="absolute inset-0 bg-black/35" />
-                  <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(255,255,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.12)_1px,transparent_1px)] [background-size:52px_52px]" />
+                <div className="absolute inset-x-[5%] top-[10%] bottom-[9%] overflow-hidden rounded-lg border border-border/70 bg-[radial-gradient(circle_at_50%_42%,rgba(20,241,149,0.12),transparent_35%),linear-gradient(180deg,#0a0a0d,#020203)] shadow-2xl shadow-black">
+                  <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] [background-size:48px_48px]" />
                   <div className="absolute inset-x-0 bottom-0 h-px bg-primary/70 shadow-[0_0_28px_rgba(20,241,149,0.8)]" />
                 </div>
                 <video
@@ -410,13 +405,13 @@ export function Landing() {
                 </video>
                 <div
                   ref={featureShadeRef}
-                  className="pointer-events-none absolute inset-x-[2%] top-[10%] bottom-[8%] z-10 rounded-lg shadow-[inset_0_0_100px_rgba(0,0,0,0.8)] will-change-[opacity]"
+                  className="pointer-events-none absolute inset-x-[5%] top-[10%] bottom-[9%] z-10 rounded-lg shadow-[inset_0_0_80px_rgba(0,0,0,0.75)] will-change-[opacity]"
                 />
                 <div
                   ref={featureShadowRef}
-                  className="pointer-events-none absolute bottom-[4%] left-1/2 z-10 h-12 w-[34%] -translate-x-1/2 rounded-[50%] bg-black/80 blur-2xl will-change-transform"
+                  className="pointer-events-none absolute bottom-[5%] left-1/2 z-10 h-9 w-[28%] -translate-x-1/2 rounded-[50%] bg-black/75 blur-2xl will-change-transform"
                 />
-                <div className="pointer-events-none absolute inset-x-[7%] bottom-[7%] z-30 h-px bg-white/20" />
+                <div className="pointer-events-none absolute inset-x-[10%] bottom-[8%] z-30 h-px bg-white/15" />
               </div>
             </div>
 
