@@ -11,10 +11,7 @@ import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 import { assetUrl } from "@/lib/asset-url";
 
 import screenSearch from "@/assets/app store/search.png";
-import screenToken from "@/assets/app store/token.png";
 import screenPortfolio from "@/assets/app store/portfolio.png";
-import screenKol from "@/assets/app store/kol.png";
-import screenLaunch from "@/assets/app store/launch.png";
 import screenDeposit from "@/assets/app store/deposit.png";
 import flowBuySell from "@/assets/flow/buy-sell-4.png";
 import flowKol from "@/assets/flow/kol-4.png";
@@ -28,6 +25,7 @@ const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.ww
 const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
 const HERO_VIDEO = "/assets/video/astronaut-hero.mp4";
 const CHAD_VIDEO = "/assets/video/chadwallet.mp4";
+const FEATURE_VIDEO = "/assets/video/MAKE_VIDEO_NOT_IMAGE.mp4";
 
 export function Landing() {
   useRevealOnScroll();
@@ -339,47 +337,18 @@ export function Landing() {
               </div>
             </article>
 
-            {/* Three smaller cards */}
-            {[
-              {
-                img: screenToken,
-                k: "trade",
-                t: "Charts that don't lie.",
-                d: "Sub-second routing on Jupiter, native swap UX.",
-              },
-              {
-                img: screenKol,
-                k: "copy",
-                t: "Mirror the printers.",
-                d: "Track and copy KOL wallets in one tap.",
-              },
-              {
-                img: screenLaunch,
-                k: "launch",
-                t: "First on every launch.",
-                d: "New pairs surfaced the second they go live.",
-              },
-            ].map(({ img, k, t, d }, i) => (
-              <article
-                key={k}
-                className={`reveal reveal-delay-${i + 1} md:col-span-4 group relative overflow-hidden rounded-3xl border border-border/50 bg-foreground/[0.03] p-7`}
-              >
-                <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-primary">
-                  {k}
-                </span>
-                <h3 className="mt-3 font-display text-xl md:text-2xl font-semibold leading-tight tracking-tight">
-                  {t}
-                </h3>
-                <p className="mt-2 text-sm text-muted-foreground">{d}</p>
-                <div className="mt-5 flex justify-center">
-                  <img
-                    src={assetUrl(img)}
-                    alt={t}
-                    className="w-[170px] rounded-[1.5rem] border border-border/60 shadow-xl shadow-black/40"
-                  />
-                </div>
-              </article>
-            ))}
+            <div className="reveal reveal-delay-1 md:col-span-12 overflow-hidden rounded-3xl border border-border/50 bg-black shadow-2xl shadow-primary/10">
+              <video
+                src={FEATURE_VIDEO}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                aria-label="ChadWallet trading, copy trading, and token launch experience"
+                className="aspect-video w-full object-cover"
+              />
+            </div>
 
             {/* Deposit wide */}
             <article className="reveal md:col-span-12 group relative overflow-hidden rounded-3xl border border-border/50 bg-gradient-to-r from-foreground/[0.05] to-transparent p-8 md:p-10">
