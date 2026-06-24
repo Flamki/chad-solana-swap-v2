@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { birdeyeJsonWithMeta, tradesFromBirdeye } from "@/lib/server/birdeye";
+import { tradesFromFallbackProviders } from "@/lib/server/market-fallback";
 
 export const revalidate = 10;
 
@@ -21,11 +22,21 @@ export async function GET(_request: Request, context: { params: Promise<{ mint: 
     });
   } catch (error) {
     console.error("BirdEye trades unavailable", error);
-    return NextResponse.json({
-      data: [],
-      status: "unavailable",
-      updatedAt: new Date().toISOString(),
-      provider: "birdeye",
-    });
+    try {
+      const { mint } = await context.params;
+      return NextResponse.json({
+        data: await tradesFromFallbackProviders(mint),
+        status: "live",
+        updatedAt: new Date().toISOString(),
+        provider: "geckoterminal",
+      });
+    } catch {
+      return NextResponse.json({
+        data: [],
+        status: "unavailable",
+        updatedAt: new Date().toISOString(),
+        provider: "birdeye",
+      });
+    }
   }
 }

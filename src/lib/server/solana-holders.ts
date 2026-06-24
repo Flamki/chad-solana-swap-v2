@@ -22,19 +22,32 @@ async function solanaRpc<T>(method: string, params: unknown[]): Promise<T> {
   const endpoint = rpcUrl();
   if (!endpoint) throw new Error("Missing Solana RPC endpoint");
 
-  const response = await fetch(endpoint, {
-    method: "POST",
-    cache: "no-store",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: method, method, params }),
-  });
-  const payload = (await response.json()) as RpcResponse<T>;
+  let lastError: Error | undefined;
 
-  if (!response.ok || payload.error || payload.result === undefined) {
-    throw new Error(payload.error?.message ?? `${method} failed (${response.status})`);
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ jsonrpc: "2.0", id: method, method, params }),
+      });
+      const payload = (await response.json()) as RpcResponse<T>;
+
+      if (!response.ok || payload.error || payload.result === undefined) {
+        throw new Error(payload.error?.message ?? `${method} failed (${response.status})`);
+      }
+
+      return payload.result;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(`${method} failed`);
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+      }
+    }
   }
 
-  return payload.result;
+  throw lastError ?? new Error(`${method} failed`);
 }
 
 export async function holdersFromSolanaRpc(mint: string, price = 0) {

@@ -38,6 +38,25 @@ type GeckoOhlcvResponse = {
   };
 };
 
+type GeckoTradeResponse = {
+  data?: Array<{
+    id?: string;
+    attributes?: {
+      tx_hash?: string;
+      tx_from_address?: string;
+      from_token_amount?: string;
+      to_token_amount?: string;
+      price_from_in_usd?: string;
+      price_to_in_usd?: string;
+      block_timestamp?: string;
+      kind?: string;
+      volume_in_usd?: string;
+      from_token_address?: string;
+      to_token_address?: string;
+    };
+  }>;
+};
+
 const intervalConfig = {
   "1m": { timeframe: "minute", aggregate: 1, limit: 120 },
   "5m": { timeframe: "minute", aggregate: 5, limit: 120 },
@@ -148,6 +167,72 @@ export async function ohlcvFromFallbackProviders(mint: string, interval: Fallbac
     provider: "geckoterminal" as const,
     updatedAt: new Date().toISOString(),
   };
+}
+
+export async function tradesFromFallbackProviders(mint: string) {
+  const pairs = await getDexPairs(mint);
+  const pair = bestDexPair(pairs, mint);
+
+  if (!pair?.pairAddress) {
+    throw new Error("No liquid pool found for live trades");
+  }
+
+  const payload = await fetchJson<GeckoTradeResponse>(
+    `${GECKO_TERMINAL_BASE}/networks/solana/pools/${encodeURIComponent(pair.pairAddress)}/trades`,
+    10,
+  );
+  const now = Date.now();
+
+  const trades = (payload.data ?? [])
+    .map((trade, index) => {
+      const attributes = trade.attributes;
+      if (!attributes) return null;
+
+      const tokenWasSold = attributes.from_token_address === mint;
+      const tokenWasBought = attributes.to_token_address === mint;
+      if (!tokenWasSold && !tokenWasBought) return null;
+
+      const tokens = Number(
+        tokenWasSold ? attributes.from_token_amount : attributes.to_token_amount,
+      );
+      const price = Number(
+        tokenWasSold ? attributes.price_from_in_usd : attributes.price_to_in_usd,
+      );
+      const amountUsd = Number(attributes.volume_in_usd);
+      const timestamp = attributes.block_timestamp
+        ? new Date(attributes.block_timestamp).getTime()
+        : now;
+      const ageSeconds = Math.max(1, Math.floor((now - timestamp) / 1000));
+      const wallet = attributes.tx_from_address;
+
+      return {
+        id: trade.id ?? attributes.tx_hash ?? `${mint}-${index}`,
+        txHash: attributes.tx_hash,
+        side: tokenWasSold ? ("sell" as const) : ("buy" as const),
+        amountUsd: Number.isFinite(amountUsd) ? amountUsd : tokens * price,
+        tokens: Number.isFinite(tokens) ? tokens : 0,
+        price: Number.isFinite(price) ? price : 0,
+        wallet: wallet ? `${wallet.slice(0, 4)}...${wallet.slice(-4)}` : "unknown",
+        ago: formatAge(ageSeconds),
+        source: "GeckoTerminal",
+      };
+    })
+    .filter(Boolean);
+
+  if (!trades.length) {
+    throw new Error("No fallback pool trades available");
+  }
+
+  return trades;
+}
+
+function formatAge(seconds: number) {
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
 }
 
 function numberValue(value: string | number | null | undefined) {
