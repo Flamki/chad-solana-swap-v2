@@ -96,7 +96,7 @@ export function Landing() {
                 rel="noreferrer"
                 className="hidden sm:flex scale-90 origin-right"
               />
-              <SignInButton />
+              <SignInButton redirectTo="/trade/So11111111111111111111111111111111111111112" />
             </div>
           </div>
         </header>

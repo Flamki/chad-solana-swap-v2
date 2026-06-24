@@ -1,20 +1,41 @@
 import { useLogin, useLogout, usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
 import { Apple, Chrome, LogOut, Wallet } from "lucide-react";
+import type { Route } from "next";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 import { hasPrivy } from "@/lib/env";
 
-export function SignInButton({ variant = "default" }: { variant?: "default" | "hero" }) {
+export function SignInButton({
+  variant = "default",
+  redirectTo,
+}: {
+  variant?: "default" | "hero";
+  redirectTo?: string;
+}) {
   if (!hasPrivy) {
     return <PrivySetupButton variant={variant} />;
   }
 
-  return <ConnectedPrivyButton variant={variant} />;
+  return <ConnectedPrivyButton variant={variant} redirectTo={redirectTo} />;
 }
 
-function ConnectedPrivyButton({ variant }: { variant: "default" | "hero" }) {
+function ConnectedPrivyButton({
+  variant,
+  redirectTo,
+}: {
+  variant: "default" | "hero";
+  redirectTo?: string;
+}) {
+  const router = useRouter();
   const { ready, authenticated, user } = usePrivy();
   const { login } = useLogin({
+    onComplete: () => {
+      if (redirectTo) {
+        router.replace(redirectTo as Route);
+      }
+    },
     onError: (error) => {
       if (isLoginCancellation(error)) {
         return;
@@ -25,6 +46,12 @@ function ConnectedPrivyButton({ variant }: { variant: "default" | "hero" }) {
   });
   const { logout } = useLogout();
   const { wallets } = useWallets();
+
+  useEffect(() => {
+    if (ready && authenticated && redirectTo) {
+      router.replace(redirectTo as Route);
+    }
+  }, [authenticated, ready, redirectTo, router]);
 
   const wallet = wallets[0];
   const address = wallet?.address ?? user?.wallet?.address;
