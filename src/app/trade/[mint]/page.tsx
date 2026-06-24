@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { TradePage } from "@/components/trade-page";
 import { birdeyeJsonWithMeta, tokenFromOverview } from "@/lib/server/birdeye";
+import { tokenFromFallbackProviders } from "@/lib/server/market-fallback";
 import { createFallbackToken, getToken } from "@/lib/tokens";
 
 type TradeParams = {
@@ -20,7 +21,11 @@ export async function generateMetadata({ params }: TradeParams): Promise<Metadat
     );
     token = tokenFromOverview(mint, overview.data);
   } catch {
-    // Metadata should remain available when the market provider is throttled.
+    try {
+      token = await tokenFromFallbackProviders(mint);
+    } catch {
+      // Metadata should remain available when all market providers are unavailable.
+    }
   }
 
   return {

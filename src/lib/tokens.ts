@@ -14,7 +14,7 @@ export interface Token {
   holders: number;
   liquidity?: number;
   rank?: number;
-  source?: "static" | "birdeye" | "jupiter";
+  source?: "static" | "birdeye" | "jupiter" | "dexscreener" | "geckoterminal";
 }
 
 export const TOKENS: Token[] = [

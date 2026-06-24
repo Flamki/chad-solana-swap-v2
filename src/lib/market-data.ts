@@ -64,7 +64,7 @@ export type MarketDataset<T> = {
   data: T;
   status: MarketDataStatus;
   updatedAt: string;
-  provider: "birdeye";
+  provider: "birdeye" | "geckoterminal" | "solana-rpc";
 };
 
 export type LiveTrade = {
@@ -454,6 +454,8 @@ export function useTokenMarket(mint: string, initialToken?: Token) {
     queryKey: ["token-market", mint],
     queryFn: ({ signal }) => fetchTokenMarket(mint, signal),
     initialData: initialToken,
+    initialDataUpdatedAt: initialToken ? 0 : undefined,
+    refetchOnMount: true,
     staleTime: 30_000,
   });
 }

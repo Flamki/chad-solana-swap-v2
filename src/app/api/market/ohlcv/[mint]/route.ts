@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { birdeyeJsonWithMeta, ohlcvToPoints } from "@/lib/server/birdeye";
+import { ohlcvFromFallbackProviders, type FallbackInterval } from "@/lib/server/market-fallback";
 
 export const revalidate = 15;
 
@@ -35,11 +36,24 @@ export async function GET(request: Request, context: { params: Promise<{ mint: s
       },
     );
 
+    const data = ohlcvToPoints(result.data.items ?? []);
+    if (data.length) {
+      return NextResponse.json({
+        data,
+        status: result.status,
+        updatedAt: result.updatedAt,
+        provider: "birdeye",
+      });
+    }
+  } catch {
+    // Try the most liquid on-chain pool below.
+  }
+
+  try {
+    const fallback = await ohlcvFromFallbackProviders(mint, interval as FallbackInterval);
     return NextResponse.json({
-      data: ohlcvToPoints(result.data.items ?? []),
-      status: result.status,
-      updatedAt: result.updatedAt,
-      provider: "birdeye",
+      ...fallback,
+      status: "live",
     });
   } catch {
     return NextResponse.json({

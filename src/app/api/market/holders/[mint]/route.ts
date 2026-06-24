@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { birdeyeJsonWithMeta, holdersFromBirdeye, tokenFromOverview } from "@/lib/server/birdeye";
+import { tokenFromFallbackProviders } from "@/lib/server/market-fallback";
+import { holdersFromSolanaRpc } from "@/lib/server/solana-holders";
 
 export const revalidate = 30;
 
 export async function GET(_request: Request, context: { params: Promise<{ mint: string }> }) {
+  const { mint } = await context.params;
+
   try {
-    const { mint } = await context.params;
     const holderResult = await birdeyeJsonWithMeta<{
       items?: Parameters<typeof holdersFromBirdeye>[0];
     }>(`/defi/v3/token/holder?address=${encodeURIComponent(mint)}&offset=0&limit=12`, {
@@ -40,11 +43,27 @@ export async function GET(_request: Request, context: { params: Promise<{ mint: 
     });
   } catch (error) {
     console.error("BirdEye holders unavailable", error);
-    return NextResponse.json({
-      data: [],
-      status: "unavailable",
-      updatedAt: new Date().toISOString(),
-      provider: "birdeye",
-    });
+    try {
+      let price = 0;
+      try {
+        price = (await tokenFromFallbackProviders(mint)).price;
+      } catch {
+        // Holder concentration remains valid without a USD valuation.
+      }
+
+      return NextResponse.json({
+        data: await holdersFromSolanaRpc(mint, price),
+        status: "live",
+        updatedAt: new Date().toISOString(),
+        provider: "solana-rpc",
+      });
+    } catch {
+      return NextResponse.json({
+        data: [],
+        status: "unavailable",
+        updatedAt: new Date().toISOString(),
+        provider: "birdeye",
+      });
+    }
   }
 }

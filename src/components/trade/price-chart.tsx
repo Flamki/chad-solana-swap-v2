@@ -25,6 +25,7 @@ type QuoteCurrency = "usd" | "sol";
 export function PriceChart({
   data,
   dataStatus,
+  provider,
   updatedAt,
   token,
   solPrice,
@@ -33,6 +34,7 @@ export function PriceChart({
 }: {
   data: PricePoint[];
   dataStatus: MarketDataStatus;
+  provider: "birdeye" | "geckoterminal" | "solana-rpc";
   updatedAt: string;
   token: Token;
   solPrice: number;
@@ -241,7 +243,7 @@ export function PriceChart({
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[10px]">
           <span className={dataStatus === "live" ? "text-primary" : "text-amber-400"}>
-            BirdEye {dataStatus.toUpperCase()}
+            {provider === "birdeye" ? "BirdEye" : "GeckoTerminal"} {dataStatus.toUpperCase()}
           </span>
           <span className="text-muted-foreground">{new Date(updatedAt).toLocaleTimeString()}</span>
         </div>
@@ -270,7 +272,8 @@ export function PriceChart({
         <div className="pointer-events-none absolute left-14 top-3 z-10 rounded-lg bg-background/50 px-3 py-2 font-mono text-xs backdrop-blur">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="font-semibold text-foreground">
-              {priceLabel} ({metricLabel}) · {interval.replace("H", "h")} · BirdEye
+              {priceLabel} ({metricLabel}) · {interval.replace("H", "h")} ·{" "}
+              {provider === "birdeye" ? "BirdEye" : "GeckoTerminal"}
             </span>
             <span className={up ? "text-primary" : "text-destructive"}>
               {up ? "+" : ""}

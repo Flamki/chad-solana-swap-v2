@@ -149,7 +149,10 @@ export function TradePage({ mint }: { mint: string }) {
             <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
               <Stat label="Market cap" value={`$${formatCompact(token.marketCap)}`} />
               <Stat label="24h volume" value={`$${formatCompact(token.volume24h)}`} />
-              <Stat label="Holders" value={formatCompact(token.holders)} />
+              <Stat
+                label="Holders"
+                value={token.holders > 0 ? formatCompact(token.holders) : "—"}
+              />
               <Stat
                 label="Liquidity"
                 value={`$${formatCompact(token.liquidity ?? token.marketCap * 0.08)}`}
@@ -162,6 +165,7 @@ export function TradePage({ mint }: { mint: string }) {
               <PriceChart
                 data={history.data.data}
                 dataStatus={history.data.status}
+                provider={history.data.provider}
                 updatedAt={history.data.updatedAt}
                 token={token}
                 solPrice={solPrice}
@@ -416,6 +420,7 @@ function BottomTabs({ token }: { token: Token }) {
       <DataFreshness
         status={tab === "trades" ? trades.data?.status : holders.data?.status}
         updatedAt={tab === "trades" ? trades.data?.updatedAt : holders.data?.updatedAt}
+        provider={tab === "trades" ? trades.data?.provider : holders.data?.provider}
       />
     </div>
   );
@@ -424,16 +429,23 @@ function BottomTabs({ token }: { token: Token }) {
 function DataFreshness({
   status,
   updatedAt,
+  provider,
 }: {
   status?: "live" | "cached" | "unavailable";
   updatedAt?: string;
+  provider?: "birdeye" | "geckoterminal" | "solana-rpc";
 }) {
   if (!status) return null;
 
   return (
     <div className="flex items-center justify-between border-t border-border/60 px-3 py-2 font-mono text-[10px] text-muted-foreground">
       <span className={status === "live" ? "text-primary" : ""}>
-        BirdEye {status.toUpperCase()}
+        {provider === "solana-rpc"
+          ? "Solana RPC"
+          : provider === "geckoterminal"
+            ? "GeckoTerminal"
+            : "BirdEye"}{" "}
+        {status.toUpperCase()}
       </span>
       {updatedAt && <span>Updated {new Date(updatedAt).toLocaleTimeString()}</span>}
     </div>
