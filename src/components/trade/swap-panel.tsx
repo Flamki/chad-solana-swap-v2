@@ -1,11 +1,21 @@
 import { useLogin, usePrivy } from "@privy-io/react-auth";
 import { useSignTransaction, useWallets } from "@privy-io/react-auth/solana";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownUp, ExternalLink, Loader2, ShieldCheck, Wallet, Zap } from "lucide-react";
+import {
+  ArrowDownUp,
+  CheckCircle2,
+  Download,
+  ExternalLink,
+  Loader2,
+  ShieldCheck,
+  Wallet,
+  Zap,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { hasPrivy, hasSupabase } from "@/lib/env";
 import {
+  confirmSolanaTransaction,
   createJupiterSwapOrder,
   executeJupiterSwap,
   fetchJupiterQuote,
@@ -17,6 +27,24 @@ import { SOL_MINT, USDC_MINT, formatUsd, rawAmountFromUi } from "@/lib/tokens";
 
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
+const RECEIPT_KEY = "chadwallet-trade-receipts";
+
+type TradeReceipt = {
+  signature: string;
+  status: "submitted" | "confirmed" | "finalized";
+  slot: number | null;
+  wallet: string;
+  side: "buy" | "sell";
+  inputSymbol: string;
+  outputSymbol: string;
+  inputAmount: string;
+  outputAmount: number;
+  route: string;
+  router: string;
+  tokenMint: string;
+  createdAt: string;
+  explorerUrl: string;
+};
 
 function formatTokenAmount(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "0.00";
@@ -78,6 +106,7 @@ function SwapPanelCore({
   const [isExecuting, setIsExecuting] = useState(false);
   const [tradeError, setTradeError] = useState("");
   const [signature, setSignature] = useState("");
+  const [receipt, setReceipt] = useState<TradeReceipt | null>(null);
 
   const pair = useMemo(() => {
     const tradingSol = token.mint === SOL_MINT;
@@ -209,6 +238,7 @@ function SwapPanelCore({
     setIsExecuting(true);
     setTradeError("");
     setSignature("");
+    setReceipt(null);
     try {
       const order = await createJupiterSwapOrder({
         inputMint: pair.inputMint,
@@ -233,6 +263,35 @@ function SwapPanelCore({
       }
 
       setSignature(result.signature);
+      let status: Awaited<ReturnType<typeof confirmSolanaTransaction>>;
+      try {
+        status = await confirmSolanaTransaction(result.signature);
+      } catch {
+        status = undefined;
+      }
+      const nextReceipt: TradeReceipt = {
+        signature: result.signature,
+        status:
+          status?.confirmationStatus === "finalized"
+            ? "finalized"
+            : status?.confirmed
+              ? "confirmed"
+              : "submitted",
+        slot: status?.slot ?? (Number(result.slot) || null),
+        wallet: walletAddress,
+        side,
+        inputSymbol: pair.inputSymbol,
+        outputSymbol: pair.outputSymbol,
+        inputAmount: amount,
+        outputAmount: order.outUiAmount,
+        route: order.route,
+        router: order.router,
+        tokenMint: token.mint,
+        createdAt: new Date().toISOString(),
+        explorerUrl: `https://solscan.io/tx/${result.signature}`,
+      };
+      setReceipt(nextReceipt);
+      saveTradeReceipt(nextReceipt);
       await recordTokenIntent({
         wallet: walletAddress,
         mint: token.mint,
@@ -398,19 +457,49 @@ function SwapPanelCore({
         </div>
       )}
 
-      {signature && (
-        <a
-          href={`https://solscan.io/tx/${signature}`}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-3 flex items-center justify-between rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs font-semibold text-primary"
-        >
-          Swap confirmed
-          <span className="inline-flex items-center gap-1 font-mono">
-            {signature.slice(0, 6)}...{signature.slice(-6)}
-            <ExternalLink className="h-3.5 w-3.5" />
-          </span>
-        </a>
+      {signature && receipt && (
+        <div className="mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
+          <div className="flex items-center justify-between gap-3 font-semibold">
+            <span className="inline-flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4" />
+              Swap {receipt.status}
+            </span>
+            <span className="font-mono">
+              {signature.slice(0, 6)}...{signature.slice(-6)}
+            </span>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-foreground/75">
+            <span>
+              {receipt.inputAmount} {receipt.inputSymbol}
+            </span>
+            <span className="text-right">
+              {formatTokenAmount(receipt.outputAmount)} {receipt.outputSymbol}
+            </span>
+            <span className="truncate">{receipt.route}</span>
+            <span className="text-right font-mono">
+              {receipt.slot ? `slot ${receipt.slot.toLocaleString()}` : "processing"}
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <a
+              href={receipt.explorerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background/40 font-semibold"
+            >
+              Solscan
+              <ExternalLink className="h-3.5 w-3.5" />
+            </a>
+            <button
+              type="button"
+              onClick={() => downloadTradeReceipt(receipt)}
+              className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background/40 font-semibold"
+            >
+              Receipt
+              <Download className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="mt-5 rounded-xl border border-border bg-background/40 p-3">
@@ -460,6 +549,26 @@ function bytesToBase64(bytes: Uint8Array) {
 function normalizeSwapError(error: unknown) {
   if (error instanceof Error && error.message) return error.message;
   return "Swap failed. Check wallet balance, slippage, and route liquidity.";
+}
+
+function saveTradeReceipt(receipt: TradeReceipt) {
+  try {
+    const current = JSON.parse(window.localStorage.getItem(RECEIPT_KEY) || "[]") as TradeReceipt[];
+    const receipts = [receipt, ...current.filter((item) => item.signature !== receipt.signature)];
+    window.localStorage.setItem(RECEIPT_KEY, JSON.stringify(receipts.slice(0, 25)));
+  } catch {
+    // The receipt remains downloadable even when storage is unavailable.
+  }
+}
+
+function downloadTradeReceipt(receipt: TradeReceipt) {
+  const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `chadwallet-swap-${receipt.signature.slice(0, 8)}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 function Row({ label, value, good }: { label: string; value: string; good?: boolean }) {

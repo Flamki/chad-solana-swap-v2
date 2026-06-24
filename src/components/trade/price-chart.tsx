@@ -21,6 +21,18 @@ const intervals: ChartInterval[] = ["1m", "5m", "15m", "1H", "4H", "1D"];
 
 type ChartMetric = "price" | "mcap";
 type QuoteCurrency = "usd" | "sol";
+type ChartEngine = "chadwallet" | "tradingview";
+
+const tradingViewSymbols: Record<string, string> = {
+  SOL: "BINANCE:SOLUSDT",
+  BONK: "BINANCE:1000BONKUSDT",
+  WIF: "BINANCE:WIFUSDT",
+  JUP: "BINANCE:JUPUSDT",
+  PYTH: "BINANCE:PYTHUSDT",
+  JTO: "BINANCE:JTOUSDT",
+  POPCAT: "BINANCE:POPCATUSDT",
+  PNUT: "BINANCE:PNUTUSDT",
+};
 
 export function PriceChart({
   data,
@@ -49,6 +61,8 @@ export function PriceChart({
   const [quote, setQuote] = useState<QuoteCurrency>("usd");
   const [crosshairEnabled, setCrosshairEnabled] = useState(true);
   const [logScale, setLogScale] = useState(false);
+  const [chartEngine, setChartEngine] = useState<ChartEngine>("chadwallet");
+  const tradingViewSymbol = tradingViewSymbols[token.symbol.toUpperCase()];
 
   const tokenSupply = token.price > 0 && token.marketCap > 0 ? token.marketCap / token.price : 0;
   const priceLabel = `${token.symbol}/${quote.toUpperCase()}`;
@@ -248,6 +262,19 @@ export function PriceChart({
           onChange={setQuote}
         />
         <Divider />
+        {tradingViewSymbol && (
+          <>
+            <Segmented
+              value={chartEngine}
+              options={[
+                ["chadwallet", "Live"],
+                ["tradingview", "TradingView"],
+              ]}
+              onChange={setChartEngine}
+            />
+            <Divider />
+          </>
+        )}
         <div className="flex items-center gap-1 text-muted-foreground">
           <ChartCandlestick className="h-3.5 w-3.5 text-primary" />
           Vol <span className="font-mono text-foreground">${formatCompact(latestVolume)}</span>
@@ -260,60 +287,132 @@ export function PriceChart({
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1">
-        <div className="absolute left-0 top-0 z-10 flex h-full w-11 flex-col items-center gap-2 border-r border-border/50 bg-background/35 py-4 backdrop-blur">
-          <ChartTool
-            label="Toggle crosshair"
-            active={crosshairEnabled}
-            onClick={() => setCrosshairEnabled((value) => !value)}
-            icon={<Crosshair className="h-4 w-4" />}
-          />
-          <ChartTool
-            label="Toggle logarithmic scale"
-            active={logScale}
-            onClick={() => setLogScale((value) => !value)}
-            icon={<Settings2 className="h-4 w-4" />}
-          />
-          <ChartTool
-            label="Fit chart"
-            onClick={() => chartRef.current?.timeScale().fitContent()}
-            icon={<Maximize2 className="h-4 w-4" />}
-          />
-        </div>
-        <div className="pointer-events-none absolute left-14 top-3 z-10 rounded-lg bg-background/50 px-3 py-2 font-mono text-xs backdrop-blur">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-semibold text-foreground">
-              {priceLabel} ({metricLabel}) / {interval.replace("H", "h")} /{" "}
-              {provider === "birdeye" ? "BirdEye" : "GeckoTerminal"}
-            </span>
-            <span className={up ? "text-primary" : "text-destructive"}>
-              {up ? "+" : ""}
-              {formatChartValue(change, metric, quote)} ({up ? "+" : ""}
-              {changePct.toFixed(2)}%)
-            </span>
+      {chartEngine === "tradingview" && tradingViewSymbol ? (
+        <TradingViewAdvancedChart symbol={tradingViewSymbol} interval={interval} />
+      ) : (
+        <div className="relative min-h-0 flex-1">
+          <div className="absolute left-0 top-0 z-10 flex h-full w-11 flex-col items-center gap-2 border-r border-border/50 bg-background/35 py-4 backdrop-blur">
+            <ChartTool
+              label="Toggle crosshair"
+              active={crosshairEnabled}
+              onClick={() => setCrosshairEnabled((value) => !value)}
+              icon={<Crosshair className="h-4 w-4" />}
+            />
+            <ChartTool
+              label="Toggle logarithmic scale"
+              active={logScale}
+              onClick={() => setLogScale((value) => !value)}
+              icon={<Settings2 className="h-4 w-4" />}
+            />
+            <ChartTool
+              label="Fit chart"
+              onClick={() => chartRef.current?.timeScale().fitContent()}
+              icon={<Maximize2 className="h-4 w-4" />}
+            />
           </div>
-          {latest && (
-            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground">
-              <span>O {formatChartValue(latest.open, metric, quote)}</span>
-              <span>H {formatChartValue(latest.high, metric, quote)}</span>
-              <span>L {formatChartValue(latest.low, metric, quote)}</span>
-              <span>C {formatChartValue(latest.close, metric, quote)}</span>
-              <span>{exchangeLabel}</span>
+          <div className="pointer-events-none absolute left-14 top-3 z-10 rounded-lg bg-background/50 px-3 py-2 font-mono text-xs backdrop-blur">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-semibold text-foreground">
+                {priceLabel} ({metricLabel}) / {interval.replace("H", "h")} /{" "}
+                {provider === "birdeye" ? "BirdEye" : "GeckoTerminal"}
+              </span>
+              <span className={up ? "text-primary" : "text-destructive"}>
+                {up ? "+" : ""}
+                {formatChartValue(change, metric, quote)} ({up ? "+" : ""}
+                {changePct.toFixed(2)}%)
+              </span>
             </div>
-          )}
+            {latest && (
+              <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground">
+                <span>O {formatChartValue(latest.open, metric, quote)}</span>
+                <span>H {formatChartValue(latest.high, metric, quote)}</span>
+                <span>L {formatChartValue(latest.low, metric, quote)}</span>
+                <span>C {formatChartValue(latest.close, metric, quote)}</span>
+                <span>{exchangeLabel}</span>
+              </div>
+            )}
+          </div>
+          <div ref={containerRef} className="h-full w-full pl-11" />
+          <a
+            href="https://www.tradingview.com/lightweight-charts/"
+            target="_blank"
+            rel="noreferrer"
+            className="absolute bottom-2 left-14 rounded bg-background/70 px-2 py-1 text-[10px] font-mono text-muted-foreground backdrop-blur hover:text-foreground"
+          >
+            TradingView Lightweight Charts
+          </a>
         </div>
-        <div ref={containerRef} className="h-full w-full pl-11" />
-        <a
-          href="https://www.tradingview.com/lightweight-charts/"
-          target="_blank"
-          rel="noreferrer"
-          className="absolute bottom-2 left-14 rounded bg-background/70 px-2 py-1 text-[10px] font-mono text-muted-foreground backdrop-blur hover:text-foreground"
-        >
-          TradingView Lightweight Charts
-        </a>
-      </div>
+      )}
     </div>
   );
+}
+
+function TradingViewAdvancedChart({
+  symbol,
+  interval,
+}: {
+  symbol: string;
+  interval: ChartInterval;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    container.replaceChildren();
+    const widget = document.createElement("div");
+    widget.className = "tradingview-widget-container__widget h-full w-full";
+    const copyright = document.createElement("div");
+    copyright.className =
+      "tradingview-widget-copyright absolute bottom-1 left-2 z-10 text-[10px] text-muted-foreground";
+    copyright.innerHTML =
+      '<a href="https://www.tradingview.com/" rel="noopener nofollow" target="_blank"><span>Advanced chart by TradingView</span></a>';
+    const script = document.createElement("script");
+    script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
+    script.async = true;
+    script.type = "text/javascript";
+    script.text = JSON.stringify({
+      autosize: true,
+      symbol,
+      interval: tradingViewInterval(interval),
+      timezone: "Etc/UTC",
+      theme: "dark",
+      style: "1",
+      locale: "en",
+      backgroundColor: "rgba(0, 0, 0, 1)",
+      gridColor: "rgba(255, 255, 255, 0.06)",
+      allow_symbol_change: true,
+      calendar: false,
+      hide_side_toolbar: false,
+      save_image: true,
+      withdateranges: true,
+      support_host: "https://www.tradingview.com",
+    });
+
+    container.append(widget, copyright, script);
+    return () => container.replaceChildren();
+  }, [interval, symbol]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="tradingview-widget-container relative min-h-0 flex-1 overflow-hidden"
+    />
+  );
+}
+
+function tradingViewInterval(interval: ChartInterval) {
+  return (
+    {
+      "1m": "1",
+      "5m": "5",
+      "15m": "15",
+      "1H": "60",
+      "4H": "240",
+      "1D": "D",
+    } as const
+  )[interval];
 }
 
 function ChartTool({

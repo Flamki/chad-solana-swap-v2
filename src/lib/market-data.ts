@@ -64,6 +64,18 @@ export type JupiterSwapExecution = {
   outputAmountResult?: string;
 };
 
+export type SolanaTransactionStatus = {
+  signature: string;
+  found: boolean;
+  confirmed: boolean;
+  confirmationStatus: "processed" | "confirmed" | "finalized";
+  slot: number | null;
+  confirmations: number | null;
+  error: unknown;
+  explorerUrl: string;
+  checkedAt: string;
+};
+
 export type ChartInterval = "1m" | "5m" | "15m" | "1H" | "4H" | "1D";
 
 export type PricePoint = {
@@ -112,7 +124,7 @@ export type TokenPosition = {
 };
 
 async function fetchLocalJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(path, { signal });
+  const response = await fetch(`${env.edgeApiUrl ?? ""}${path}`, { signal });
 
   if (!response.ok) {
     throw new Error(`${path} failed (${response.status})`);
@@ -368,6 +380,25 @@ export async function executeJupiterSwap({
   }
 
   return result as JupiterSwapExecution;
+}
+
+export async function confirmSolanaTransaction(signature: string) {
+  let latestStatus: SolanaTransactionStatus | undefined;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const response = await fetch(`/api/trade/status/${encodeURIComponent(signature)}`, {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(`Transaction verification failed (${response.status})`);
+    }
+
+    latestStatus = (await response.json()) as SolanaTransactionStatus;
+    if (latestStatus.confirmed || latestStatus.error) return latestStatus;
+    await new Promise((resolve) => window.setTimeout(resolve, 1_500));
+  }
+
+  return latestStatus;
 }
 
 export async function fetchSolanaRpcHealth(signal?: AbortSignal) {

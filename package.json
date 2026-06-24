@@ -7,6 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "build:dev": "next build",
+    "cloudflare:dev": "wrangler dev",
+    "cloudflare:deploy": "wrangler deploy",
     "preview": "next start",
     "lint": "eslint src next.config.ts eslint.config.js",
     "format": "prettier --write ."
@@ -80,6 +82,7 @@
     "globals": "^15.15.0",
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.56.1"
+    "typescript-eslint": "^8.56.1",
+    "wrangler": "^4.104.0"
   }
 }

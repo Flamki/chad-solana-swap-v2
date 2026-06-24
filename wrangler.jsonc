@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "chadwallet-market-edge",
+  "main": "cloudflare/worker.js",
+  "compatibility_date": "2026-06-24",
+  "observability": {
+    "enabled": true,
+  },
+  "vars": {
+    "ORIGIN_URL": "https://chad-solana-swap.vercel.app",
+  },
+}

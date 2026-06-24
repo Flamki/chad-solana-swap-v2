@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X, TrendingUp, TrendingDown, Clock, Trash2 } from "lucide-react";
 
+import { env } from "@/lib/env";
 import { formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 const RECENT_KEY = "chadwallet-recent-searches";
@@ -106,9 +107,10 @@ export function TokenSearch() {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/market/search?q=${encodeURIComponent(query.trim())}`, {
-          signal: controller.signal,
-        });
+        const res = await fetch(
+          `${env.edgeApiUrl ?? ""}/api/market/search?q=${encodeURIComponent(query.trim())}`,
+          { signal: controller.signal },
+        );
         if (res.ok) {
           const data = await res.json();
           setResults(data);

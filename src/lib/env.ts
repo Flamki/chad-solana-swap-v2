@@ -7,6 +7,7 @@ export const env = {
     process.env.NEXT_PUBLIC_ALCHEMY_SOLANA_RPC_URL || process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "",
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  edgeApiUrl: process.env.NEXT_PUBLIC_EDGE_API_URL?.replace(/\/$/, ""),
 };
 
 export const hasPrivy = Boolean(env.privyAppId);
