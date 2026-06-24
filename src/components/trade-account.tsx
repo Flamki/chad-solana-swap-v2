@@ -27,6 +27,7 @@ import {
   ArrowRight,
   ArrowUpFromLine,
   Check,
+  ChevronDown,
   Copy,
   EyeOff,
   KeyRound,
@@ -107,6 +108,8 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
   const displayMoney = (value: number) =>
     blurBalances ? "••••" : loadingBalances ? "..." : formatUsd(value);
   const email = getLoginEmail(user);
+  const displayName = getDisplayName(user, email);
+  const profileInitial = displayName.charAt(0).toUpperCase();
   const shortAddress = `${address.slice(0, 4)}...${address.slice(-4)}`;
 
   const copyText = async (value: string, key: string) => {
@@ -141,14 +144,16 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className="flex h-10 items-center gap-2 rounded-lg border border-border bg-card/60 px-3 transition hover:bg-card"
+            className="flex h-11 min-w-0 max-w-[190px] items-center gap-2.5 rounded-full border border-border bg-card/70 py-1.5 pl-1.5 pr-3 shadow-lg shadow-black/15 backdrop-blur transition hover:border-primary/30 hover:bg-card"
             aria-label="Open account menu"
           >
-            <span className="grid h-6 w-6 place-items-center rounded-full bg-primary/15 text-primary">
-              <Wallet className="h-3.5 w-3.5" />
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-[0_0_18px_rgba(20,241,149,0.22)]">
+              {profileInitial}
             </span>
-            <span className="hidden font-mono text-xs font-semibold sm:inline">{shortAddress}</span>
-            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate text-left text-xs font-semibold sm:text-sm">
+              {displayName}
+            </span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -157,7 +162,12 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
           className="w-64 rounded-lg border-border bg-popover/98 p-2 shadow-2xl backdrop-blur"
         >
           <DropdownMenuLabel className="px-2 py-2">
-            <div className="truncate text-xs font-semibold">{email ?? "ChadWallet account"}</div>
+            <div className="truncate text-xs font-semibold">{displayName}</div>
+            {email && (
+              <div className="mt-0.5 truncate text-[10px] font-normal text-muted-foreground">
+                {email}
+              </div>
+            )}
             <div className="mt-0.5 font-mono text-[10px] font-normal text-muted-foreground">
               {shortAddress}
             </div>
@@ -672,6 +682,22 @@ function getLoginEmail(user: ReturnType<typeof usePrivy>["user"]) {
     : account && "address" in account
       ? account.address
       : null;
+}
+
+function getDisplayName(user: ReturnType<typeof usePrivy>["user"], email: string | null) {
+  const googleAccount = user?.linkedAccounts.find((linked) => linked.type === "google_oauth");
+  if (googleAccount?.name?.trim()) return googleAccount.name.trim();
+
+  if (email) {
+    const localPart = email.split("@")[0] ?? "";
+    const readable = localPart
+      .replace(/[._-]+/g, " ")
+      .replace(/\b\w/g, (character) => character.toUpperCase())
+      .trim();
+    if (readable) return readable;
+  }
+
+  return "Chad Trader";
 }
 
 async function copyToClipboard(value: string) {
