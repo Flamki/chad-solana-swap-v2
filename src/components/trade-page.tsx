@@ -27,15 +27,12 @@ import {
   type Token,
 } from "@/lib/tokens";
 
-type TokenListMode = "watchlist" | "trending" | "most-held";
+type TokenListMode = "trending" | "most-held";
 
 const tokenListModes: Array<{ key: TokenListMode; label: string }> = [
-  { key: "watchlist", label: "Watchlist" },
   { key: "trending", label: "Trending" },
   { key: "most-held", label: "Most held" },
 ];
-
-const watchlistMints = new Set(TOKENS.slice(0, 8).map((item) => item.mint));
 
 export function TradePage({ mint }: { mint: string }) {
   const initialToken = getToken(mint) ?? createFallbackToken(mint);
@@ -55,11 +52,6 @@ export function TradePage({ mint }: { mint: string }) {
   const sidebarTokens = useMemo(() => {
     const mergedTokens = uniqueTokens([...trending, ...TOKENS, token]);
 
-    if (tokenListMode === "watchlist") {
-      const watchlist = mergedTokens.filter((item) => watchlistMints.has(item.mint));
-      return watchlist.length ? watchlist : TOKENS.slice(0, 8);
-    }
-
     if (tokenListMode === "most-held") {
       return [...mergedTokens].sort((a, b) => {
         const holderDiff = (b.holders || 0) - (a.holders || 0);
@@ -71,11 +63,7 @@ export function TradePage({ mint }: { mint: string }) {
     return trending;
   }, [token, tokenListMode, trending]);
   const tokenListSubtitle =
-    tokenListMode === "watchlist"
-      ? "ChadWallet watchlist"
-      : tokenListMode === "most-held"
-        ? "Largest holder bases"
-        : "BirdEye live trending";
+    tokenListMode === "most-held" ? "Largest holder bases" : "BirdEye live trending";
 
   async function handleCopyMint() {
     const copied = await copyText(token.mint);

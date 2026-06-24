@@ -3,7 +3,6 @@
 import { useLogout, usePrivy } from "@privy-io/react-auth";
 import {
   useExportWallet,
-  useFundWallet,
   useSignAndSendTransaction,
   useWallets,
 } from "@privy-io/react-auth/solana";
@@ -110,7 +109,9 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
   const shortAddress = `${address.slice(0, 4)}...${address.slice(-4)}`;
 
   const copyText = async (value: string, key: string) => {
-    await navigator.clipboard.writeText(value);
+    const didCopy = await copyToClipboard(value);
+    if (!didCopy) return;
+
     setCopied(key);
     window.setTimeout(() => setCopied(null), 1400);
   };
@@ -243,26 +244,14 @@ function DepositDialog({
   onOpenChange: (open: boolean) => void;
   address: string;
 }) {
-  const { fundWallet } = useFundWallet();
-  const [funding, setFunding] = useState<"SOL" | "USDC" | null>(null);
-  const [error, setError] = useState("");
+  const [copied, setCopied] = useState<"SOL" | "USDC" | "address" | null>(null);
 
-  const fund = async (asset: "SOL" | "USDC") => {
-    setError("");
-    setFunding(asset);
-    try {
-      await fundWallet({
-        address,
-        options: {
-          chain: "solana:mainnet",
-          asset: asset === "SOL" ? "native-currency" : "USDC",
-        },
-      });
-    } catch (fundError) {
-      setError(normalizeError(fundError, "Funding is temporarily unavailable."));
-    } finally {
-      setFunding(null);
-    }
+  const copyDepositAddress = async (asset: "SOL" | "USDC" | "address") => {
+    const didCopy = await copyToClipboard(address);
+    if (!didCopy) return;
+
+    setCopied(asset);
+    window.setTimeout(() => setCopied(null), 1400);
   };
 
   return (
@@ -271,27 +260,35 @@ function DepositDialog({
         <DialogHeader>
           <DialogTitle>Deposit funds</DialogTitle>
           <DialogDescription>
-            Fund your embedded Solana wallet through Privy or transfer directly to the address.
+            Transfer SOL or Solana USDC from an exchange or another wallet to this address.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
-          <ActionButton
+          <DepositCopyButton
             icon={<span className="font-mono text-xs font-bold">SOL</span>}
             title="Deposit SOL"
-            detail="Card, exchange, or another wallet"
-            loading={funding === "SOL"}
-            onClick={() => fund("SOL")}
+            detail={copied === "SOL" ? "Address copied" : "Copy address for native SOL"}
+            copied={copied === "SOL"}
+            onClick={() => copyDepositAddress("SOL")}
           />
-          <ActionButton
+          <DepositCopyButton
             icon={<span className="font-mono text-[10px] font-bold">USDC</span>}
             title="Deposit USDC"
-            detail="Add stablecoin cash balance"
-            loading={funding === "USDC"}
-            onClick={() => fund("USDC")}
+            detail={copied === "USDC" ? "Address copied" : "Copy address for Solana USDC"}
+            copied={copied === "USDC"}
+            onClick={() => copyDepositAddress("USDC")}
           />
         </div>
-        <AddressCard label="Solana deposit address" address={address} />
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        <AddressCard
+          label="Solana deposit address"
+          address={address}
+          copied={copied === "address"}
+          onCopy={() => copyDepositAddress("address")}
+        />
+        <p className="rounded-lg border border-border bg-card/40 p-3 text-xs text-muted-foreground">
+          Privy card/onramp funding is not enabled for this app yet, so direct Solana transfers are
+          the reliable deposit path for this demo.
+        </p>
       </DialogContent>
     </Dialog>
   );
@@ -550,40 +547,51 @@ function AccountRow({
   );
 }
 
-function ActionButton({
+function DepositCopyButton({
   icon,
   title,
   detail,
-  loading,
+  copied,
   onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   detail: string;
-  loading: boolean;
+  copied: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
-      disabled={loading}
-      className="flex items-center gap-3 rounded-lg border border-border bg-card/50 p-3 text-left transition hover:border-primary/40 hover:bg-card disabled:opacity-60"
+      className="flex items-center gap-3 rounded-lg border border-border bg-card/50 p-3 text-left transition hover:border-primary/40 hover:bg-card"
     >
       <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-primary">
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
+        {copied ? <Check className="h-4 w-4" /> : icon}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">{title}</span>
         <span className="block text-xs text-muted-foreground">{detail}</span>
       </span>
-      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+      {copied ? (
+        <span className="text-xs font-semibold text-primary">Copied</span>
+      ) : (
+        <Copy className="h-4 w-4 text-muted-foreground" />
+      )}
     </button>
   );
 }
 
-function AddressCard({ label, address }: { label: string; address: string }) {
-  const [copied, setCopied] = useState(false);
-
+function AddressCard({
+  label,
+  address,
+  copied,
+  onCopy,
+}: {
+  label: string;
+  address: string;
+  copied: boolean;
+  onCopy: () => void;
+}) {
   return (
     <div className="rounded-lg border border-border bg-background p-3">
       <div className="text-xs font-semibold">{label}</div>
@@ -592,11 +600,7 @@ function AddressCard({ label, address }: { label: string; address: string }) {
           {address}
         </span>
         <button
-          onClick={async () => {
-            await navigator.clipboard.writeText(address);
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 1400);
-          }}
+          onClick={onCopy}
           title="Copy deposit address"
           className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-card hover:text-foreground"
         >
@@ -621,6 +625,32 @@ function getLoginEmail(user: ReturnType<typeof usePrivy>["user"]) {
     : account && "address" in account
       ? account.address
       : null;
+}
+
+async function copyToClipboard(value: string) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    // Some browser contexts expose clipboard but still block writes.
+  }
+
+  try {
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    document.body.removeChild(input);
+    return copied;
+  } catch {
+    return false;
+  }
 }
 
 function normalizeError(error: unknown, fallback: string) {
