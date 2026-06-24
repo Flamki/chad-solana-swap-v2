@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Activity, Copy, ExternalLink, TrendingDown, TrendingUp, Users } from "lucide-react";
 
 import { ChadLogo } from "@/components/chad-logo";
@@ -27,6 +27,16 @@ import {
   type Token,
 } from "@/lib/tokens";
 
+type TokenListMode = "watchlist" | "trending" | "most-held";
+
+const tokenListModes: Array<{ key: TokenListMode; label: string }> = [
+  { key: "watchlist", label: "Watchlist" },
+  { key: "trending", label: "Trending" },
+  { key: "most-held", label: "Most held" },
+];
+
+const watchlistMints = new Set(TOKENS.slice(0, 8).map((item) => item.mint));
+
 export function TradePage({ mint }: { mint: string }) {
   const initialToken = getToken(mint) ?? createFallbackToken(mint);
   const market = useTokenMarket(initialToken.mint, initialToken);
@@ -36,10 +46,44 @@ export function TradePage({ mint }: { mint: string }) {
   );
   const { data: trending = TOKENS } = useTrendingTokens();
   const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
+  const [tokenListMode, setTokenListMode] = useState<TokenListMode>("trending");
+  const [copiedMint, setCopiedMint] = useState(false);
   const token = market.data ?? initialToken;
   const solPrice = solMarket.data?.price || (token.mint === SOL_MINT ? token.price : 0);
   const history = useTokenOhlcv(token.mint, chartInterval);
   const up = token.change24h >= 0;
+  const sidebarTokens = useMemo(() => {
+    const mergedTokens = uniqueTokens([...trending, ...TOKENS, token]);
+
+    if (tokenListMode === "watchlist") {
+      const watchlist = mergedTokens.filter((item) => watchlistMints.has(item.mint));
+      return watchlist.length ? watchlist : TOKENS.slice(0, 8);
+    }
+
+    if (tokenListMode === "most-held") {
+      return [...mergedTokens].sort((a, b) => {
+        const holderDiff = (b.holders || 0) - (a.holders || 0);
+        if (holderDiff !== 0) return holderDiff;
+        return b.marketCap - a.marketCap;
+      });
+    }
+
+    return trending;
+  }, [token, tokenListMode, trending]);
+  const tokenListSubtitle =
+    tokenListMode === "watchlist"
+      ? "ChadWallet watchlist"
+      : tokenListMode === "most-held"
+        ? "Largest holder bases"
+        : "BirdEye live trending";
+
+  async function handleCopyMint() {
+    const copied = await copyText(token.mint);
+    if (!copied) return;
+
+    setCopiedMint(true);
+    window.setTimeout(() => setCopiedMint(false), 1400);
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-cosmic">
@@ -65,27 +109,30 @@ export function TradePage({ mint }: { mint: string }) {
             <div className="flex items-center justify-between px-4 py-3">
               <div>
                 <h2 className="text-sm font-semibold">Tokens</h2>
-                <p className="text-[11px] text-muted-foreground">BirdEye live trending</p>
+                <p className="text-[11px] text-muted-foreground">{tokenListSubtitle}</p>
               </div>
               <TrendingUp className="h-4 w-4 text-primary" />
             </div>
             <div className="flex gap-1 overflow-x-auto px-3 pb-3 terminal-scroll-x">
-              {["Watchlist", "Trending", "Most held"].map((item) => (
+              {tokenListModes.map((item) => (
                 <button
-                  key={item}
+                  key={item.key}
+                  type="button"
+                  aria-pressed={tokenListMode === item.key}
+                  onClick={() => setTokenListMode(item.key)}
                   className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
-                    item === "Trending"
+                    tokenListMode === item.key
                       ? "border-primary/30 bg-primary/15 text-foreground"
                       : "border-border bg-background/40 text-muted-foreground"
                   }`}
                 >
-                  {item}
+                  {item.label}
                 </button>
               ))}
             </div>
           </div>
           <div className="terminal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            {trending.map((item) => (
+            {sidebarTokens.map((item) => (
               <TrendingToken key={item.mint} token={item} active={item.mint === token.mint} />
             ))}
           </div>
@@ -108,11 +155,14 @@ export function TradePage({ mint }: { mint: string }) {
                   )}
                 </div>
                 <button
-                  onClick={() => navigator.clipboard?.writeText(token.mint)}
-                  className="mt-1 inline-flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-foreground"
+                  type="button"
+                  onClick={handleCopyMint}
+                  title="Copy token address"
+                  className="mt-1 inline-flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-1 text-xs font-mono text-muted-foreground transition hover:border-border hover:bg-background/50 hover:text-foreground"
                 >
                   {token.mint.slice(0, 6)}...{token.mint.slice(-4)}
                   <Copy className="h-3 w-3" />
+                  {copiedMint && <span className="text-primary">Copied</span>}
                 </button>
               </div>
               <div className="ml-auto text-right">
@@ -253,6 +303,41 @@ function sanitizeImageUrl(url: string) {
     return parsed.href;
   } catch {
     return "";
+  }
+}
+
+function uniqueTokens(tokens: Token[]) {
+  const byMint = new Map<string, Token>();
+  for (const token of tokens) {
+    if (!byMint.has(token.mint)) byMint.set(token.mint, token);
+  }
+
+  return [...byMint.values()];
+}
+
+async function copyText(value: string) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(value);
+      return true;
+    }
+  } catch {
+    // Fall through to the textarea fallback for browsers that block clipboard writes.
+  }
+
+  try {
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.left = "-9999px";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    document.body.removeChild(input);
+    return copied;
+  } catch {
+    return false;
   }
 }
 
