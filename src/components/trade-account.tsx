@@ -187,7 +187,7 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
             <EyeOff className="absolute left-2 h-4 w-4" />
             Blur balances
           </DropdownMenuCheckboxItem>
-          <DropdownMenuItem
+          {/* <DropdownMenuItem
             onSelect={() =>
               copyText(
                 `${window.location.origin}/?ref=${encodeURIComponent(user?.id ?? address)}`,
@@ -198,7 +198,7 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
           >
             {copied === "referral" ? <Check /> : <Gift />}
             {copied === "referral" ? "Referral copied" : "Referrals"}
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onSelect={() => logout()}
