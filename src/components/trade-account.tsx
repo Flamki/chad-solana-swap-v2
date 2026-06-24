@@ -3,6 +3,7 @@
 import { useLogout, usePrivy } from "@privy-io/react-auth";
 import {
   useExportWallet,
+  useFundWallet,
   useSignAndSendTransaction,
   useWallets,
 } from "@privy-io/react-auth/solana";
@@ -28,7 +29,6 @@ import {
   Check,
   Copy,
   EyeOff,
-  Gift,
   KeyRound,
   Loader2,
   LogOut,
@@ -71,6 +71,7 @@ export function TradeAccount({ solPrice }: { solPrice: number }) {
 }
 
 function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
+  const queryClient = useQueryClient();
   const { ready, authenticated, user } = usePrivy();
   const { wallets } = useWallets();
   const { logout } = useLogout();
@@ -215,6 +216,9 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
         open={dialog === "deposit"}
         onOpenChange={(open) => !open && setDialog(null)}
         address={address}
+        onFundComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["token-position", address] });
+        }}
       />
       <WithdrawDialog
         open={dialog === "withdraw"}
@@ -239,12 +243,19 @@ function DepositDialog({
   open,
   onOpenChange,
   address,
+  onFundComplete,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   address: string;
+  onFundComplete: () => void;
 }) {
   const [copied, setCopied] = useState<"SOL" | "USDC" | "address" | null>(null);
+  const [fundingAsset, setFundingAsset] = useState<"SOL" | "USDC" | null>(null);
+  const [fundingError, setFundingError] = useState("");
+  const { fundWallet } = useFundWallet({
+    onUserExited: () => setFundingAsset(null),
+  });
 
   const copyDepositAddress = async (asset: "SOL" | "USDC" | "address") => {
     const didCopy = await copyToClipboard(address);
@@ -254,29 +265,57 @@ function DepositDialog({
     window.setTimeout(() => setCopied(null), 1400);
   };
 
+  const openFunding = async (asset: "SOL" | "USDC") => {
+    setFundingError("");
+    setFundingAsset(asset);
+
+    try {
+      await fundWallet({
+        address,
+        options: {
+          chain: "solana:mainnet",
+          asset: asset === "SOL" ? "native-currency" : "USDC",
+          amount: asset === "SOL" ? "0.25" : "25",
+          uiConfig: {
+            receiveFundsTitle: `Deposit ${asset}`,
+            receiveFundsSubtitle:
+              asset === "SOL"
+                ? "Add SOL for trading and network fees."
+                : "Add Solana USDC to use as trading cash.",
+          },
+        },
+      });
+      onFundComplete();
+    } catch (error) {
+      setFundingError(normalizeError(error, `Unable to open ${asset} funding.`));
+    } finally {
+      setFundingAsset(null);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md rounded-xl border-border bg-popover p-5">
         <DialogHeader>
           <DialogTitle>Deposit funds</DialogTitle>
           <DialogDescription>
-            Transfer SOL or Solana USDC from an exchange or another wallet to this address.
+            Add funds through Privy or transfer SOL / Solana USDC directly to this wallet.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-2">
-          <DepositCopyButton
+          <DepositActionButton
             icon={<span className="font-mono text-xs font-bold">SOL</span>}
             title="Deposit SOL"
-            detail={copied === "SOL" ? "Address copied" : "Copy address for native SOL"}
-            copied={copied === "SOL"}
-            onClick={() => copyDepositAddress("SOL")}
+            detail="Card, exchange, or another Solana wallet"
+            loading={fundingAsset === "SOL"}
+            onClick={() => openFunding("SOL")}
           />
-          <DepositCopyButton
+          <DepositActionButton
             icon={<span className="font-mono text-[10px] font-bold">USDC</span>}
             title="Deposit USDC"
-            detail={copied === "USDC" ? "Address copied" : "Copy address for Solana USDC"}
-            copied={copied === "USDC"}
-            onClick={() => copyDepositAddress("USDC")}
+            detail="Add stablecoin trading balance"
+            loading={fundingAsset === "USDC"}
+            onClick={() => openFunding("USDC")}
           />
         </div>
         <AddressCard
@@ -285,10 +324,21 @@ function DepositDialog({
           copied={copied === "address"}
           onCopy={() => copyDepositAddress("address")}
         />
-        <p className="rounded-lg border border-border bg-card/40 p-3 text-xs text-muted-foreground">
-          Privy card/onramp funding is not enabled for this app yet, so direct Solana transfers are
-          the reliable deposit path for this demo.
-        </p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => copyDepositAddress("SOL")}
+            className="h-9 rounded-lg border border-border bg-card/40 text-xs font-semibold transition hover:bg-card"
+          >
+            {copied === "SOL" ? "SOL address copied" : "Copy SOL address"}
+          </button>
+          <button
+            onClick={() => copyDepositAddress("USDC")}
+            className="h-9 rounded-lg border border-border bg-card/40 text-xs font-semibold transition hover:bg-card"
+          >
+            {copied === "USDC" ? "USDC address copied" : "Copy USDC address"}
+          </button>
+        </div>
+        {fundingError && <p className="text-xs text-destructive">{fundingError}</p>}
       </DialogContent>
     </Dialog>
   );
@@ -547,36 +597,33 @@ function AccountRow({
   );
 }
 
-function DepositCopyButton({
+function DepositActionButton({
   icon,
   title,
   detail,
-  copied,
+  loading,
   onClick,
 }: {
   icon: React.ReactNode;
   title: string;
   detail: string;
-  copied: boolean;
+  loading: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={loading}
       className="flex items-center gap-3 rounded-lg border border-border bg-card/50 p-3 text-left transition hover:border-primary/40 hover:bg-card"
     >
       <span className="grid h-9 w-9 place-items-center rounded-full bg-primary/15 text-primary">
-        {copied ? <Check className="h-4 w-4" /> : icon}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold">{title}</span>
         <span className="block text-xs text-muted-foreground">{detail}</span>
       </span>
-      {copied ? (
-        <span className="text-xs font-semibold text-primary">Copied</span>
-      ) : (
-        <Copy className="h-4 w-4 text-muted-foreground" />
-      )}
+      <ArrowRight className="h-4 w-4 text-muted-foreground" />
     </button>
   );
 }
