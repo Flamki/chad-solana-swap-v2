@@ -32,37 +32,104 @@ const CHAD_VIDEO = "/assets/video/chadwallet.mp4";
 export function Landing() {
   useRevealOnScroll();
   const heroBgRef = useRef<HTMLDivElement | null>(null);
+  const heroVideoRef = useRef<HTMLVideoElement | null>(null);
+  const heroAtmosphereRef = useRef<HTMLDivElement | null>(null);
+  const heroCopyRef = useRef<HTMLElement | null>(null);
+  const heroStatsRef = useRef<HTMLElement | null>(null);
   const heroPoster = assetUrl(heroAstronaut);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let currentY = window.scrollY;
+    let targetY = window.scrollY;
     let raf = 0;
 
-    const updateHeroParallax = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        if (!heroBgRef.current) return;
-
-        if (prefersReducedMotion.matches) {
-          heroBgRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
-          return;
-        }
-
-        const y = window.scrollY;
-        const scale = 1 + Math.min(y, 600) * 0.0002;
-        heroBgRef.current.style.transform = `translate3d(0, ${y * 0.25}px, 0) scale(${scale})`;
-      });
+    const resetMotion = () => {
+      if (heroBgRef.current) {
+        heroBgRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
+      }
+      if (heroVideoRef.current) {
+        heroVideoRef.current.style.transform = "translate3d(0, 0, 0) scale(1.025)";
+      }
+      if (heroAtmosphereRef.current) {
+        heroAtmosphereRef.current.style.transform = "translate3d(0, 0, 0)";
+        heroAtmosphereRef.current.style.opacity = "1";
+      }
+      if (heroCopyRef.current) {
+        heroCopyRef.current.style.transform = "translate3d(0, 0, 0) scale(1)";
+        heroCopyRef.current.style.opacity = "1";
+      }
+      if (heroStatsRef.current) {
+        heroStatsRef.current.style.transform = "translate3d(0, 0, 0)";
+      }
     };
 
-    updateHeroParallax();
-    window.addEventListener("scroll", updateHeroParallax, { passive: true });
-    prefersReducedMotion.addEventListener("change", updateHeroParallax);
+    const renderMotion = () => {
+      raf = 0;
+
+      if (prefersReducedMotion.matches) {
+        resetMotion();
+        return;
+      }
+
+      currentY += (targetY - currentY) * 0.11;
+
+      const intensity = window.innerWidth < 768 ? 0.68 : 1;
+      const progress = Math.min(currentY / 720, 1);
+      const depthScale = 1 + progress * 0.1 * intensity;
+
+      if (heroBgRef.current) {
+        heroBgRef.current.style.transform = `translate3d(0, ${currentY * 0.27 * intensity}px, 0) scale(${depthScale})`;
+      }
+      if (heroVideoRef.current) {
+        const videoScale = 1.025 + progress * 0.012 * intensity;
+        heroVideoRef.current.style.transform = `translate3d(0, ${currentY * -0.035 * intensity}px, 0) scale(${videoScale})`;
+      }
+      if (heroAtmosphereRef.current) {
+        heroAtmosphereRef.current.style.transform = `translate3d(0, ${currentY * 0.08 * intensity}px, 0)`;
+        heroAtmosphereRef.current.style.opacity = `${1 - progress * 0.22}`;
+      }
+      if (heroCopyRef.current) {
+        heroCopyRef.current.style.transform = `translate3d(0, ${currentY * -0.11 * intensity}px, 0) scale(${1 - progress * 0.025})`;
+        heroCopyRef.current.style.opacity = `${1 - progress * 0.62}`;
+      }
+      if (heroStatsRef.current) {
+        heroStatsRef.current.style.transform = `translate3d(0, ${currentY * -0.035 * intensity}px, 0)`;
+      }
+
+      if (Math.abs(targetY - currentY) > 0.1) {
+        raf = requestAnimationFrame(renderMotion);
+      }
+    };
+
+    const requestMotion = () => {
+      targetY = window.scrollY;
+      if (!raf) raf = requestAnimationFrame(renderMotion);
+    };
+
+    const handleMotionPreference = () => {
+      currentY = window.scrollY;
+      targetY = window.scrollY;
+      if (prefersReducedMotion.matches) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+        resetMotion();
+      } else {
+        requestMotion();
+      }
+    };
+
+    requestMotion();
+    window.addEventListener("scroll", requestMotion, { passive: true });
+    window.addEventListener("resize", requestMotion, { passive: true });
+    prefersReducedMotion.addEventListener("change", handleMotionPreference);
 
     return () => {
-      window.removeEventListener("scroll", updateHeroParallax);
-      prefersReducedMotion.removeEventListener("change", updateHeroParallax);
+      window.removeEventListener("scroll", requestMotion);
+      window.removeEventListener("resize", requestMotion);
+      prefersReducedMotion.removeEventListener("change", handleMotionPreference);
       cancelAnimationFrame(raf);
     };
   }, []);
@@ -77,6 +144,7 @@ export function Landing() {
           className="pointer-events-none absolute inset-0 z-0 will-change-transform"
         >
           <video
+            ref={heroVideoRef}
             src={HERO_VIDEO}
             poster={heroPoster}
             preload="metadata"
@@ -85,10 +153,12 @@ export function Landing() {
             playsInline
             style={{ backgroundImage: `url(${heroPoster})` }}
             aria-hidden
-            className="absolute inset-0 h-full w-full bg-cover bg-center object-cover object-center"
+            className="absolute inset-0 h-full w-full bg-cover bg-center object-cover object-center will-change-transform"
           />
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background/40 to-transparent" />
-          <div className="absolute inset-x-0 bottom-0 h-[32rem] bg-gradient-to-b from-transparent to-background" />
+          <div ref={heroAtmosphereRef} className="absolute inset-0 will-change-transform">
+            <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background/40 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 h-[32rem] bg-gradient-to-b from-transparent to-background" />
+          </div>
         </div>
 
         <TokenMarquee />
@@ -117,7 +187,10 @@ export function Landing() {
         </header>
 
         {/* Hero copy */}
-        <section className="relative z-10 mx-auto max-w-3xl px-5 pt-24 pb-40 text-center">
+        <section
+          ref={heroCopyRef}
+          className="relative z-10 mx-auto max-w-3xl px-5 pt-24 pb-40 text-center will-change-transform"
+        >
           <h1 className="reveal font-display text-7xl md:text-9xl font-semibold tracking-tight text-foreground/90">
             ChadWallet
           </h1>
@@ -144,7 +217,7 @@ export function Landing() {
         </section>
 
         {/* ============ STATS ============ */}
-        <section className="relative px-5 py-24">
+        <section ref={heroStatsRef} className="relative px-5 py-24 will-change-transform">
           <div className="mx-auto max-w-5xl grid gap-12 sm:grid-cols-3 text-center">
             {[
               { k: "$2.4B+", v: "volume routed" },
