@@ -6,7 +6,6 @@ import { AppStoreBadge, PlayStoreBadge } from "@/components/store-badges";
 import { ChadLogo } from "@/components/chad-logo";
 import { SignInButton } from "@/components/sign-in-button";
 import { TokenMarquee } from "@/components/token-marquee";
-import { useEffect, useRef } from "react";
 import { useRevealOnScroll } from "@/hooks/use-reveal-on-scroll";
 import { assetUrl } from "@/lib/asset-url";
 
@@ -31,46 +30,24 @@ const CHAD_VIDEO = "/assets/video/chadwallet.mp4";
 
 export function Landing() {
   useRevealOnScroll();
-  const heroBgRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    let raf = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const y = window.scrollY;
-        if (heroBgRef.current) {
-          heroBgRef.current.style.transform = `translate3d(0, ${y * 0.25}px, 0) scale(${1 + Math.min(y, 600) * 0.0002})`;
-        }
-      });
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      cancelAnimationFrame(raf);
-    };
-  }, []);
+  const heroPoster = assetUrl(heroAstronaut);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ============ HERO + STATS (shared scene) ============ */}
       <div className="relative overflow-hidden">
         {/* Space background — extends through stats */}
-        <div
-          ref={heroBgRef}
-          className="pointer-events-none absolute inset-0 z-0 will-change-transform"
-        >
+        <div className="pointer-events-none absolute inset-0 z-0">
           <video
             src={HERO_VIDEO}
-            poster={assetUrl(heroAstronaut)}
-            preload="none"
+            poster={heroPoster}
+            preload="metadata"
             autoPlay
             muted
             playsInline
+            style={{ backgroundImage: `url(${heroPoster})` }}
             aria-hidden
-            className="absolute inset-0 h-full w-full object-cover object-center"
+            className="absolute inset-0 h-full w-full bg-cover bg-center object-cover object-center"
           />
           <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background/40 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 h-[32rem] bg-gradient-to-b from-transparent to-background" />
@@ -79,22 +56,22 @@ export function Landing() {
         <TokenMarquee />
 
         <header className="relative z-40">
-          <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-5">
+          <div className="flex h-20 w-full items-center justify-between px-4 sm:px-6">
             <ChadLogo variant="dark" size="lg" />
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center justify-end gap-2">
               <AppStoreBadge
                 variant="light"
                 href={IOS}
                 target="_blank"
                 rel="noreferrer"
-                className="hidden sm:flex scale-90 origin-right"
+                className="hidden sm:flex"
               />
               <PlayStoreBadge
                 variant="light"
                 href={ANDROID}
                 target="_blank"
                 rel="noreferrer"
-                className="hidden sm:flex scale-90 origin-right"
+                className="hidden sm:flex"
               />
               <SignInButton redirectTo="/trade/So11111111111111111111111111111111111111112" />
             </div>
