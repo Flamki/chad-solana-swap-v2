@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { birdeyeJson, tokenFromTrending } from "@/lib/server/birdeye";
+import { getJupiterTrendingTokens } from "@/lib/server/jupiter-tokens";
 import { TOKENS } from "@/lib/tokens";
 
 export const revalidate = 15;
@@ -14,6 +15,10 @@ export async function GET() {
 
     return NextResponse.json((data.tokens ?? []).map(tokenFromTrending));
   } catch {
-    return NextResponse.json(TOKENS);
+    try {
+      return NextResponse.json(await getJupiterTrendingTokens(TRENDING_LIMIT));
+    } catch {
+      return NextResponse.json(TOKENS);
+    }
   }
 }

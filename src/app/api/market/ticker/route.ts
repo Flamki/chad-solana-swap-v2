@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { birdeyeJsonWithMeta, tokenFromTrending } from "@/lib/server/birdeye";
+import { getJupiterTrendingTokens } from "@/lib/server/jupiter-tokens";
 import { TOKENS, type Token } from "@/lib/tokens";
 
 export const dynamic = "force-dynamic";
@@ -57,6 +58,14 @@ export async function GET() {
       } catch (error) {
         birdeyeRetryAfter = Date.now() + 5 * 60 * 1000;
         console.error("BirdEye ticker ranking unavailable", error);
+      }
+    }
+
+    if (ranked === TOKENS) {
+      try {
+        ranked = await getJupiterTrendingTokens(TRENDING_LIMIT);
+      } catch (error) {
+        console.error("Jupiter token ranking unavailable", error);
       }
     }
 

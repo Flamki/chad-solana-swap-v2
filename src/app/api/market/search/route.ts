@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { birdeyeJson, tokenFromOverview } from "@/lib/server/birdeye";
+import { searchJupiterTokens } from "@/lib/server/jupiter-tokens";
 import { tokenFromFallbackProviders } from "@/lib/server/market-fallback";
 import { TOKENS, createFallbackToken, mergeToken, type Token } from "@/lib/tokens";
 
@@ -123,11 +124,15 @@ async function birdeyeSearch(query: string) {
 
     return searchItems(data, query).map(tokenFromSearch);
   } catch {
-    const data = await birdeyeJson<{ tokens?: BirdeyeSearchToken[] }>(
-      `/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=${SEARCH_LIMIT}&search=${encodeURIComponent(query)}`,
-    );
+    try {
+      const data = await birdeyeJson<{ tokens?: BirdeyeSearchToken[] }>(
+        `/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=${SEARCH_LIMIT}&search=${encodeURIComponent(query)}`,
+      );
 
-    return searchItems(data, query).map(tokenFromSearch);
+      return searchItems(data, query).map(tokenFromSearch);
+    } catch {
+      return searchJupiterTokens(query, SEARCH_LIMIT);
+    }
   }
 }
 
