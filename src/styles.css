@@ -212,6 +212,43 @@
   animation: pulse-glow 2.5s ease-in-out infinite;
 }
 
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+}
+
+@utility animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes phone-depth {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotateX(0deg) rotateY(0deg) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -24px, 60px) rotateX(2deg) rotateY(-2deg) scale(1.03);
+  }
+}
+
+@utility animate-phone-depth {
+  animation: phone-depth 7s ease-in-out infinite;
+}
+
 /* ============ Premium scroll reveal ============ */
 @keyframes reveal-up {
   from {
