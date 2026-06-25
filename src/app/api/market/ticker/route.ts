@@ -15,6 +15,8 @@ type JupiterPrice = {
 type JupiterPrices = Record<string, JupiterPrice>;
 
 let birdeyeRetryAfter = 0;
+const TRENDING_LIMIT = 50;
+const TICKER_LIMIT = 36;
 
 function getJupiterKey() {
   return process.env.JUPITER_API_KEY || process.env.NEXT_PUBLIC_JUPITER_API_KEY || "";
@@ -43,7 +45,7 @@ export async function GET() {
     if (Date.now() >= birdeyeRetryAfter) {
       try {
         const trending = await birdeyeJsonWithMeta<{ tokens?: TrendingToken[] }>(
-          "/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=20",
+          `/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=${TRENDING_LIMIT}`,
           { cacheKey: "landing-ticker", next: { revalidate: 15 } },
         );
         const birdeyeTokens = (trending.data.tokens ?? []).map(tokenFromTrending);
@@ -85,7 +87,7 @@ export async function GET() {
           Number.isFinite(token.change24h) &&
           token.symbol.length > 0,
       )
-      .slice(0, 14);
+      .slice(0, TICKER_LIMIT);
 
     if (!tokens.length) {
       throw new Error("Live providers returned no priced tokens");

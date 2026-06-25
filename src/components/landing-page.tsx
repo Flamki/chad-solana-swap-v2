@@ -73,17 +73,17 @@ export function Landing() {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" />
 
-        <nav className="relative z-20 flex items-center justify-between px-4 pb-2 pt-3 md:px-5">
-          <div className="-ml-1 flex items-center gap-2">
+        <nav className="relative z-20 flex items-center justify-between px-4 pb-2 pt-3 md:px-6 md:pt-4">
+          <div className="-ml-1 flex items-center gap-2.5 sm:gap-3">
             <Image
               src={chadLogo}
               alt="ChadWallet logo"
-              width={24}
-              height={24}
+              width={40}
+              height={40}
               priority
-              className="h-6 w-6 rounded-full bg-white object-contain ring-1 ring-white/10"
+              className="h-9 w-9 rounded-full bg-white object-contain ring-1 ring-white/10 sm:h-10 sm:w-10"
             />
-            <span className="text-lg font-extrabold tracking-tight">ChadWallet</span>
+            <span className="text-2xl font-extrabold tracking-tight sm:text-3xl">ChadWallet</span>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
             <StoreBadges className="hidden sm:flex" />

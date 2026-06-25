@@ -5,7 +5,7 @@ import { env, hasBirdeye, hasJupiterKey, hasRpcEndpoint, hasSupabase } from "@/l
 import { SOL_MINT, TOKENS, type Token, createFallbackToken, mergeToken } from "@/lib/tokens";
 
 const BIRDEYE_TRENDING_URL =
-  "https://public-api.birdeye.so/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=20";
+  "https://public-api.birdeye.so/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=50";
 
 type BirdeyeTrendingResponse = {
   success: boolean;

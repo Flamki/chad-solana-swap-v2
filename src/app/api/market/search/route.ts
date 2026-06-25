@@ -6,6 +6,8 @@ import { TOKENS, createFallbackToken, mergeToken, type Token } from "@/lib/token
 
 export const revalidate = 0;
 
+const SEARCH_LIMIT = 30;
+
 type BirdeyeSearchToken = {
   address: string;
   symbol?: string;
@@ -64,9 +66,13 @@ function searchItems(data: BirdeyeSearchResponse, query: string) {
   ].filter((item) => item.address);
 
   const needle = query.toLowerCase();
-  return normalized.filter((item) =>
+  const exactMatches = normalized.filter((item) =>
     [item.address, item.symbol, item.name].some((value) => value?.toLowerCase().includes(needle)),
   );
+
+  // BirdEye's fuzzy search can return legitimate symbols that do not contain the raw query.
+  // Prefer exact-looking matches when available, otherwise trust BirdEye's ranking.
+  return exactMatches.length ? exactMatches : normalized;
 }
 
 function fallbackSearch(query: string) {
@@ -112,13 +118,13 @@ async function directMintSearch(query: string) {
 async function birdeyeSearch(query: string) {
   try {
     const data = await birdeyeJson<BirdeyeSearchResponse>(
-      `/defi/v3/search?keyword=${encodeURIComponent(query)}&chain=solana&target=token&search_mode=fuzzy&sort_by=volume_24h_usd&sort_type=desc&offset=0&limit=12`,
+      `/defi/v3/search?keyword=${encodeURIComponent(query)}&chain=solana&target=token&search_mode=fuzzy&sort_by=volume_24h_usd&sort_type=desc&offset=0&limit=${SEARCH_LIMIT}`,
     );
 
     return searchItems(data, query).map(tokenFromSearch);
   } catch {
     const data = await birdeyeJson<{ tokens?: BirdeyeSearchToken[] }>(
-      `/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=12&search=${encodeURIComponent(query)}`,
+      `/defi/tokenlist?sort_by=v24hUSD&sort_type=desc&offset=0&limit=${SEARCH_LIMIT}&search=${encodeURIComponent(query)}`,
     );
 
     return searchItems(data, query).map(tokenFromSearch);
@@ -139,11 +145,14 @@ export async function GET(request: Request) {
   try {
     const live = await birdeyeSearch(query);
     return NextResponse.json(
-      uniqueTokens([directToken, ...curated, ...live].filter(Boolean) as Token[]).slice(0, 12),
+      uniqueTokens([directToken, ...live, ...curated].filter(Boolean) as Token[]).slice(
+        0,
+        SEARCH_LIMIT,
+      ),
     );
   } catch {
     return NextResponse.json(
-      uniqueTokens([directToken, ...curated].filter(Boolean) as Token[]).slice(0, 12),
+      uniqueTokens([directToken, ...curated].filter(Boolean) as Token[]).slice(0, SEARCH_LIMIT),
     );
   }
 }
