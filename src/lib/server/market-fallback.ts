@@ -2,10 +2,12 @@ import { createFallbackToken, mergeToken, type Token } from "@/lib/tokens";
 
 const DEX_SCREENER_BASE = "https://api.dexscreener.com";
 const GECKO_TERMINAL_BASE = "https://api.geckoterminal.com/api/v2";
+const poolAddressCache = new Map<string, { address: string; expiresAt: number }>();
 
 type DexPair = {
   pairAddress?: string;
   baseToken?: { address?: string; name?: string; symbol?: string };
+  quoteToken?: { address?: string; name?: string; symbol?: string };
   priceUsd?: string | null;
   priceChange?: { h24?: number };
   volume?: { h24?: number };
@@ -13,6 +15,16 @@ type DexPair = {
   fdv?: number | null;
   marketCap?: number | null;
   info?: { imageUrl?: string };
+};
+
+type GeckoPoolsResponse = {
+  data?: Array<{
+    attributes?: {
+      address?: string;
+      reserve_in_usd?: string | null;
+      volume_usd?: { h24?: string | null };
+    };
+  }>;
 };
 
 type GeckoTokenResponse = {
@@ -69,16 +81,28 @@ const intervalConfig = {
 export type FallbackInterval = keyof typeof intervalConfig;
 
 async function fetchJson<T>(url: string, revalidate: number): Promise<T> {
-  const response = await fetch(url, {
-    next: { revalidate },
-    headers: { accept: "application/json;version=20230302" },
-  });
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(url, {
+      next: { revalidate },
+      headers: { accept: "application/json;version=20230302" },
+    });
 
-  if (!response.ok) {
+    if (response.ok) {
+      return (await response.json()) as T;
+    }
+
+    if (response.status === 429 && attempt === 0) {
+      const retryAfter = Number(response.headers.get("retry-after"));
+      await new Promise((resolve) =>
+        setTimeout(resolve, Number.isFinite(retryAfter) ? retryAfter * 1000 : 750),
+      );
+      continue;
+    }
+
     throw new Error(`${url} failed (${response.status})`);
   }
 
-  return (await response.json()) as T;
+  throw new Error(`${url} failed`);
 }
 
 async function getDexPairs(mint: string) {
@@ -90,8 +114,54 @@ async function getDexPairs(mint: string) {
 
 function bestDexPair(pairs: DexPair[], mint: string) {
   return pairs
-    .filter((pair) => pair.baseToken?.address === mint)
+    .filter((pair) => pair.baseToken?.address === mint || pair.quoteToken?.address === mint)
     .sort((a, b) => (b.liquidity?.usd ?? 0) - (a.liquidity?.usd ?? 0))[0];
+}
+
+async function getBestPoolAddress(mint: string) {
+  const cached = poolAddressCache.get(mint);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.address;
+  }
+
+  try {
+    const payload = await fetchJson<GeckoPoolsResponse>(
+      `${GECKO_TERMINAL_BASE}/networks/solana/tokens/${encodeURIComponent(mint)}/pools?page=1`,
+      20,
+    );
+    const pool = (payload.data ?? [])
+      .filter((item) => item.attributes?.address)
+      .sort((a, b) => {
+        const reserveDiff =
+          (numberValue(b.attributes?.reserve_in_usd) ?? 0) -
+          (numberValue(a.attributes?.reserve_in_usd) ?? 0);
+        if (reserveDiff !== 0) return reserveDiff;
+        return (
+          (numberValue(b.attributes?.volume_usd?.h24) ?? 0) -
+          (numberValue(a.attributes?.volume_usd?.h24) ?? 0)
+        );
+      })[0];
+
+    if (pool?.attributes?.address) {
+      poolAddressCache.set(mint, {
+        address: pool.attributes.address,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+      });
+      return pool.attributes.address;
+    }
+  } catch {
+    // Fall back to DexScreener pool discovery below.
+  }
+
+  const pairs = await getDexPairs(mint);
+  const address = bestDexPair(pairs, mint)?.pairAddress;
+  if (address) {
+    poolAddressCache.set(mint, {
+      address,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+  }
+  return address;
 }
 
 export async function tokenFromFallbackProviders(mint: string): Promise<Token> {
@@ -125,10 +195,9 @@ export async function tokenFromFallbackProviders(mint: string): Promise<Token> {
 }
 
 export async function ohlcvFromFallbackProviders(mint: string, interval: FallbackInterval) {
-  const pairs = await getDexPairs(mint);
-  const pair = bestDexPair(pairs, mint);
+  const poolAddress = await getBestPoolAddress(mint);
 
-  if (!pair?.pairAddress) {
+  if (!poolAddress) {
     throw new Error("No liquid pool found for chart");
   }
 
@@ -139,7 +208,7 @@ export async function ohlcvFromFallbackProviders(mint: string, interval: Fallbac
     currency: "usd",
   });
   const payload = await fetchJson<GeckoOhlcvResponse>(
-    `${GECKO_TERMINAL_BASE}/networks/solana/pools/${encodeURIComponent(pair.pairAddress)}/ohlcv/${config.timeframe}?${params}`,
+    `${GECKO_TERMINAL_BASE}/networks/solana/pools/${encodeURIComponent(poolAddress)}/ohlcv/${config.timeframe}?${params}`,
     20,
   );
 
@@ -170,15 +239,14 @@ export async function ohlcvFromFallbackProviders(mint: string, interval: Fallbac
 }
 
 export async function tradesFromFallbackProviders(mint: string) {
-  const pairs = await getDexPairs(mint);
-  const pair = bestDexPair(pairs, mint);
+  const poolAddress = await getBestPoolAddress(mint);
 
-  if (!pair?.pairAddress) {
+  if (!poolAddress) {
     throw new Error("No liquid pool found for live trades");
   }
 
   const payload = await fetchJson<GeckoTradeResponse>(
-    `${GECKO_TERMINAL_BASE}/networks/solana/pools/${encodeURIComponent(pair.pairAddress)}/trades`,
+    `${GECKO_TERMINAL_BASE}/networks/solana/pools/${encodeURIComponent(poolAddress)}/trades`,
     10,
   );
   const now = Date.now();

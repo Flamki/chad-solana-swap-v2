@@ -209,10 +209,10 @@ export function TradePage({ mint }: { mint: string }) {
               <LiveState
                 title={
                   history.isFetching
-                    ? "Loading BirdEye chart"
+                    ? "Loading live chart"
                     : history.data?.status === "unavailable"
-                      ? "BirdEye temporarily unavailable"
-                      : "BirdEye chart unavailable"
+                      ? "Live chart temporarily unavailable"
+                      : "Live chart unavailable"
                 }
                 detail={
                   history.isFetching

@@ -55,12 +55,13 @@ export async function GET(request: Request, context: { params: Promise<{ mint: s
       ...fallback,
       status: "live",
     });
-  } catch {
+  } catch (error) {
+    console.error("Fallback OHLCV unavailable", { mint, interval, error });
     return NextResponse.json({
       data: [],
       status: "unavailable",
       updatedAt: new Date().toISOString(),
-      provider: "birdeye",
+      provider: "geckoterminal",
     });
   }
 }
