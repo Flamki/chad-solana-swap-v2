@@ -235,6 +235,11 @@
   }
 }
 
+.landing-deferred {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
 @keyframes phone-depth {
   0%,
   100% {

@@ -1,12 +1,11 @@
-"use client";
-
+import Image, { type StaticImageData } from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
-import { SignInButton } from "@/components/sign-in-button";
-import { assetUrl } from "@/lib/asset-url";
-import { useMarketTicker } from "@/lib/market-data";
-import { formatUsd, type Token } from "@/lib/tokens";
+import { DownloadAppButton } from "@/components/landing/download-app-button";
+import { FAQSection } from "@/components/landing/faq-section";
+import { LazyVideo } from "@/components/landing/lazy-video";
+import { LazySignInButton } from "@/components/landing/lazy-sign-in-button";
+import { MarketTicker } from "@/components/landing/market-ticker";
 
 import buySell from "@/assets/flow/buy-sell-4.png";
 import kol from "@/assets/flow/kol-4.png";
@@ -20,7 +19,6 @@ const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
 const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
 const SOL_TRADE = "/trade/So11111111111111111111111111111111111111112";
 const STORE_BADGES = "/assets/landing/store-badges-v3-cropped.png";
-const QR_CODE = "/assets/landing/qr-rounded.svg";
 const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
 const HERO_CHARACTER = "/assets/landing/astronaut-hq.png";
 const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
@@ -33,9 +31,12 @@ const FOOTER_IMAGE = "/assets/landing/chad-footer.png";
 function StoreBadges({ className = "" }: { className?: string }) {
   return (
     <div className={`relative inline-flex items-center ${className}`}>
-      <img
+      <Image
         src={STORE_BADGES}
         alt="Download ChadWallet on the App Store and Google Play"
+        width={1482}
+        height={264}
+        sizes="296px"
         className="h-14 w-auto object-contain"
       />
       <a
@@ -56,258 +57,37 @@ function StoreBadges({ className = "" }: { className?: string }) {
   );
 }
 
-function TokenTicker({
-  items,
-  compact = false,
-  reverse = false,
-  loading = false,
-  unavailable = false,
-  updatedAt,
-}: {
-  items: Token[];
-  compact?: boolean;
-  reverse?: boolean;
-  loading?: boolean;
-  unavailable?: boolean;
-  updatedAt?: string;
-}) {
-  const [interactionPaused, setInteractionPaused] = useState(false);
-
-  if (!items.length) {
-    return (
-      <div
-        className={`flex min-h-[66px] items-center justify-center border-y border-white/5 bg-black px-5 text-center font-mono text-xs tracking-wide text-white/45 ${compact ? "py-4" : "py-5"}`}
-        aria-live="polite"
-      >
-        {unavailable
-          ? "Live Solana market data is reconnecting..."
-          : "Loading live Solana markets..."}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={`group/ticker relative overflow-hidden border-y border-white/5 bg-black ${compact ? "py-4" : "py-5"}`}
-      aria-label="Live Solana token prices"
-      aria-busy={loading}
-      onMouseEnter={() => setInteractionPaused(true)}
-      onMouseLeave={() => setInteractionPaused(false)}
-      onFocusCapture={() => setInteractionPaused(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) {
-          setInteractionPaused(false);
-        }
-      }}
-    >
-      <div
-        className={`flex whitespace-nowrap will-change-transform ${compact ? "gap-8 animate-[scroll_40s_linear_infinite]" : "gap-4 animate-[scroll_35s_linear_infinite]"} ${reverse ? "[animation-direction:reverse]" : ""}`}
-        style={{ animationPlayState: interactionPaused ? "paused" : "running" }}
-      >
-        {[...Array(2)].map((_, dup) => (
-          <div key={dup} className={`flex shrink-0 ${compact ? "gap-8" : "gap-4"}`}>
-            {items.map((token) => (
-              <Link
-                key={`${token.mint}-${dup}`}
-                href={`/trade/${token.mint}`}
-                title={`${token.symbol} live price from ${token.source === "jupiter" ? "Jupiter" : "BirdEye"}${updatedAt ? `, updated ${new Date(updatedAt).toLocaleTimeString()}` : ""}`}
-                onPointerDown={() => setInteractionPaused(true)}
-                onPointerCancel={() => setInteractionPaused(false)}
-                className={`relative z-10 flex cursor-pointer touch-manipulation items-center rounded-full ring-1 ring-white/10 transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${compact ? "gap-3 bg-white/[0.02] px-5 py-1.5" : "gap-3 bg-white/[0.04] px-4 py-2.5"}`}
-              >
-                {!compact && token.logo && (
-                  <img
-                    src={token.logo}
-                    alt=""
-                    className="h-6 w-6 shrink-0 rounded-full bg-white/5 object-cover"
-                    loading="lazy"
-                    onError={(event) => {
-                      event.currentTarget.style.display = "none";
-                    }}
-                  />
-                )}
-                <span className="text-sm font-bold tracking-wide text-white/90">
-                  {token.symbol}
-                </span>
-                <span className="font-mono text-sm text-white/50">{formatUsd(token.price)}</span>
-                <span
-                  className={`font-mono text-sm ${token.change24h >= 0 ? "text-emerald-400" : "text-rose-400"}`}
-                >
-                  {token.change24h >= 0 ? "+" : ""}
-                  {token.change24h.toFixed(2)}%
-                </span>
-              </Link>
-            ))}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function QRModal({ onClose }: { onClose: () => void }) {
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Download app"
-    >
-      <div
-        className="relative w-full max-w-[340px] rounded-3xl bg-[#0b0b0f] p-6 text-center shadow-[0_40px_100px_-20px_rgba(0,0,0,0.6)] ring-1 ring-white/[0.08]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <button
-          onClick={onClose}
-          className="absolute right-3 top-3 p-2 text-white/50 transition hover:text-white"
-          aria-label="Close"
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <line x1="18" y1="6" x2="6" y2="18" />
-            <line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        </button>
-
-        <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full bg-white/[0.06] px-4 py-2 ring-1 ring-white/[0.12]">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-white"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          <span className="text-sm font-semibold text-white">Download app</span>
-        </div>
-
-        <img
-          src={QR_CODE}
-          alt="QR code to download ChadWallet"
-          className="mx-auto mb-5 h-auto w-full max-w-[260px]"
-        />
-        <p className="text-sm leading-relaxed text-white/60">
-          Scan the QR code to download the app on your phone.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function FAQSection() {
-  const faqs = [
-    {
-      q: "Is ChadWallet self-custody?",
-      a: "Yes. Keys are generated and stored client-side through Privy.",
-    },
-    {
-      q: "Which chain does it support?",
-      a: "Solana first, with the trading experience tuned for Solana tokens.",
-    },
-    {
-      q: "Do I need a seed phrase?",
-      a: "No. Sign in with email or socials and your wallet is secured under the hood.",
-    },
-    {
-      q: "Does the trading page use real data?",
-      a: "Yes. BirdEye, Alchemy, Jupiter, Supabase, and live chart data power the core flow.",
-    },
-  ];
-  const [open, setOpen] = useState<number | null>(0);
-
-  return (
-    <section className="relative border-t border-white/5 px-6 py-28">
-      <div className="mx-auto max-w-3xl text-center">
-        <p className="mb-4 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">FAQ</p>
-        <h2 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-          questions, briefly.
-        </h2>
-        <div className="mt-12 text-left">
-          {faqs.map((faq, index) => {
-            const isOpen = open === index;
-            return (
-              <div key={faq.q} className="border-t border-white/10 last:border-b">
-                <button
-                  onClick={() => setOpen(isOpen ? null : index)}
-                  className="group flex w-full items-center justify-between py-5 text-left"
-                >
-                  <span className="text-base font-semibold text-white sm:text-lg">{faq.q}</span>
-                  <span
-                    className={`text-xl text-indigo-400 transition-transform ${isOpen ? "rotate-45" : ""}`}
-                  >
-                    +
-                  </span>
-                </button>
-                {isOpen && (
-                  <p className="pb-6 text-sm leading-relaxed text-white/60 sm:text-base">{faq.a}</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export function Landing() {
-  const [showQr, setShowQr] = useState(false);
-  const marketTicker = useMarketTicker();
-  const tickerTokens = marketTicker.data?.tokens ?? [];
-  const bottomTickerTokens =
-    tickerTokens.length > 1
-      ? [
-          ...tickerTokens.slice(Math.ceil(tickerTokens.length / 2)),
-          ...tickerTokens.slice(0, Math.ceil(tickerTokens.length / 2)),
-        ]
-      : tickerTokens;
-
   return (
     <div className="min-h-screen overflow-x-hidden bg-black font-[Inter,system-ui,sans-serif] text-white">
       <section className="relative min-h-[85vh] w-full overflow-hidden">
-        <img
+        <Image
           src={HERO_BACKGROUND}
           alt=""
+          fill
+          priority
+          fetchPriority="high"
+          quality={80}
+          sizes="100vw"
           className="absolute inset-0 h-full w-full object-cover opacity-90"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" />
 
         <nav className="relative z-20 flex items-center justify-between px-4 pb-2 pt-3 md:px-5">
           <div className="-ml-1 flex items-center gap-2">
-            <img
-              src={assetUrl(chadLogo)}
+            <Image
+              src={chadLogo}
               alt="ChadWallet logo"
+              width={24}
+              height={24}
+              priority
               className="h-6 w-6 rounded-full bg-white object-contain ring-1 ring-white/10"
             />
             <span className="text-lg font-extrabold tracking-tight">ChadWallet</span>
           </div>
           <div className="flex items-center gap-2 md:gap-3">
             <StoreBadges className="hidden sm:flex" />
-            <SignInButton redirectTo={SOL_TRADE} />
+            <LazySignInButton redirectTo={SOL_TRADE} />
           </div>
         </nav>
 
@@ -329,30 +109,25 @@ export function Landing() {
             >
               Start trading
             </Link>
-            <button
-              onClick={() => setShowQr(true)}
-              className="cursor-pointer rounded-full bg-white/[0.03] px-7 py-2.5 text-sm font-semibold ring-1 ring-white/[0.12] backdrop-blur transition hover:bg-white/[0.07]"
-            >
-              Get the app
-            </button>
+            <DownloadAppButton />
           </div>
 
-          <img
+          <Image
             src={HERO_CHARACTER}
             alt="ChadWallet trader floating in space with a satellite"
+            width={1254}
+            height={1254}
+            priority
+            quality={80}
+            sizes="(min-width: 768px) 840px, (min-width: 640px) 760px, 108vw"
             className="pointer-events-none mt-[-4.15rem] w-[min(680px,108vw)] max-w-none select-none animate-float sm:mt-[-6.65rem] sm:w-[min(760px,105%)] md:mt-[-8.15rem] md:w-[min(840px,100%)]"
           />
         </div>
       </section>
 
-      <section className="relative px-6 pb-16 pt-2 md:pb-24 md:pt-4">
+      <section className="landing-deferred relative px-6 pb-16 pt-2 md:pb-24 md:pt-4">
         <div className="relative -mt-16 md:-mt-24">
-          <TokenTicker
-            items={tickerTokens}
-            loading={marketTicker.isPending}
-            unavailable={marketTicker.isError}
-            updatedAt={marketTicker.data?.updatedAt}
-          />
+          <MarketTicker />
         </div>
 
         <div className="mx-auto mt-12 max-w-6xl text-center md:mt-16">
@@ -370,21 +145,29 @@ export function Landing() {
 
           <div className="relative mt-20">
             <div className="absolute inset-x-[8%] bottom-[4%] top-[8%] rounded-full bg-indigo-600/18 blur-3xl" />
-            <img
+            <Image
               src={TRADING_DASHBOARD}
               alt="ChadWallet web trading dashboard with live charts, token list, and swap panel"
+              width={1535}
+              height={700}
+              quality={75}
+              sizes="(min-width: 1280px) 1152px, 92vw"
               className="relative mx-auto w-full max-w-[1536px] rounded-xl border border-white/10 shadow-[0_38px_120px_rgba(0,0,0,0.68)]"
             />
-            <img
+            <Image
               src={PHONE_MOCKUP}
               alt="ChadWallet mobile app showing trending tokens"
+              width={1167}
+              height={1347}
+              quality={75}
+              sizes="(min-width: 768px) 30vw, 42vw"
               className="pointer-events-none absolute bottom-[-17%] right-[-8%] z-10 w-[42%] max-w-[560px] select-none drop-shadow-[0_35px_70px_rgba(99,102,241,0.34)] animate-float sm:bottom-[-19%] sm:right-[-3%] sm:w-[35%] md:bottom-[-22%] md:right-[2%] md:w-[30%]"
             />
           </div>
         </div>
       </section>
 
-      <section className="border-t border-white/5 px-6 pb-8 pt-24">
+      <section className="landing-deferred border-t border-white/5 px-6 pb-8 pt-24">
         <div className="mx-auto max-w-7xl">
           <div className="mb-6 flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
@@ -409,24 +192,21 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="relative mt-12 overflow-hidden py-16 md:py-24">
+      <section className="landing-deferred relative mt-12 overflow-hidden py-16 md:py-24">
         <div className="relative mx-auto h-[58vw] min-h-[460px] max-h-[820px] w-full max-w-7xl overflow-visible [perspective:1400px]">
           <div className="relative h-full w-full overflow-visible [transform-style:preserve-3d] animate-phone-depth">
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
+            <LazyVideo
+              sources={[
+                { src: PHONE_CLEAN, type: "video/webm" },
+                { src: PHONE_CLEAN_FALLBACK, type: "video/mp4" },
+              ]}
               className="absolute inset-0 z-10 block h-full w-full scale-[1.15] object-cover object-center"
-            >
-              <source src={PHONE_CLEAN} type="video/webm" />
-              <source src={PHONE_CLEAN_FALLBACK} type="video/mp4" />
-            </video>
+            />
           </div>
         </div>
       </section>
 
-      <section className="relative border-t border-white/5 px-6 pb-24 pt-8">
+      <section className="landing-deferred relative border-t border-white/5 px-6 pb-24 pt-8">
         <div className="mx-auto max-w-7xl">
           <div className="mb-8 flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
@@ -447,73 +227,77 @@ export function Landing() {
           <div className="grid gap-6 md:grid-cols-2">
             {[
               {
-                src: assetUrl(memecoin),
+                src: memecoin,
                 title: "Catch early trends on X",
                 step: "01 / HUNT",
                 tagline: "Find the next memecoin.",
               },
               {
-                src: assetUrl(buySell),
+                src: buySell,
                 title: "Buy & sell trending tokens",
                 step: "02 / EXECUTE",
                 tagline: "Buy & sell in one tap.",
               },
               {
-                src: assetUrl(kol),
+                src: kol,
                 title: "Follow KOL traders",
                 step: "03 / COPY",
                 tagline: "Mirror the winners.",
               },
               {
-                src: assetUrl(portfolio),
+                src: portfolio,
                 title: "Manage your assets",
                 step: "04 / TRACK",
                 tagline: "Watch the bags move.",
               },
               {
-                src: assetUrl(launch),
+                src: launch,
                 title: "Launch a memecoin from a tweet",
                 step: "05 / LAUNCH",
                 tagline: "Be early. Every time.",
               },
               {
-                src: assetUrl(relaunch),
+                src: relaunch,
                 title: "Relaunch a memecoin",
                 step: "06 / ROTATE",
                 tagline: "Recycle into the next.",
               },
-            ].map((card) => (
-              <div
-                key={card.title}
-                className="group relative flex aspect-[16/10] flex-col overflow-hidden rounded-3xl bg-gradient-to-b from-sky-400 via-sky-500/80 to-black ring-1 ring-white/10"
-              >
-                <p className="relative z-10 pt-5 text-center text-sm font-semibold text-white sm:text-base">
-                  {card.title}
-                </p>
-                <div className="relative mt-3 flex flex-1 items-end justify-center px-4 sm:px-6">
-                  <img
-                    src={card.src}
-                    alt={card.title}
-                    loading="lazy"
-                    className="max-h-full w-full select-none object-contain object-bottom pointer-events-none"
-                  />
-                </div>
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black via-black/80 to-transparent" />
-                <div className="absolute bottom-6 left-6 z-10 sm:bottom-7 sm:left-8">
-                  <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-indigo-300 sm:text-xs">
-                    {card.step}
+            ].map(
+              (card: { src: StaticImageData; title: string; step: string; tagline: string }) => (
+                <div
+                  key={card.title}
+                  className="group relative flex aspect-[16/10] flex-col overflow-hidden rounded-3xl bg-gradient-to-b from-sky-400 via-sky-500/80 to-black ring-1 ring-white/10"
+                >
+                  <p className="relative z-10 pt-5 text-center text-sm font-semibold text-white sm:text-base">
+                    {card.title}
                   </p>
-                  <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-                    {card.tagline}
-                  </p>
+                  <div className="relative mt-3 flex flex-1 items-end justify-center px-4 sm:px-6">
+                    <Image
+                      src={card.src}
+                      alt={card.title}
+                      fill
+                      quality={70}
+                      sizes="(min-width: 768px) 50vw, 100vw"
+                      className="pointer-events-none select-none object-contain object-bottom"
+                    />
+                  </div>
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black via-black/80 to-transparent" />
+                  <div className="absolute bottom-6 left-6 z-10 sm:bottom-7 sm:left-8">
+                    <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-indigo-300 sm:text-xs">
+                      {card.step}
+                    </p>
+                    <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
+                      {card.tagline}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ),
+            )}
           </div>
         </div>
       </section>
 
-      <section className="relative border-t border-white/5 px-6 py-28">
+      <section className="landing-deferred relative border-t border-white/5 px-6 py-28">
         <div className="mx-auto max-w-6xl text-center">
           <p className="mb-4 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
             ON THE TIMELINE
@@ -550,7 +334,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="relative border-t border-white/5 px-6 pb-12 pt-28 text-center">
+      <section className="landing-deferred relative border-t border-white/5 px-6 pb-12 pt-28 text-center">
         <p className="mb-5 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
           NOW AVAILABLE ON WEB & MOBILE
         </p>
@@ -564,7 +348,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="relative flex items-center justify-center px-6 pb-20 pt-16 md:pb-32 md:pt-24">
+      <section className="landing-deferred relative flex items-center justify-center px-6 pb-20 pt-16 md:pb-32 md:pt-24">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black to-transparent" />
         <div className="relative w-full max-w-[420px] animate-float sm:max-w-[520px] md:max-w-[600px]">
           <div className="relative rounded-[3.5rem] bg-black p-1.5 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.08]">
@@ -573,12 +357,8 @@ export function Landing() {
               style={{ aspectRatio: "9 / 19.3" }}
             >
               <div className="absolute left-1/2 top-3 z-20 h-6 w-24 -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)]" />
-              <video
-                src={PHONE_VIDEO}
-                autoPlay
-                muted
-                loop
-                playsInline
+              <LazyVideo
+                sources={[{ src: PHONE_VIDEO, type: "video/mp4" }]}
                 className="absolute inset-0 h-full w-full object-cover"
               />
               <div className="absolute bottom-2 left-1/2 z-20 h-1 w-28 -translate-x-1/2 rounded-full bg-white/20" />
@@ -588,27 +368,21 @@ export function Landing() {
       </section>
 
       <FAQSection />
-      <TokenTicker
-        items={bottomTickerTokens}
-        compact
-        reverse
-        loading={marketTicker.isPending}
-        unavailable={marketTicker.isError}
-        updatedAt={marketTicker.data?.updatedAt}
-      />
+      <MarketTicker compact reverse />
 
       <section
-        className="relative w-full overflow-hidden bg-black leading-none"
+        className="landing-deferred relative w-full overflow-hidden bg-black leading-none"
         style={{ aspectRatio: "1254 / 525" }}
       >
-        <img
+        <Image
           src={FOOTER_IMAGE}
           alt="Chad trader lying on a stack of cash, watching a Solana chart on his phone"
+          fill
+          quality={75}
+          sizes="100vw"
           className="absolute inset-0 block h-full w-full select-none object-cover object-[center_51%]"
         />
       </section>
-
-      {showQr && <QRModal onClose={() => setShowQr(false)} />}
     </div>
   );
 }
