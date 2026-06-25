@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 
 import { SignInButton } from "@/components/sign-in-button";
 import { assetUrl } from "@/lib/asset-url";
+import { useMarketTicker } from "@/lib/market-data";
+import { formatUsd, type Token } from "@/lib/tokens";
 
 import buySell from "@/assets/flow/buy-sell-4.png";
 import kol from "@/assets/flow/kol-4.png";
@@ -27,125 +29,6 @@ const PHONE_CLEAN = "/assets/video/MAKE_VIDEO_NOT_IMAGE-Picsart-BackgroundRemove
 const PHONE_CLEAN_FALLBACK = "/assets/video/MAKE_VIDEO_NOT_IMAGE.mp4";
 const PHONE_VIDEO = "/assets/video/chadwallet.mp4";
 const FOOTER_IMAGE = "/assets/landing/chad-footer.png";
-
-const tickerOne = [
-  {
-    mint: "So11111111111111111111111111111111111111112",
-    sym: "SOL",
-    price: "$184.32",
-    chg: "+4.20%",
-    up: true,
-    color: "bg-emerald-500",
-  },
-  {
-    mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
-    sym: "BONK",
-    price: "$0.00002140",
-    chg: "+12.30%",
-    up: true,
-    color: "bg-orange-500",
-  },
-  {
-    mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm",
-    sym: "WIF",
-    price: "$1.85",
-    chg: "+3.45%",
-    up: true,
-    color: "bg-purple-500",
-  },
-  {
-    mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
-    sym: "JUP",
-    price: "$0.2170",
-    chg: "+8.90%",
-    up: true,
-    color: "bg-blue-500",
-  },
-  {
-    mint: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgU8",
-    sym: "SAMO",
-    price: "$0.0064",
-    chg: "-2.67%",
-    up: false,
-    color: "bg-indigo-500",
-  },
-  {
-    mint: "2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump",
-    sym: "PNUT",
-    price: "$0.6200",
-    chg: "+24.10%",
-    up: true,
-    color: "bg-amber-500",
-  },
-  {
-    mint: "MEW1gQWJ3nEXg2qgERi8k2wmxPtwM7LtGJmK3aN4VXS",
-    sym: "MEW",
-    price: "$0.00720000",
-    chg: "-5.40%",
-    up: false,
-    color: "bg-rose-500",
-  },
-  {
-    mint: "7GCihgDB8feMnnnGNiBRdgtZ4Fe7Gqw7fNnvLDbGpump",
-    sym: "POPCAT",
-    price: "$0.4200",
-    chg: "+18.70%",
-    up: true,
-    color: "bg-cyan-500",
-  },
-];
-
-const tickerTwo = [
-  {
-    mint: "HZ1JovNiVvGrGNiiYvEozEVgPLZ6vX8JELtP3WwYv9w",
-    sym: "PYTH",
-    price: "$0.2100",
-    chg: "+1.60%",
-    up: true,
-  },
-  {
-    mint: "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL",
-    sym: "JTO",
-    price: "$2.45",
-    chg: "+6.30%",
-    up: true,
-  },
-  {
-    mint: "7GCihgDB8feMnnnGNiBRdgtZ4Fe7Gqw7fNnvLDbGpump",
-    sym: "POPCAT",
-    price: "$0.4200",
-    chg: "+18.70%",
-    up: true,
-  },
-  {
-    mint: "MEW1gQWJ3nEXg2qgERi8k2wmxPtwM7LtGJmK3aN4VXS",
-    sym: "MEW",
-    price: "$0.00720000",
-    chg: "-5.40%",
-    up: false,
-  },
-  {
-    mint: "2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump",
-    sym: "PNUT",
-    price: "$0.6200",
-    chg: "+24.10%",
-    up: true,
-  },
-  {
-    mint: "CzLSujWBLFsP7m8pXkhYK9J8aK5W7qVWBXU6XVGpump",
-    sym: "GOAT",
-    price: "$0.5800",
-    chg: "-8.20%",
-    up: false,
-  },
-  {
-    mint: "So11111111111111111111111111111111111111112",
-    sym: "SOL",
-    price: "$184.32",
-    chg: "+4.20%",
-    up: true,
-  },
-];
 
 function StoreBadges({ className = "" }: { className?: string }) {
   return (
@@ -176,43 +59,69 @@ function StoreBadges({ className = "" }: { className?: string }) {
 function TokenTicker({
   items,
   compact = false,
+  reverse = false,
+  loading = false,
+  unavailable = false,
+  updatedAt,
 }: {
-  items: Array<{
-    mint: string;
-    sym: string;
-    price: string;
-    chg: string;
-    up: boolean;
-    color?: string;
-  }>;
+  items: Token[];
   compact?: boolean;
+  reverse?: boolean;
+  loading?: boolean;
+  unavailable?: boolean;
+  updatedAt?: string;
 }) {
+  if (!items.length) {
+    return (
+      <div
+        className={`flex min-h-[66px] items-center justify-center border-y border-white/5 bg-black px-5 text-center font-mono text-xs tracking-wide text-white/45 ${compact ? "py-4" : "py-5"}`}
+        aria-live="polite"
+      >
+        {unavailable
+          ? "Live Solana market data is reconnecting..."
+          : "Loading live Solana markets..."}
+      </div>
+    );
+  }
+
   return (
     <div
       className={`relative overflow-hidden border-y border-white/5 bg-black ${compact ? "py-4" : "py-5"}`}
+      aria-label="Live Solana token prices"
+      aria-busy={loading}
     >
       <div
-        className={`flex whitespace-nowrap ${compact ? "gap-8 animate-[scroll_40s_linear_infinite]" : "gap-4 animate-[scroll_35s_linear_infinite]"}`}
+        className={`flex whitespace-nowrap ${compact ? "gap-8 animate-[scroll_40s_linear_infinite]" : "gap-4 animate-[scroll_35s_linear_infinite]"} ${reverse ? "[animation-direction:reverse]" : ""}`}
       >
         {[...Array(2)].map((_, dup) => (
           <div key={dup} className={`flex shrink-0 ${compact ? "gap-8" : "gap-4"}`}>
             {items.map((token) => (
               <Link
-                key={`${token.sym}-${dup}`}
+                key={`${token.mint}-${dup}`}
                 href={`/trade/${token.mint}`}
+                title={`${token.symbol} live price from ${token.source === "jupiter" ? "Jupiter" : "BirdEye"}${updatedAt ? `, updated ${new Date(updatedAt).toLocaleTimeString()}` : ""}`}
                 className={`flex items-center rounded-full ring-1 ring-white/10 transition hover:bg-white/[0.08] ${compact ? "gap-3 bg-white/[0.02] px-5 py-1.5" : "gap-3 bg-white/[0.04] px-4 py-2.5"}`}
               >
-                {!compact && (
-                  <div
-                    className={`h-6 w-6 shrink-0 rounded-full ${token.color ?? "bg-indigo-500"}`}
+                {!compact && token.logo && (
+                  <img
+                    src={token.logo}
+                    alt=""
+                    className="h-6 w-6 shrink-0 rounded-full bg-white/5 object-cover"
+                    loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
                   />
                 )}
-                <span className="text-sm font-bold tracking-wide text-white/90">{token.sym}</span>
-                <span className="font-mono text-sm text-white/50">{token.price}</span>
+                <span className="text-sm font-bold tracking-wide text-white/90">
+                  {token.symbol}
+                </span>
+                <span className="font-mono text-sm text-white/50">{formatUsd(token.price)}</span>
                 <span
-                  className={`font-mono text-sm ${token.up ? "text-emerald-400" : "text-rose-400"}`}
+                  className={`font-mono text-sm ${token.change24h >= 0 ? "text-emerald-400" : "text-rose-400"}`}
                 >
-                  {token.chg}
+                  {token.change24h >= 0 ? "+" : ""}
+                  {token.change24h.toFixed(2)}%
                 </span>
               </Link>
             ))}
@@ -354,6 +263,15 @@ function FAQSection() {
 
 export function Landing() {
   const [showQr, setShowQr] = useState(false);
+  const marketTicker = useMarketTicker();
+  const tickerTokens = marketTicker.data?.tokens ?? [];
+  const bottomTickerTokens =
+    tickerTokens.length > 1
+      ? [
+          ...tickerTokens.slice(Math.ceil(tickerTokens.length / 2)),
+          ...tickerTokens.slice(0, Math.ceil(tickerTokens.length / 2)),
+        ]
+      : tickerTokens;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-black font-[Inter,system-ui,sans-serif] text-white">
@@ -416,7 +334,12 @@ export function Landing() {
 
       <section className="relative px-6 pb-16 pt-2 md:pb-24 md:pt-4">
         <div className="relative -mt-16 md:-mt-24">
-          <TokenTicker items={tickerOne} />
+          <TokenTicker
+            items={tickerTokens}
+            loading={marketTicker.isPending}
+            unavailable={marketTicker.isError}
+            updatedAt={marketTicker.data?.updatedAt}
+          />
         </div>
 
         <div className="mx-auto mt-12 max-w-6xl text-center md:mt-16">
@@ -652,7 +575,14 @@ export function Landing() {
       </section>
 
       <FAQSection />
-      <TokenTicker items={tickerTwo} compact />
+      <TokenTicker
+        items={bottomTickerTokens}
+        compact
+        reverse
+        loading={marketTicker.isPending}
+        unavailable={marketTicker.isError}
+        updatedAt={marketTicker.data?.updatedAt}
+      />
 
       <section
         className="relative w-full overflow-hidden bg-black leading-none"

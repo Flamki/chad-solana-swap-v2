@@ -97,6 +97,13 @@ export type MarketDataset<T> = {
   provider: "birdeye" | "geckoterminal" | "solana-rpc";
 };
 
+export type MarketTicker = {
+  tokens: Token[];
+  status: "live" | "cached" | "unavailable";
+  updatedAt: string;
+  provider: "BirdEye + Jupiter" | "BirdEye" | "Jupiter";
+};
+
 export type LiveTrade = {
   id: string;
   txHash?: string;
@@ -192,6 +199,19 @@ export async function fetchTrendingTokens(signal?: AbortSignal): Promise<Token[]
     ) ?? [];
 
   return enrichTokensWithJupiter(birdeyeTokens.length ? birdeyeTokens : TOKENS, signal);
+}
+
+export async function fetchMarketTicker(signal?: AbortSignal): Promise<MarketTicker> {
+  const response = await fetch("/api/market/ticker", {
+    cache: "no-store",
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Live market ticker failed (${response.status})`);
+  }
+
+  return (await response.json()) as MarketTicker;
 }
 
 export async function enrichTokensWithJupiter(tokens: Token[], signal?: AbortSignal) {
@@ -536,6 +556,16 @@ export function useTrendingTokens() {
     initialData: TOKENS,
     refetchInterval: 60_000,
     staleTime: 30_000,
+  });
+}
+
+export function useMarketTicker() {
+  return useQuery({
+    queryKey: ["landing-market-ticker"],
+    queryFn: ({ signal }) => fetchMarketTicker(signal),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+    retry: 2,
   });
 }
 
