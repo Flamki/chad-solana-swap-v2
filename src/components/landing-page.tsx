@@ -340,7 +340,7 @@ export function Landing() {
           <img
             src={HERO_CHARACTER}
             alt="ChadWallet trader floating in space with a satellite"
-            className="pointer-events-none mt-[-5.75rem] w-[min(680px,108vw)] max-w-none select-none animate-float sm:mt-[-8.25rem] sm:w-[min(760px,105%)] md:mt-[-9.75rem] md:w-[min(840px,100%)]"
+            className="pointer-events-none mt-[-4.55rem] w-[min(680px,108vw)] max-w-none select-none animate-float sm:mt-[-7.05rem] sm:w-[min(760px,105%)] md:mt-[-8.55rem] md:w-[min(840px,100%)]"
           />
         </div>
       </section>
