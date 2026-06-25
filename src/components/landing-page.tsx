@@ -22,7 +22,7 @@ const SOL_TRADE = "/trade/So11111111111111111111111111111111111111112";
 const STORE_BADGES = "/assets/landing/store-badges-v3-cropped.png";
 const QR_CODE = "/assets/landing/qr-rounded.svg";
 const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
-const HERO_CHARACTER = "/assets/landing/astronaut.png";
+const HERO_CHARACTER = "/assets/landing/astronaut-hq.png";
 const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
 const PHONE_MOCKUP = "/assets/landing/phone-mockup.png";
 const PHONE_CLEAN = "/assets/video/MAKE_VIDEO_NOT_IMAGE-Picsart-BackgroundRemover.webm";
@@ -340,7 +340,7 @@ export function Landing() {
           <img
             src={HERO_CHARACTER}
             alt="ChadWallet trader floating in space with a satellite"
-            className="pointer-events-none mt-[-7rem] w-[min(680px,108vw)] max-w-none select-none animate-float sm:mt-[-9.5rem] sm:w-[min(760px,105%)] md:mt-[-11rem] md:w-[min(840px,100%)]"
+            className="pointer-events-none mt-[-10rem] w-[min(680px,108vw)] max-w-none select-none animate-float sm:mt-[-13rem] sm:w-[min(760px,105%)] md:mt-[-15rem] md:w-[min(840px,100%)]"
           />
         </div>
       </section>
