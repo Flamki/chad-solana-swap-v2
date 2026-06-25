@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X, TrendingUp, TrendingDown, Clock, Trash2 } from "lucide-react";
 
-import { env } from "@/lib/env";
 import { formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 const RECENT_KEY = "chadwallet-recent-searches";
@@ -91,7 +90,7 @@ export function TokenSearch() {
   }, [open]);
 
   useEffect(() => {
-    if (!query.trim() || query.trim().length < 2) {
+    if (!query.trim()) {
       setResults([]);
       setLoading(false);
       setError("");
@@ -107,10 +106,9 @@ export function TokenSearch() {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(
-          `${env.edgeApiUrl ?? ""}/api/market/search?q=${encodeURIComponent(query.trim())}`,
-          { signal: controller.signal },
-        );
+        const res = await fetch(`/api/market/search?q=${encodeURIComponent(query.trim())}`, {
+          signal: controller.signal,
+        });
         if (res.ok) {
           const data = await res.json();
           setResults(data);
@@ -128,7 +126,7 @@ export function TokenSearch() {
           setLoading(false);
         }
       }
-    }, 300);
+    }, 180);
 
     return () => {
       clearTimeout(timer);
@@ -153,7 +151,7 @@ export function TokenSearch() {
     [router],
   );
 
-  const allItems = query.trim().length >= 2 ? results : [];
+  const allItems = query.trim().length >= 1 ? results : [];
   const onKeyDown = (e: React.KeyboardEvent) => {
     const items = allItems.length > 0 ? allItems : recents;
     if (e.key === "ArrowDown") {
@@ -207,26 +205,26 @@ export function TokenSearch() {
       </div>
 
       <div className="token-search-body">
-        {loading && query.trim().length >= 2 && (
+        {loading && query.trim().length >= 1 && (
           <div className="token-search-status">
             <div className="token-search-spinner" />
             <span>Searching...</span>
           </div>
         )}
 
-        {!loading && query.trim().length >= 2 && error && (
+        {!loading && query.trim().length >= 1 && error && (
           <div className="token-search-status">
             <span className="text-muted-foreground">{error}</span>
           </div>
         )}
 
-        {!loading && query.trim().length >= 2 && !error && results.length === 0 && (
+        {!loading && query.trim().length >= 1 && !error && results.length === 0 && (
           <div className="token-search-status">
             <span className="text-muted-foreground">No tokens found for &ldquo;{query}&rdquo;</span>
           </div>
         )}
 
-        {query.trim().length >= 2 && results.length > 0 && (
+        {query.trim().length >= 1 && results.length > 0 && (
           <div className="token-search-list">
             {results.map((token, idx) => (
               <SearchResultRow
@@ -239,7 +237,7 @@ export function TokenSearch() {
           </div>
         )}
 
-        {query.trim().length < 2 && recents.length > 0 && (
+        {query.trim().length < 1 && recents.length > 0 && (
           <>
             <div className="token-search-section-header">
               <div className="token-search-section-label">
@@ -270,7 +268,7 @@ export function TokenSearch() {
           </>
         )}
 
-        {query.trim().length < 2 && recents.length === 0 && (
+        {query.trim().length < 1 && recents.length === 0 && (
           <div className="token-search-status token-search-status-compact">
             <span className="text-muted-foreground">Type a token name, symbol, or address</span>
           </div>

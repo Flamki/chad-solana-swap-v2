@@ -41,7 +41,11 @@ export function TradePage({ mint }: { mint: string }) {
     SOL_MINT,
     initialToken.mint === SOL_MINT ? initialToken : undefined,
   );
-  const { data: trending = TOKENS } = useTrendingTokens();
+  const {
+    data: trending = [],
+    isLoading: trendingLoading,
+    isError: trendingError,
+  } = useTrendingTokens();
   const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
   const [tokenListMode, setTokenListMode] = useState<TokenListMode>("trending");
   const [copiedMint, setCopiedMint] = useState(false);
@@ -60,10 +64,14 @@ export function TradePage({ mint }: { mint: string }) {
       });
     }
 
-    return trending;
+    return trending.length ? trending : [token];
   }, [token, tokenListMode, trending]);
   const tokenListSubtitle =
-    tokenListMode === "most-held" ? "Largest holder bases" : "BirdEye live trending";
+    tokenListMode === "most-held"
+      ? "Largest holder bases"
+      : trendingError
+        ? "Live feed reconnecting"
+        : "Live Jupiter + BirdEye feed";
 
   async function handleCopyMint() {
     const copied = await copyText(token.mint);
@@ -120,6 +128,9 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
           </div>
           <div className="terminal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {tokenListMode === "trending" && trendingLoading && trending.length === 0 && (
+              <div className="px-4 py-4 text-xs text-muted-foreground">Loading live tokens...</div>
+            )}
             {sidebarTokens.map((item) => (
               <TrendingToken key={item.mint} token={item} active={item.mint === token.mint} />
             ))}

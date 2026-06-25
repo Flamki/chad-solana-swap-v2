@@ -131,7 +131,7 @@ export type TokenPosition = {
 };
 
 async function fetchLocalJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${env.edgeApiUrl ?? ""}${path}`, { signal });
+  const response = await fetch(path, { signal });
 
   if (!response.ok) {
     throw new Error(`${path} failed (${response.status})`);
@@ -553,9 +553,9 @@ export function useTrendingTokens() {
   return useQuery({
     queryKey: ["trending-tokens"],
     queryFn: ({ signal }) => fetchTrendingTokens(signal),
-    initialData: TOKENS,
     refetchInterval: 60_000,
     staleTime: 30_000,
+    retry: 2,
   });
 }
 
