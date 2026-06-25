@@ -71,6 +71,8 @@ function TokenTicker({
   unavailable?: boolean;
   updatedAt?: string;
 }) {
+  const [interactionPaused, setInteractionPaused] = useState(false);
+
   if (!items.length) {
     return (
       <div
@@ -86,12 +88,21 @@ function TokenTicker({
 
   return (
     <div
-      className={`relative overflow-hidden border-y border-white/5 bg-black ${compact ? "py-4" : "py-5"}`}
+      className={`group/ticker relative overflow-hidden border-y border-white/5 bg-black ${compact ? "py-4" : "py-5"}`}
       aria-label="Live Solana token prices"
       aria-busy={loading}
+      onMouseEnter={() => setInteractionPaused(true)}
+      onMouseLeave={() => setInteractionPaused(false)}
+      onFocusCapture={() => setInteractionPaused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setInteractionPaused(false);
+        }
+      }}
     >
       <div
-        className={`flex whitespace-nowrap ${compact ? "gap-8 animate-[scroll_40s_linear_infinite]" : "gap-4 animate-[scroll_35s_linear_infinite]"} ${reverse ? "[animation-direction:reverse]" : ""}`}
+        className={`flex whitespace-nowrap will-change-transform ${compact ? "gap-8 animate-[scroll_40s_linear_infinite]" : "gap-4 animate-[scroll_35s_linear_infinite]"} ${reverse ? "[animation-direction:reverse]" : ""}`}
+        style={{ animationPlayState: interactionPaused ? "paused" : "running" }}
       >
         {[...Array(2)].map((_, dup) => (
           <div key={dup} className={`flex shrink-0 ${compact ? "gap-8" : "gap-4"}`}>
@@ -100,7 +111,9 @@ function TokenTicker({
                 key={`${token.mint}-${dup}`}
                 href={`/trade/${token.mint}`}
                 title={`${token.symbol} live price from ${token.source === "jupiter" ? "Jupiter" : "BirdEye"}${updatedAt ? `, updated ${new Date(updatedAt).toLocaleTimeString()}` : ""}`}
-                className={`flex items-center rounded-full ring-1 ring-white/10 transition hover:bg-white/[0.08] ${compact ? "gap-3 bg-white/[0.02] px-5 py-1.5" : "gap-3 bg-white/[0.04] px-4 py-2.5"}`}
+                onPointerDown={() => setInteractionPaused(true)}
+                onPointerCancel={() => setInteractionPaused(false)}
+                className={`relative z-10 flex cursor-pointer touch-manipulation items-center rounded-full ring-1 ring-white/10 transition hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${compact ? "gap-3 bg-white/[0.02] px-5 py-1.5" : "gap-3 bg-white/[0.04] px-4 py-2.5"}`}
               >
                 {!compact && token.logo && (
                   <img
