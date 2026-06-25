@@ -13,8 +13,6 @@ import memecoin from "@/assets/flow/memecoin-4.png";
 import portfolio from "@/assets/flow/portfolio-4.png";
 import relaunch from "@/assets/flow/relaunch-4.png";
 import chadLogo from "@/assets/logo/dark.png";
-import phoneMockup from "@/assets/app store/search.png";
-import dashboard from "@/assets/app store/token.png";
 
 const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
 const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
@@ -23,10 +21,12 @@ const STORE_BADGES = "/assets/landing/store-badges-v3-cropped.png";
 const QR_CODE = "/assets/landing/qr-rounded.svg";
 const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
 const HERO_CHARACTER = "/assets/landing/astronaut.png";
+const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
+const PHONE_MOCKUP = "/assets/landing/phone-mockup.png";
 const PHONE_CLEAN = "/assets/video/MAKE_VIDEO_NOT_IMAGE-Picsart-BackgroundRemover.webm";
 const PHONE_CLEAN_FALLBACK = "/assets/video/MAKE_VIDEO_NOT_IMAGE.mp4";
 const PHONE_VIDEO = "/assets/video/chadwallet.mp4";
-const FOOTER_IMAGE = "/assets/landing/money-3.png";
+const FOOTER_IMAGE = "/assets/landing/chad-footer.png";
 
 const tickerOne = [
   {
@@ -433,16 +433,16 @@ export function Landing() {
           </p>
 
           <div className="relative mt-20">
-            <div className="absolute inset-x-10 bottom-0 top-10 rounded-full bg-indigo-600/20 blur-3xl" />
+            <div className="absolute inset-x-[8%] bottom-[4%] top-[8%] rounded-full bg-indigo-600/18 blur-3xl" />
             <img
-              src={assetUrl(dashboard)}
+              src={TRADING_DASHBOARD}
               alt="ChadWallet web trading dashboard with live charts, token list, and swap panel"
-              className="relative mx-auto w-full max-w-5xl rounded-xl"
+              className="relative mx-auto w-full max-w-[1536px] rounded-xl border border-white/10 shadow-[0_38px_120px_rgba(0,0,0,0.68)]"
             />
             <img
-              src={assetUrl(phoneMockup)}
+              src={PHONE_MOCKUP}
               alt="ChadWallet mobile app showing trending tokens"
-              className="pointer-events-none absolute bottom-[-8%] right-[-2%] w-[38%] max-w-[340px] select-none drop-shadow-[0_30px_60px_rgba(99,102,241,0.45)] animate-float sm:bottom-[-10%] sm:right-[2%] sm:w-[32%] md:bottom-[-12%] md:right-[6%] md:w-[28%]"
+              className="pointer-events-none absolute bottom-[-17%] right-[-8%] z-10 w-[42%] max-w-[560px] select-none drop-shadow-[0_35px_70px_rgba(99,102,241,0.34)] animate-float sm:bottom-[-19%] sm:right-[-3%] sm:w-[35%] md:bottom-[-22%] md:right-[2%] md:w-[30%]"
             />
           </div>
         </div>
