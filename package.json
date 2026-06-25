@@ -1,8 +1,17 @@
 {
-  "name": "chadwallet-next",
+  "name": "chadwallet-solana-terminal",
+  "version": "1.0.0",
+  "description": "High-fidelity ChadWallet landing page and Solana trading terminal.",
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "overrides": {
+    "postcss": "8.5.15",
+    "ws": "8.21.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +20,10 @@
     "cloudflare:deploy": "wrangler deploy",
     "preview": "next start",
     "lint": "eslint src next.config.ts eslint.config.js",
-    "format": "prettier --write ."
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\" \"*.{ts,js,json,md}\" \"cloudflare/**/*.js\" \"docs/**/*.md\"",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

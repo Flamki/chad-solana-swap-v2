@@ -7,6 +7,6 @@
     "enabled": true,
   },
   "vars": {
-    "ORIGIN_URL": "https://chad-solana-swap.vercel.app",
+    "ORIGIN_URL": "https://chad-solana-swap-v2.vercel.app",
   },
 }

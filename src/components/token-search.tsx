@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X, TrendingUp, TrendingDown, Clock, Trash2 } from "lucide-react";
 
+import { fetchMarketJson } from "@/lib/market-api";
 import { formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 const RECENT_KEY = "chadwallet-recent-searches";
@@ -106,16 +107,11 @@ export function TokenSearch() {
 
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/market/search?q=${encodeURIComponent(query.trim())}`, {
-          signal: controller.signal,
-        });
-        if (res.ok) {
-          const data = await res.json();
-          setResults(data);
-        } else {
-          setResults([]);
-          setError("Token search is temporarily unavailable.");
-        }
+        const data = await fetchMarketJson<Token[]>(
+          `/api/market/search?q=${encodeURIComponent(query.trim())}`,
+          { signal: controller.signal },
+        );
+        setResults(data);
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
           setResults([]);

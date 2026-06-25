@@ -1,138 +1,139 @@
 # ChadWallet
 
-**Social Solana wallet and trading terminal built for fast-moving token markets.**
+**A high-fidelity Solana wallet and trading terminal for fast-moving token markets.**
 
-ChadWallet is a production-style take-home build inspired by the energy of
-fomo.family: a cinematic landing page, live rotating token rails, Privy wallet
-authentication, real Solana market data, and a bonus trading interface with
-quotes, receipts, charts, holders, trades, and portfolio controls.
+[Live product](https://chad-solana-swap-v2.vercel.app) |
+[One-page project summary](output/pdf/ChadWallet-One-Pager.pdf) |
+[Android app](https://play.google.com/store/apps/details?id=xyz.chadwallet.www) |
+[iOS app](https://apps.apple.com/us/app/chadwallet/id6757367474)
 
-Live preview: **https://chad-solana-swap.vercel.app**
+[![ChadWallet trading terminal](public/assets/landing/trading-dashboard.png)](https://chad-solana-swap-v2.vercel.app/trade/So11111111111111111111111111111111111111112)
 
-<p align="center">
-  <video src="public/assets/video/MAKE_VIDEO_NOT_IMAGE-Picsart-BackgroundRemover.webm" autoplay muted loop playsinline width="720"></video>
-</p>
+ChadWallet is a three-day founding-engineer take-home built against the quality
+bar of fomo.family. It pairs a cinematic, responsive landing experience with a
+functional Solana trading workspace powered by live market data, embedded wallet
+infrastructure, token search, charting, portfolio controls, deposits, and
+Jupiter swap routing.
 
-If the video does not render in your Markdown viewer, open it directly:
-[transparent ChadWallet motion asset](public/assets/video/MAKE_VIDEO_NOT_IMAGE-Picsart-BackgroundRemover.webm).
+## Reviewer Quick Start
 
-## Why It Stands Out
+1. Open the [live landing page](https://chad-solana-swap-v2.vercel.app).
+2. Select any token in the top or bottom live ticker.
+3. Search by token name, symbol, or Solana mint address.
+4. Sign in with Google or a supported wallet through Privy.
+5. Review live quotes, routes, holders, trades, positions, and deposit controls.
 
-- **Feels like a real consumer crypto product**: cinematic ChadWallet landing page, responsive app-store CTAs, profile-style wallet controls, and scroll-depth motion.
-- **Real market surface**: token rails and trading pages are backed by BirdEye, GeckoTerminal/DexScreener-style fallbacks, Solana RPC, and Jupiter quote routes.
-- **Trade-ready architecture**: Jupiter quote, order, Privy wallet signing, execution handoff, Solana confirmation polling, and downloadable JSON trade receipts.
-- **Edge-aware data path**: Cloudflare Worker proxies read-only market APIs with cache headers while trading actions stay on the Vercel origin.
-- **Submission-focused polish**: Next.js App Router, Tailwind, Supabase persistence, Vercel production deployment, and a clean npm workflow.
+Apple sign-in remains intentionally unconfigured because production Sign in with
+Apple requires paid Apple Developer credentials.
 
-## Feature Matrix
+## Assignment Coverage
 
-| Requirement                                              | Status                                                             |
-| -------------------------------------------------------- | ------------------------------------------------------------------ |
-| ChadWallet branded landing page                          | Complete                                                           |
-| Mobile app links                                         | Complete                                                           |
-| Privy Google sign-in                                     | Complete                                                           |
-| Privy wallet sign-in and embedded Solana wallet          | Complete                                                           |
-| Apple sign-in                                            | Apple-ready in UI, requires paid Apple Developer OAuth credentials |
-| Solana support                                           | Complete                                                           |
-| Rotating top and bottom token banners                    | Complete                                                           |
-| Token banner opens trading page                          | Complete                                                           |
-| Trading UI left panel: tokens/trending                   | Complete                                                           |
-| Trading UI middle panel: token info/chart/holders/trades | Complete                                                           |
-| Trading UI right panel: buy/sell/position                | Complete                                                           |
-| BirdEye market data                                      | Complete, with fallbacks                                           |
-| Alchemy/Solana RPC                                       | Complete                                                           |
-| Jupiter quotes and execution flow                        | Complete                                                           |
-| Supabase trade intent persistence                        | Complete                                                           |
-| Cloudflare Worker                                        | Complete                                                           |
-| Vercel production deployment                             | Complete                                                           |
+| Requirement                                | Implementation                         |
+| ------------------------------------------ | -------------------------------------- |
+| ChadWallet branded landing page            | Complete                               |
+| Official Android and iOS links             | Complete                               |
+| Privy Google and wallet authentication     | Complete                               |
+| Solana support                             | Complete                               |
+| Live rotating token banners                | Complete                               |
+| Banner-to-trading navigation               | Complete                               |
+| Left: live token discovery                 | Complete                               |
+| Middle: token data, chart, holders, trades | Complete                               |
+| Right: buy/sell, route, wallet position    | Complete                               |
+| BirdEye market integration                 | Complete, with live provider fallbacks |
+| Alchemy Solana RPC                         | Complete                               |
+| Jupiter quotes and transaction flow        | Complete                               |
+| Supabase trade-intent persistence          | Complete                               |
+| Cloudflare market-data edge worker         | Complete                               |
+| Vercel production deployment               | Complete                               |
 
-## Product Surface
+## Product Highlights
 
-### Landing
-
-The landing page uses ChadWallet branding, the supplied app links, rotating token
-banners, scroll-driven depth, and motion assets to sell the core idea quickly:
-trade Solana launches from a wallet experience that feels social, fast, and alive.
-
-### Trading Terminal
-
-The `/trade/[mint]` screen is split into three professional trading zones:
-
-- **Left**: scrollable live token list with filters and direct token navigation.
-- **Middle**: token identity, market stats, live chart, holder data, and trades.
-- **Right**: buy/sell quote panel, slippage controls, route metadata, position card,
-  deposit modal, profile menu, and account management.
-
-### Account And Wallet
-
-Privy powers authentication and embedded wallet controls. After login, the app
-shows a profile-style wallet pill, account menu, deposit entry points, wallet
-address copy actions, and export/profile actions where supported by Privy.
-
-## Data And Execution
-
-ChadWallet is not a static mock. It uses real APIs wherever practical:
-
-- **BirdEye** for token metadata, trending feeds, prices, stats, and OHLCV data.
-- **GeckoTerminal / market fallbacks** when a BirdEye endpoint cannot return a token.
-- **Alchemy Solana RPC** for chain health, slots, and signature status proof.
-- **Jupiter** for quotes, routes, swap order construction, and execution handoff.
-- **Supabase** for storing trade intents and demo activity.
-- **Cloudflare Workers** for cached read-only market API traffic.
-
-Every submitted Jupiter execution is followed by Solana RPC confirmation polling.
-The app stores recent receipts locally and can export a JSON proof containing the
-signature, slot, route, wallet, amounts, mint, timestamp, and Solscan link.
+- **High-fidelity landing experience:** responsive ChadWallet branding,
+  scroll-driven depth, optimized visual assets, app-store calls to action, and
+  real token tickers.
+- **Universal Solana token search:** live Jupiter token discovery with token name,
+  symbol, and mint-address lookup.
+- **Live market data:** BirdEye is the primary provider, with Jupiter,
+  GeckoTerminal, DexScreener, and Solana RPC fallbacks where coverage is sparse
+  or rate-limited.
+- **Professional charting:** responsive candlesticks, volume, interval controls,
+  price/market-cap modes, and TradingView widget support for listed assets.
+- **Embedded wallet workflow:** Privy authentication, Solana wallet controls,
+  address copy, deposits, transfers, account management, and wallet export entry
+  points.
+- **Jupiter execution path:** live quotes, route metadata, transaction creation,
+  signing handoff, submission, confirmation polling, and downloadable receipts.
+- **Independent workspace scrolling:** token discovery, chart/activity, and
+  trading controls remain usable without losing context.
 
 ## Architecture
 
 ```text
 Browser
-  -> Next.js App Router UI
-  -> Privy auth + embedded Solana wallet
-  -> Cloudflare Worker for GET /api/market/*
-  -> Vercel API routes for private/trade actions
-  -> BirdEye / GeckoTerminal / Alchemy / Jupiter / Supabase
+  |-- Next.js App Router UI
+  |-- Privy authentication + embedded Solana wallet
+  |-- Cloudflare Worker (optional cached GET /api/market/* edge)
+  `-- Vercel API routes
+      |-- BirdEye / Jupiter / GeckoTerminal / DexScreener
+      |-- Alchemy Solana RPC
+      |-- Jupiter order and execution APIs
+      `-- Supabase trade-intent persistence
 ```
 
-Read-only market traffic can be routed through Cloudflare by setting
-`NEXT_PUBLIC_EDGE_API_URL`. Trade order, signing, execution, and receipt checks
-remain on the Vercel origin so they are never cached at the edge.
+Market endpoints return an explicit `live`, `cached`, or `unavailable` state.
+The UI does not fabricate candles when a provider cannot supply real data.
 
-## Tech Stack
+## Technology
 
-- **Next.js 16** App Router
-- **React 19**
-- **Tailwind CSS 4**
-- **Privy** authentication and embedded wallet infrastructure
-- **Solana / Alchemy RPC**
-- **BirdEye Data API**
-- **Jupiter Swap API**
-- **TradingView Lightweight Charts** plus TradingView widget mode for supported assets
-- **Supabase**
-- **Cloudflare Workers**
-- **Vercel**
+- Next.js 16 App Router and React 19
+- Tailwind CSS 4
+- Privy
+- Solana Kit and Alchemy RPC
+- BirdEye Data API
+- Jupiter Tokens and Swap APIs
+- GeckoTerminal and DexScreener fallbacks
+- TradingView Lightweight Charts
+- Supabase
+- Cloudflare Workers
+- Vercel
+
+## Local Development
+
+Requirements:
+
+- Node.js 24
+- npm 10 or newer
+
+```bash
+git clone https://github.com/Flamki/chad-solana-swap-v2.git
+cd chad-solana-swap-v2
+npm install
+copy .env.example .env.local
+npm run dev
+```
+
+Open `http://localhost:3000`.
 
 ## Environment
 
-Copy `.env.example` to `.env.local` and fill the keys for the services you want
-enabled locally.
+The application degrades gracefully when optional providers are not configured.
+Use `.env.example` as the source of truth.
 
 ```bash
+# Public browser configuration
 NEXT_PUBLIC_PRIVY_APP_ID=
 NEXT_PUBLIC_PRIVY_CLIENT_ID=
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_EDGE_API_URL=
+
+# Optional browser fallbacks used by local demos
 NEXT_PUBLIC_BIRDEYE_API_KEY=
 NEXT_PUBLIC_JUPITER_API_KEY=
 NEXT_PUBLIC_ALCHEMY_SOLANA_RPC_URL=
 NEXT_PUBLIC_SOLANA_RPC_URL=
-NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-NEXT_PUBLIC_EDGE_API_URL=
-```
 
-Server-side/private keys are also supported for production API routes:
-
-```bash
+# Server-only provider credentials
 PRIVY_APP_SECRET=
 PRIVY_JWKS_ENDPOINT=
 BIRDEYE_API_KEY=
@@ -145,61 +146,57 @@ SUPABASE_SECRET_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 ```
 
-## Local Development
+Do not expose server-only credentials through `NEXT_PUBLIC_*` variables in a
+real production deployment.
 
-```bash
-npm install
-npm run dev
+## Database
+
+Apply the Supabase migration through the SQL editor or CLI:
+
+```text
+supabase/migrations/20260623000100_create_trade_intents.sql
+supabase/migrations/20260623000200_allow_demo_trade_intent_inserts.sql
 ```
 
-Open `http://localhost:3000`.
+## Cloudflare Worker
 
-## Supabase
-
-Run the SQL migration in the Supabase SQL editor:
-
-```bash
-supabase/trade_intents.sql
-```
-
-This enables demo trade-intent persistence for captured quote and swap activity.
-
-## Cloudflare
-
-The Worker in `cloudflare/worker.js` proxies only read-only market requests:
+The worker only proxies read-only `/api/market/*` requests. Trading, signing, and
+account actions remain on the Vercel origin and are never edge-cached.
 
 ```bash
 npm run cloudflare:dev
 npm run cloudflare:deploy
 ```
 
-After deployment, set the Worker URL in Vercel:
+Set `NEXT_PUBLIC_EDGE_API_URL` to the deployed worker URL when edge routing is
+desired.
+
+## Quality Gates
 
 ```bash
-NEXT_PUBLIC_EDGE_API_URL=https://your-worker.workers.dev
-```
-
-## Quality Checks
-
-```bash
+npm run format:check
 npm run lint
+npm run typecheck
 npm run build
 ```
 
-Both commands should pass before deployment.
+Run all checks together with:
+
+```bash
+npm run check
+```
 
 ## Production Notes
 
-- Google login and wallet login are active through Privy.
-- Apple login requires Apple Developer credentials before it can be considered production complete.
-- Live swaps require a funded wallet and user approval in Privy.
-- The chart uses TradingView Lightweight Charts for arbitrary Solana tokens and an official TradingView widget mode for supported exchange-listed assets. The private self-hosted TradingView Charting Library can be swapped in after TradingView grants access.
+- Live swaps require a funded wallet and explicit user approval.
+- Mainnet activity should always be tested with small values first.
+- Apple sign-in requires Apple Developer credentials before it can be enabled.
+- Arbitrary Solana tokens use TradingView Lightweight Charts with live provider
+  data. The licensed self-hosted TradingView Charting Library can be integrated
+  after access is granted.
 
-## Submission
+## Repository
 
-This build is ready to review as a live product demo:
-
-**https://chad-solana-swap.vercel.app**
-
-It demonstrates the minimum landing page requirement and the bonus trading page
-with real integrations, real data paths, and production deployment infrastructure.
+- Production: <https://chad-solana-swap-v2.vercel.app>
+- Repository: <https://github.com/Flamki/chad-solana-swap-v2>
+- Project summary: [ChadWallet One-Pager](output/pdf/ChadWallet-One-Pager.pdf)

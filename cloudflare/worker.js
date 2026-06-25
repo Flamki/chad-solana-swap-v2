@@ -3,7 +3,7 @@ const MARKET_PATH_PREFIX = "/api/market/";
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    const origin = env.ORIGIN_URL || "https://chad-solana-swap.vercel.app";
+    const origin = env.ORIGIN_URL || "https://chad-solana-swap-v2.vercel.app";
 
     if (url.pathname === "/health") {
       return json({

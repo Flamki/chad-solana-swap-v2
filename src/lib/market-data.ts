@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 
 import { env, hasBirdeye, hasJupiterKey, hasRpcEndpoint, hasSupabase } from "@/lib/env";
+import { fetchMarketJson } from "@/lib/market-api";
 import { SOL_MINT, TOKENS, type Token, createFallbackToken, mergeToken } from "@/lib/tokens";
 
 const BIRDEYE_TRENDING_URL =
@@ -130,16 +131,6 @@ export type TokenPosition = {
   source: string;
 };
 
-async function fetchLocalJson<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(path, { signal });
-
-  if (!response.ok) {
-    throw new Error(`${path} failed (${response.status})`);
-  }
-
-  return (await response.json()) as T;
-}
-
 export async function fetchJupiterPrices(mints: string[], signal?: AbortSignal) {
   const ids = Array.from(new Set(mints)).filter(Boolean).slice(0, 50);
   if (!ids.length) return {};
@@ -159,7 +150,7 @@ export async function fetchJupiterPrices(mints: string[], signal?: AbortSignal) 
 
 export async function fetchTrendingTokens(signal?: AbortSignal): Promise<Token[]> {
   try {
-    return await fetchLocalJson<Token[]>("/api/market/trending", signal);
+    return await fetchMarketJson<Token[]>("/api/market/trending", { signal });
   } catch {
     // Fall through to the direct public endpoint/fallback path for local demos.
   }
@@ -202,16 +193,10 @@ export async function fetchTrendingTokens(signal?: AbortSignal): Promise<Token[]
 }
 
 export async function fetchMarketTicker(signal?: AbortSignal): Promise<MarketTicker> {
-  const response = await fetch("/api/market/ticker", {
+  return fetchMarketJson<MarketTicker>("/api/market/ticker", {
     cache: "no-store",
     signal,
   });
-
-  if (!response.ok) {
-    throw new Error(`Live market ticker failed (${response.status})`);
-  }
-
-  return (await response.json()) as MarketTicker;
 }
 
 export async function enrichTokensWithJupiter(tokens: Token[], signal?: AbortSignal) {
@@ -238,7 +223,9 @@ export async function enrichTokensWithJupiter(tokens: Token[], signal?: AbortSig
 
 export async function fetchTokenMarket(mint: string, signal?: AbortSignal) {
   try {
-    return await fetchLocalJson<Token>(`/api/market/token/${encodeURIComponent(mint)}`, signal);
+    return await fetchMarketJson<Token>(`/api/market/token/${encodeURIComponent(mint)}`, {
+      signal,
+    });
   } catch {
     // Fall through to Jupiter/static fallback.
   }
@@ -253,23 +240,23 @@ export async function fetchTokenOhlcv(
   interval: ChartInterval = "15m",
   signal?: AbortSignal,
 ) {
-  return fetchLocalJson<MarketDataset<PricePoint[]>>(
+  return fetchMarketJson<MarketDataset<PricePoint[]>>(
     `/api/market/ohlcv/${encodeURIComponent(mint)}?interval=${interval}`,
-    signal,
+    { signal },
   );
 }
 
 export async function fetchTokenTrades(mint: string, signal?: AbortSignal) {
-  return fetchLocalJson<MarketDataset<LiveTrade[]>>(
+  return fetchMarketJson<MarketDataset<LiveTrade[]>>(
     `/api/market/trades/${encodeURIComponent(mint)}`,
-    signal,
+    { signal },
   );
 }
 
 export async function fetchTokenHolders(mint: string, signal?: AbortSignal) {
-  return fetchLocalJson<MarketDataset<LiveHolder[]>>(
+  return fetchMarketJson<MarketDataset<LiveHolder[]>>(
     `/api/market/holders/${encodeURIComponent(mint)}`,
-    signal,
+    { signal },
   );
 }
 
