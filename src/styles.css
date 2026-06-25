@@ -354,60 +354,38 @@ html {
   text-align: left;
 }
 
-.token-search-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 90;
-  background: transparent;
-  animation: search-fade-in 0.15s ease;
-}
-
-@keyframes search-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 @keyframes search-slide-in {
   from {
     opacity: 0;
-    transform: translateY(-16px) scale(0.97);
+    transform: translateY(-6px);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
   }
 }
 
 .token-search-modal {
-  position: fixed;
-  top: 10%;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  width: 94vw;
+  position: relative;
+  z-index: 50;
+  width: clamp(320px, 42vw, 640px);
   max-width: 640px;
-  border-radius: 16px;
-  border: 1px solid oklch(1 0 0 / 10%);
-  background: oklch(0.1 0.015 260 / 0.95);
-  backdrop-filter: blur(24px);
-  box-shadow:
-    0 0 0 1px oklch(1 0 0 / 5%),
-    0 24px 80px oklch(0 0 0 / 0.5),
-    0 0 60px oklch(0.58 0.2 274 / 0.08);
-  overflow: hidden;
-  animation: search-slide-in 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .token-search-input-wrap {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 0.875rem 1rem;
-  border-bottom: 1px solid oklch(1 0 0 / 8%);
+  min-height: 42px;
+  padding: 0.425rem 0.875rem;
+  border-radius: 16px;
+  border: 1px solid oklch(1 0 0 / 10%);
+  background: oklch(0.1 0.015 260 / 0.95);
+  backdrop-filter: blur(24px);
+  box-shadow:
+    0 0 0 1px oklch(1 0 0 / 5%),
+    0 12px 48px oklch(0 0 0 / 0.35),
+    0 0 60px oklch(0.58 0.2 274 / 0.08);
 }
 
 .token-search-input {
@@ -441,8 +419,21 @@ html {
 }
 
 .token-search-body {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 60;
   max-height: 380px;
   overflow-y: auto;
+  border-radius: 14px;
+  border: 1px solid oklch(1 0 0 / 10%);
+  background: oklch(0.09 0.015 260 / 0.96);
+  backdrop-filter: blur(24px);
+  box-shadow:
+    0 18px 56px oklch(0 0 0 / 0.48),
+    0 0 50px oklch(0.58 0.2 274 / 0.06);
+  animation: search-slide-in 0.16s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .token-search-status {
@@ -586,6 +577,15 @@ html {
 }
 
 @media (max-width: 640px) {
+  .token-search-modal {
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 4.75rem;
+    width: auto;
+    max-width: none;
+  }
+
   .token-search-row-stats {
     display: none;
   }

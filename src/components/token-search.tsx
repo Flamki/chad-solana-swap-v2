@@ -178,111 +178,105 @@ export function TokenSearch() {
   }
 
   return (
-    <>
-      <div className="token-search-backdrop" />
+    <div className="token-search-modal" ref={containerRef}>
+      <div className="token-search-input-wrap">
+        <Search className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={onKeyDown}
+          placeholder="Search for tokens or paste address..."
+          className="token-search-input"
+          autoComplete="off"
+          spellCheck={false}
+        />
+        {query && (
+          <button
+            onClick={() => {
+              setQuery("");
+              setResults([]);
+              inputRef.current?.focus();
+            }}
+            className="token-search-clear"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
 
-      <div className="token-search-modal" ref={containerRef}>
-        <div className="token-search-input-wrap">
-          <Search className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="Search for tokens or paste address..."
-            className="token-search-input"
-            autoComplete="off"
-            spellCheck={false}
-          />
-          {query && (
-            <button
-              onClick={() => {
-                setQuery("");
-                setResults([]);
-                inputRef.current?.focus();
-              }}
-              className="token-search-clear"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
+      <div className="token-search-body">
+        {loading && query.trim().length >= 2 && (
+          <div className="token-search-status">
+            <div className="token-search-spinner" />
+            <span>Searching...</span>
+          </div>
+        )}
 
-        <div className="token-search-body">
-          {loading && query.trim().length >= 2 && (
-            <div className="token-search-status">
-              <div className="token-search-spinner" />
-              <span>Searching...</span>
+        {!loading && query.trim().length >= 2 && error && (
+          <div className="token-search-status">
+            <span className="text-muted-foreground">{error}</span>
+          </div>
+        )}
+
+        {!loading && query.trim().length >= 2 && !error && results.length === 0 && (
+          <div className="token-search-status">
+            <span className="text-muted-foreground">No tokens found for &ldquo;{query}&rdquo;</span>
+          </div>
+        )}
+
+        {query.trim().length >= 2 && results.length > 0 && (
+          <div className="token-search-list">
+            {results.map((token, idx) => (
+              <SearchResultRow
+                key={token.mint}
+                token={token}
+                selected={idx === selectedIndex}
+                onClick={() => navigateToToken(token)}
+              />
+            ))}
+          </div>
+        )}
+
+        {query.trim().length < 2 && recents.length > 0 && (
+          <>
+            <div className="token-search-section-header">
+              <div className="token-search-section-label">
+                <Clock className="h-3.5 w-3.5" />
+                <span>Recents</span>
+              </div>
+              <button
+                onClick={() => {
+                  clearRecents();
+                  setRecents([]);
+                }}
+                className="token-search-clear-all"
+              >
+                <Trash2 className="h-3 w-3" />
+                Clear all
+              </button>
             </div>
-          )}
-
-          {!loading && query.trim().length >= 2 && error && (
-            <div className="token-search-status">
-              <span className="text-muted-foreground">{error}</span>
-            </div>
-          )}
-
-          {!loading && query.trim().length >= 2 && !error && results.length === 0 && (
-            <div className="token-search-status">
-              <span className="text-muted-foreground">
-                No tokens found for &ldquo;{query}&rdquo;
-              </span>
-            </div>
-          )}
-
-          {query.trim().length >= 2 && results.length > 0 && (
             <div className="token-search-list">
-              {results.map((token, idx) => (
-                <SearchResultRow
+              {recents.map((token, idx) => (
+                <RecentRow
                   key={token.mint}
                   token={token}
                   selected={idx === selectedIndex}
-                  onClick={() => navigateToToken(token)}
+                  onClick={() => navigateToToken(token as Token)}
                 />
               ))}
             </div>
-          )}
+          </>
+        )}
 
-          {query.trim().length < 2 && recents.length > 0 && (
-            <>
-              <div className="token-search-section-header">
-                <div className="token-search-section-label">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>Recents</span>
-                </div>
-                <button
-                  onClick={() => {
-                    clearRecents();
-                    setRecents([]);
-                  }}
-                  className="token-search-clear-all"
-                >
-                  <Trash2 className="h-3 w-3" />
-                  Clear all
-                </button>
-              </div>
-              <div className="token-search-list">
-                {recents.map((token, idx) => (
-                  <RecentRow
-                    key={token.mint}
-                    token={token}
-                    selected={idx === selectedIndex}
-                    onClick={() => navigateToToken(token as Token)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-
-          {query.trim().length < 2 && recents.length === 0 && (
-            <div className="token-search-status token-search-status-compact">
-              <span className="text-muted-foreground">Type a token name, symbol, or address</span>
-            </div>
-          )}
-        </div>
+        {query.trim().length < 2 && recents.length === 0 && (
+          <div className="token-search-status token-search-status-compact">
+            <span className="text-muted-foreground">Type a token name, symbol, or address</span>
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }
 
