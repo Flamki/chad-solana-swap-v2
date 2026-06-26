@@ -2,7 +2,17 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Activity, Copy, ExternalLink, TrendingDown, TrendingUp, Users } from "lucide-react";
+import {
+  Activity,
+  Bell,
+  Columns2,
+  Copy,
+  ExternalLink,
+  PanelBottom,
+  TrendingDown,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 
 import { ChadLogo } from "@/components/chad-logo";
 import { TokenSearch } from "@/components/token-search";
@@ -29,10 +39,8 @@ import {
 
 type TokenListMode = "trending" | "most-held";
 
-const tokenListModes: Array<{ key: TokenListMode; label: string }> = [
-  { key: "trending", label: "Trending" },
-  { key: "most-held", label: "Most held" },
-];
+const sidebarPrimaryTabs = ["Alerts", "Tokens", "Leaderboard", "Feed"];
+const sidebarFilterTabs = ["Watchlist", "Crypto", "Trending", "Most held", "Graduates"];
 
 export function TradePage({ mint }: { mint: string }) {
   const initialToken = getToken(mint) ?? createFallbackToken(mint);
@@ -66,12 +74,9 @@ export function TradePage({ mint }: { mint: string }) {
 
     return trending.length ? trending : [token];
   }, [token, tokenListMode, trending]);
-  const tokenListSubtitle =
-    tokenListMode === "most-held"
-      ? "Largest holder bases"
-      : trendingError
-        ? "Live feed reconnecting"
-        : "Live Jupiter + BirdEye feed";
+  const tokenListSubtitle = trendingError
+    ? "Live feed reconnecting"
+    : "Live Jupiter + BirdEye feed";
 
   async function handleCopyMint() {
     const copied = await copyText(token.mint);
@@ -82,50 +87,66 @@ export function TradePage({ mint }: { mint: string }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-cosmic">
-      <header className="sticky top-0 z-30 shrink-0 border-b border-border bg-background/60 backdrop-blur-md">
-        <div className="flex h-16 items-center justify-between px-4">
+    <div className="fomo-terminal flex min-h-screen flex-col bg-[#08060f] text-[#f4f1ff]">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-[#1b1726] bg-[#08060f]/95 backdrop-blur-md">
+        <div className="grid h-14 grid-cols-[minmax(220px,340px)_minmax(280px,1fr)_minmax(260px,380px)] items-center gap-3 px-3 max-lg:grid-cols-[auto_1fr_auto]">
           <div className="flex items-center gap-4">
-            <ChadLogo variant="dark" size="sm" />
+            <ChadLogo variant="dark" size="sm" showTagline={false} className="fomo-logo" />
           </div>
 
-          <div className="flex flex-1 justify-center px-4">
+          <div className="flex justify-center">
             <TokenSearch />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2">
             <TradeAccount solPrice={solPrice} />
           </div>
         </div>
       </header>
 
-      <main className="trade-shell grid gap-3 p-3 lg:grid-cols-[300px_minmax(0,1fr)_360px]">
-        <aside className="trade-pane flex min-h-[400px] flex-col overflow-hidden rounded-2xl border border-border bg-card/40">
-          <div className="shrink-0 border-b border-border">
-            <div className="flex items-center justify-between px-4 py-3">
-              <div>
-                <h2 className="text-sm font-semibold">Tokens</h2>
-                <p className="text-[11px] text-muted-foreground">{tokenListSubtitle}</p>
-              </div>
-              <TrendingUp className="h-4 w-4 text-primary" />
-            </div>
-            <div className="flex gap-1 overflow-x-auto px-3 pb-3 terminal-scroll-x">
-              {tokenListModes.map((item) => (
+      <main className="trade-shell grid gap-2 p-2 lg:grid-cols-[340px_minmax(0,1fr)_380px]">
+        <aside className="trade-pane flex min-h-[400px] flex-col overflow-hidden rounded-xl border border-[#201b2e] bg-[#0e0b17] shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
+          <div className="shrink-0 border-b border-[#201b2e] bg-[#15121d]">
+            <div className="flex items-center gap-1 overflow-x-auto px-2 py-2 terminal-scroll-x">
+              {sidebarPrimaryTabs.map((tab) => (
                 <button
-                  key={item.key}
+                  key={tab}
                   type="button"
-                  aria-pressed={tokenListMode === item.key}
-                  onClick={() => setTokenListMode(item.key)}
-                  className={`shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${
-                    tokenListMode === item.key
-                      ? "border-primary/30 bg-primary/15 text-foreground"
-                      : "border-border bg-background/40 text-muted-foreground"
+                  className={`inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] font-semibold ${
+                    tab === "Tokens"
+                      ? "bg-[#1f1b2a] text-white"
+                      : "text-[#8e879d] hover:bg-[#1a1623] hover:text-white"
                   }`}
                 >
-                  {item.label}
+                  {tab === "Alerts" && <Bell className="h-3.5 w-3.5" />}
+                  {tab}
                 </button>
               ))}
+              <span className="ml-auto text-[#6b637a]">{"<<"}</span>
             </div>
+            <div className="flex gap-1 overflow-x-auto px-3 pb-2 terminal-scroll-x">
+              {sidebarFilterTabs.map((label) => {
+                const key =
+                  label === "Most held" ? "most-held" : label === "Trending" ? "trending" : null;
+                const active = key ? tokenListMode === key : false;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => key && setTokenListMode(key as TokenListMode)}
+                    className={`h-7 shrink-0 rounded-md border px-2.5 text-[12px] font-semibold ${
+                      active
+                        ? "border-[#2a2840] bg-[#242133] text-white"
+                        : "border-[#211d2c] bg-[#100d18] text-[#9b94a9] hover:text-white"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="sr-only">{tokenListSubtitle}</span>
           </div>
           <div className="terminal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain">
             {tokenListMode === "trending" && trendingLoading && trending.length === 0 && (
@@ -135,20 +156,30 @@ export function TradePage({ mint }: { mint: string }) {
               <TrendingToken key={item.mint} token={item} active={item.mint === token.mint} />
             ))}
           </div>
+          <div className="grid shrink-0 grid-cols-2 gap-2 border-t border-[#201b2e] bg-[#0e0b17] p-2">
+            <button className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-[#272333] bg-[#17131f] text-[12px] font-semibold text-[#6f687b]">
+              <PanelBottom className="h-3.5 w-3.5" />
+              Split bottom
+            </button>
+            <button className="inline-flex h-8 items-center justify-center gap-2 rounded-md border border-[#272333] bg-[#17131f] text-[12px] font-semibold text-[#6f687b]">
+              <Columns2 className="h-3.5 w-3.5" />
+              Split right
+            </button>
+          </div>
         </aside>
 
-        <section className="trade-pane terminal-scroll trade-center-pane flex min-w-0 flex-col gap-3 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
-          <div className="shrink-0 rounded-2xl border border-border bg-card/40 p-4">
+        <section className="trade-pane terminal-scroll trade-center-pane flex min-w-0 flex-col gap-2 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+          <div className="shrink-0 rounded-xl border border-[#201b2e] bg-[#0e0b17] p-3">
             <div className="flex flex-wrap items-center gap-4">
               <TokenImage token={token} size="lg" />
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-bold">{token.name}</h1>
-                  <span className="rounded-full border border-border bg-background px-2 py-0.5 text-xs font-mono">
+                  <span className="rounded-md border border-[#252137] bg-[#171421] px-2 py-0.5 text-xs font-mono">
                     {token.symbol}
                   </span>
                   {token.source && (
-                    <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-mono uppercase text-primary">
+                    <span className="rounded-md border border-[#2a2745] bg-[#18152a] px-2 py-0.5 text-[10px] font-mono uppercase text-[#7567ff]">
                       {token.source}
                     </span>
                   )}
@@ -167,7 +198,7 @@ export function TradePage({ mint }: { mint: string }) {
               <div className="ml-auto text-right">
                 <div className="text-2xl font-mono font-bold">{formatUsd(token.price)}</div>
                 <div
-                  className={`flex items-center justify-end gap-1 text-sm font-mono ${up ? "text-primary" : "text-destructive"}`}
+                  className={`flex items-center justify-end gap-1 text-sm font-mono ${up ? "text-[#20d772]" : "text-[#ff653d]"}`}
                 >
                   {up ? (
                     <TrendingUp className="h-3.5 w-3.5" />
@@ -179,7 +210,7 @@ export function TradePage({ mint }: { mint: string }) {
                 </div>
               </div>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-3 text-sm md:grid-cols-4">
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm md:grid-cols-4">
               <Stat label="Market cap" value={`$${formatCompact(token.marketCap)}`} />
               <Stat label="24h volume" value={`$${formatCompact(token.volume24h)}`} />
               <Stat
@@ -193,7 +224,7 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
           </div>
 
-          <div className="trade-chart-card h-[360px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card/40 p-3 xl:h-[400px] 2xl:h-[460px]">
+          <div className="trade-chart-card h-[430px] shrink-0 overflow-hidden rounded-xl border border-[#201b2e] bg-[#0b0812] p-2 xl:h-[470px] 2xl:h-[520px]">
             {history.data?.data.length ? (
               <PriceChart
                 data={history.data.data}
@@ -230,6 +261,7 @@ export function TradePage({ mint }: { mint: string }) {
           <SwapPanel token={token} solPrice={solPrice} />
         </aside>
       </main>
+      <TradeFooterTicker tokens={sidebarTokens} solPrice={solPrice} />
     </div>
   );
 }
@@ -240,23 +272,26 @@ function TrendingToken({ token, active }: { token: Token; active: boolean }) {
   return (
     <Link
       href={`/trade/${token.mint}`}
-      className={`flex items-center gap-2.5 border-b border-border/60 px-3 py-2.5 transition-colors ${
-        active ? "bg-primary/10" : "hover:bg-background/60"
+      className={`flex items-center gap-2.5 border-b border-[#171320] px-3 py-2.5 transition-colors ${
+        active ? "bg-[#1f1c2b]" : "hover:bg-[#17131f]"
       }`}
     >
       <TokenImage token={token} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-2">
-          <div className="truncate text-sm font-semibold">{token.symbol}</div>
-          <div className={`font-mono text-xs ${up ? "text-primary" : "text-destructive"}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="truncate text-sm font-bold text-[#f7f4ff]">{token.symbol}</div>
+            <div className="truncate text-[12px] text-[#8d879a]">{formatUsd(token.price)}</div>
+          </div>
+          <div className="text-right">
+            <div className="font-semibold text-[#f7f4ff]">${formatCompact(token.marketCap)} MC</div>
+            <div className={`font-mono text-xs ${up ? "text-[#20d772]" : "text-[#ff653d]"}`}>
+              {up ? "^" : "v"} {Math.abs(token.change24h).toFixed(2)}%
+            </div>
+          </div>
+          <div className={`hidden font-mono text-xs ${up ? "text-primary" : "text-destructive"}`}>
             {up ? "+" : ""}
             {token.change24h.toFixed(1)}%
-          </div>
-        </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <div className="truncate text-[11px] text-muted-foreground">{token.name}</div>
-          <div className="font-mono text-[11px] text-muted-foreground">
-            {formatUsd(token.price)}
           </div>
         </div>
       </div>
@@ -342,10 +377,8 @@ async function copyText(value: string) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-border bg-background/40 px-3 py-2">
-      <div className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
-        {label}
-      </div>
+    <div className="rounded-lg border border-[#201b2e] bg-[#15121d] px-3 py-2">
+      <div className="font-mono text-[11px] uppercase tracking-wide text-[#8d879a]">{label}</div>
       <div className="mt-0.5 font-mono font-semibold">{value}</div>
     </div>
   );
@@ -356,10 +389,10 @@ function MarketActivity({ token }: { token: Token }) {
   const holders = useTokenHolders(token.mint, true);
 
   return (
-    <div className="shrink-0 rounded-2xl border border-border bg-card/40">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+    <div className="shrink-0 rounded-xl border border-[#201b2e] bg-[#0e0b17]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#201b2e] px-3 py-2">
         <div>
-          <h2 className="text-sm font-semibold">Market activity</h2>
+          <h2 className="text-sm font-semibold">Holders</h2>
           <p className="text-[11px] text-muted-foreground">
             Live swaps and holder concentration for this token
           </p>
@@ -402,7 +435,7 @@ function MarketActivity({ token }: { token: Token }) {
             <tbody>
               {trades.data?.data.length ? (
                 trades.data.data.slice(0, 18).map((trade, index) => (
-                  <tr key={`${trade.id}-${index}`} className="border-t border-border/60">
+                  <tr key={`${trade.id}-${index}`} className="border-t border-[#171320]">
                     <Td>
                       <span
                         className={
@@ -475,7 +508,7 @@ function MarketActivity({ token }: { token: Token }) {
             <tbody>
               {holders.data?.data.length ? (
                 holders.data.data.slice(0, 18).map((holder) => (
-                  <tr key={holder.rank} className="border-t border-border/60">
+                  <tr key={holder.rank} className="border-t border-[#171320]">
                     <Td mono>{holder.rank}</Td>
                     <Td mono>{holder.wallet}</Td>
                     <Td mono>{holder.pct > 0 ? `${holder.pct.toFixed(2)}%` : "-"}</Td>
@@ -558,8 +591,8 @@ function FreshnessPill({
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium ${
         live
-          ? "border-primary/30 bg-primary/10 text-primary"
-          : "border-border bg-background/50 text-muted-foreground"
+          ? "border-[#173d2b] bg-[#0f2d1e] text-[#20d772]"
+          : "border-[#252137] bg-[#15121d] text-muted-foreground"
       }`}
     >
       {icon}
@@ -636,6 +669,40 @@ function TableState({
         <div className="mt-1 text-xs text-muted-foreground">{detail}</div>
       </td>
     </tr>
+  );
+}
+
+function TradeFooterTicker({ tokens, solPrice }: { tokens: Token[]; solPrice: number }) {
+  const ticker = tokens.slice(0, 8).map((token) => ({
+    symbol: token.symbol,
+    price: token.price,
+    change: token.change24h,
+  }));
+
+  return (
+    <footer className="hidden h-6 shrink-0 items-center justify-between border-t border-[#201b2e] bg-[#08060f] px-2 text-[11px] lg:flex">
+      <div className="flex min-w-0 items-center gap-5 overflow-hidden">
+        {ticker.map((item) => {
+          const up = item.change >= 0;
+          return (
+            <span key={item.symbol} className="flex shrink-0 items-center gap-1 font-mono">
+              <span className="font-bold text-white">{item.symbol}</span>
+              <span className="text-[#b4adbf]">{formatUsd(item.price)}</span>
+              <span className={up ? "text-[#20d772]" : "text-[#ff653d]"}>
+                {up ? "^" : "v"} {Math.abs(item.change).toFixed(2)}%
+              </span>
+            </span>
+          );
+        })}
+        {solPrice > 0 && <span className="sr-only">SOL reference {solPrice}</span>}
+      </div>
+      <div className="flex items-center gap-4 text-[#70687c]">
+        <span className="font-semibold text-[#20d772]">* Stable</span>
+        <span>Privacy</span>
+        <span>Terms</span>
+        <span>Help</span>
+      </div>
+    </footer>
   );
 }
 

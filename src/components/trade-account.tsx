@@ -130,12 +130,12 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
       <div className="hidden items-stretch gap-1 lg:flex">
         <button
           onClick={() => setDialog("deposit")}
-          className="min-w-[108px] rounded-lg border border-border bg-card/60 px-3 py-1.5 text-left transition hover:bg-card"
+          className="min-w-[108px] rounded-lg border border-[#201b2e] bg-[#100d18] px-3 py-1.5 text-left transition hover:bg-[#171320]"
         >
           <div className="font-mono text-xs font-semibold">{displayMoney(cashBalance)} cash</div>
-          <div className="text-[10px] font-semibold text-primary">Deposit more</div>
+          <div className="text-[10px] font-semibold text-[#5f73ff]">Deposit more</div>
         </button>
-        <div className="min-w-[90px] rounded-lg border border-border bg-card/60 px-3 py-1.5">
+        <div className="min-w-[90px] rounded-lg border border-[#201b2e] bg-[#100d18] px-3 py-1.5">
           <div className="font-mono text-xs font-semibold">{displayMoney(portfolioValue)}</div>
           <div className="text-[10px] text-muted-foreground">Portfolio</div>
         </div>
@@ -144,10 +144,10 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            className="flex h-11 min-w-0 max-w-[190px] items-center gap-2.5 rounded-full border border-border bg-card/70 py-1.5 pl-1.5 pr-3 shadow-lg shadow-black/15 backdrop-blur transition hover:border-primary/30 hover:bg-card"
+            className="flex h-11 min-w-0 max-w-[190px] items-center gap-2.5 rounded-full border border-[#201b2e] bg-[#100d18] py-1.5 pl-1.5 pr-3 shadow-lg shadow-black/15 backdrop-blur transition hover:border-[#342c4a] hover:bg-[#171320]"
             aria-label="Open account menu"
           >
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-[0_0_18px_rgba(20,241,149,0.22)]">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#5962ff] text-sm font-bold text-white shadow-[0_0_18px_rgba(89,98,255,0.22)]">
               {profileInitial}
             </span>
             <span className="min-w-0 flex-1 truncate text-left text-xs font-semibold sm:text-sm">

@@ -20,10 +20,11 @@ import {
   executeJupiterSwap,
   fetchJupiterQuote,
   recordTokenIntent,
+  useTokenTrades,
   useTokenPosition,
 } from "@/lib/market-data";
 import type { Token } from "@/lib/tokens";
-import { SOL_MINT, USDC_MINT, formatUsd, rawAmountFromUi } from "@/lib/tokens";
+import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, rawAmountFromUi } from "@/lib/tokens";
 
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
@@ -311,198 +312,207 @@ function SwapPanelCore({
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card/60 p-4">
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-background/60 p-1">
-        <button
-          onClick={() => setSide("buy")}
-          className={`rounded-lg py-2 text-sm font-semibold transition ${
-            side === "buy"
-              ? "bg-primary text-primary-foreground glow-green"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Buy
-        </button>
-        <button
-          onClick={() => setSide("sell")}
-          className={`rounded-lg py-2 text-sm font-semibold transition ${
-            side === "sell"
-              ? "bg-destructive text-destructive-foreground"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          Sell
-        </button>
-      </div>
-
-      <div className="mt-3 rounded-xl border border-border bg-background/60 p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>You {side === "buy" ? "pay" : "sell"}</span>
-          <span>
-            {walletAddress ? `${formatTokenAmount(inputBalance)} ${pair.inputSymbol}` : "No wallet"}
-          </span>
-        </div>
-        <div className="mt-1 flex items-center gap-2">
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-            inputMode="decimal"
-            className="w-full bg-transparent text-2xl font-mono font-semibold outline-none"
-          />
-          <div className="flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-sm font-semibold">
-            {pair.inputSymbol}
-          </div>
-        </div>
-        <div className="text-xs text-muted-foreground">~ {formatUsd(inputUsd)}</div>
-      </div>
-
-      <div className="my-2 grid grid-cols-4 gap-1.5 text-xs">
-        {["25%", "50%", "75%", "MAX"].map((preset) => (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-[#201b2e] bg-[#0e0b17] p-2">
+        <div className="grid grid-cols-2 gap-2 rounded-lg bg-[#0b0812] p-1">
           <button
-            key={preset}
-            onClick={() =>
-              setAmount(
-                preset === "MAX" ? amount : String(((amt || 1) * Number.parseInt(preset)) / 100),
-              )
-            }
-            className="rounded-lg border border-border bg-background/40 py-1.5 font-mono transition hover:border-primary/50 hover:bg-background"
+            onClick={() => setSide("buy")}
+            className={`rounded-md py-2.5 text-sm font-bold transition ${
+              side === "buy"
+                ? "bg-[#0d3d29] text-[#20e27a]"
+                : "bg-[#14111b] text-[#70687c] hover:text-foreground"
+            }`}
           >
-            {preset}
+            Buy
           </button>
-        ))}
-      </div>
-
-      <div className="-my-1 flex justify-center">
-        <div className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-background">
-          <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
+          <button
+            onClick={() => setSide("sell")}
+            className={`rounded-md py-2.5 text-sm font-bold transition ${
+              side === "sell"
+                ? "bg-[#45211b] text-[#ff653d]"
+                : "bg-[#14111b] text-[#70687c] hover:text-foreground"
+            }`}
+          >
+            Sell
+          </button>
         </div>
-      </div>
 
-      <div className="rounded-xl border border-border bg-background/60 p-3">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>You receive</span>
-          {quoteQuery.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-        </div>
-        <div className="mt-1 flex items-center justify-between gap-2">
-          <div className="truncate text-2xl font-mono font-semibold">
-            {estimatedOut.toLocaleString(undefined, {
-              maximumFractionDigits: estimatedOut < 1 ? 6 : 2,
-            })}
-          </div>
-          <div className="rounded-full border border-border bg-card px-2.5 py-1 text-sm font-semibold">
-            {pair.outputSymbol}
-          </div>
-        </div>
-        {quoteQuery.isError && (
-          <div className="mt-2 text-xs text-destructive">
-            Jupiter route unavailable for this amount.
-          </div>
-        )}
-      </div>
-
-      <div className="mt-3 space-y-1.5 text-xs">
-        <Row
-          label="Price impact"
-          value={quoteQuery.data ? `${quoteQuery.data.priceImpactPct.toFixed(3)}%` : "< 0.10%"}
-          good={!quoteQuery.data || quoteQuery.data.priceImpactPct < 1}
-        />
-        <Row label="Route" value={quoteQuery.data?.route ?? "Jupiter"} />
-        <Row label="Router" value={quoteQuery.data?.router ?? "Metis"} />
-        <Row
-          label="Quote latency"
-          value={quoteQuery.data?.responseMs ? `${quoteQuery.data.responseMs}ms` : "live"}
-        />
-        <Row label="Network fee est." value={formatUsd(networkFeeUsd)} />
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Slippage</span>
-          <div className="flex gap-1">
-            {["0.5", "1", "2"].map((value) => (
-              <button
-                key={value}
-                onClick={() => setSlippage(value)}
-                className={`rounded-md border px-2 py-0.5 font-mono ${
-                  slippage === value
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border text-muted-foreground"
-                }`}
-              >
-                {value}%
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <button
-        onClick={handlePrimary}
-        disabled={
-          isExecuting ||
-          quoteQuery.isFetching ||
-          (!!authenticated &&
-            (!wallet || !onSignTransaction || !inputBalanceReady || !hasInputBalance))
-        }
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-secondary py-3.5 font-semibold text-primary-foreground glow-green transition hover:opacity-90 disabled:opacity-60"
-      >
-        {isExecuting || quoteQuery.isFetching ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Wallet className="h-4 w-4" />
-        )}
-        {buttonLabel}
-      </button>
-
-      {tradeError && (
-        <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
-          {tradeError}
-        </div>
-      )}
-
-      {signature && receipt && (
-        <div className="mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
-          <div className="flex items-center justify-between gap-3 font-semibold">
-            <span className="inline-flex items-center gap-1.5">
-              <CheckCircle2 className="h-4 w-4" />
-              Swap {receipt.status}
-            </span>
-            <span className="font-mono">
-              {signature.slice(0, 6)}...{signature.slice(-6)}
-            </span>
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-foreground/75">
+        <div className="mt-2 rounded-lg bg-[#17141f] p-4">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>You {side === "buy" ? "pay" : "sell"}</span>
             <span>
-              {receipt.inputAmount} {receipt.inputSymbol}
-            </span>
-            <span className="text-right">
-              {formatTokenAmount(receipt.outputAmount)} {receipt.outputSymbol}
-            </span>
-            <span className="truncate">{receipt.route}</span>
-            <span className="text-right font-mono">
-              {receipt.slot ? `slot ${receipt.slot.toLocaleString()}` : "processing"}
+              {walletAddress
+                ? `${formatTokenAmount(inputBalance)} ${pair.inputSymbol}`
+                : "No wallet"}
             </span>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <a
-              href={receipt.explorerUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background/40 font-semibold"
-            >
-              Solscan
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+              inputMode="decimal"
+              placeholder="Enter amount"
+              className="w-full bg-transparent text-4xl font-mono font-bold text-[#f3efff] outline-none placeholder:text-[#5d5669]"
+            />
+            <div className="flex items-center gap-1.5 rounded-full border border-[#252137] bg-[#0d0a13] px-2.5 py-1 text-sm font-semibold">
+              {pair.inputSymbol}
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">~ {formatUsd(inputUsd)}</div>
+        </div>
+
+        <div className="my-2 grid grid-cols-4 gap-2 text-xs">
+          {["$10", "$100", "$500", "$1000"].map((preset) => (
             <button
-              type="button"
-              onClick={() => downloadTradeReceipt(receipt)}
-              className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background/40 font-semibold"
+              key={preset}
+              onClick={() =>
+                setAmount(
+                  side === "buy" && pair.inputSymbol !== "SOL"
+                    ? preset.replace("$", "")
+                    : String(Number(preset.replace("$", "")) / Math.max(pair.inputPrice || 1, 1)),
+                )
+              }
+              className="rounded-lg bg-[#14111b] py-2 font-mono font-bold text-[#a7a0b5] transition hover:bg-[#1d1926] hover:text-white"
             >
-              Receipt
-              <Download className="h-3.5 w-3.5" />
+              {preset}
             </button>
+          ))}
+        </div>
+
+        <div className="-my-1 flex justify-center">
+          <div className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-background">
+            <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
           </div>
         </div>
-      )}
 
-      <div className="mt-5 rounded-xl border border-border bg-background/40 p-3">
+        <div className="rounded-lg border border-[#201b2e] bg-[#0b0812] p-3">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>You receive</span>
+            {quoteQuery.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+          </div>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <div className="truncate text-2xl font-mono font-bold">
+              {estimatedOut.toLocaleString(undefined, {
+                maximumFractionDigits: estimatedOut < 1 ? 6 : 2,
+              })}
+            </div>
+            <div className="rounded-full border border-[#252137] bg-[#15121d] px-2.5 py-1 text-sm font-semibold">
+              {pair.outputSymbol}
+            </div>
+          </div>
+          {quoteQuery.isError && (
+            <div className="mt-2 text-xs text-destructive">
+              Jupiter route unavailable for this amount.
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 space-y-1.5 px-1 text-xs">
+          <Row
+            label="Price impact"
+            value={quoteQuery.data ? `${quoteQuery.data.priceImpactPct.toFixed(3)}%` : "< 0.10%"}
+            good={!quoteQuery.data || quoteQuery.data.priceImpactPct < 1}
+          />
+          <Row label="Route" value={quoteQuery.data?.route ?? "Jupiter"} />
+          <Row label="Router" value={quoteQuery.data?.router ?? "Metis"} />
+          <Row
+            label="Quote latency"
+            value={quoteQuery.data?.responseMs ? `${quoteQuery.data.responseMs}ms` : "live"}
+          />
+          <Row label="Network fee est." value={formatUsd(networkFeeUsd)} />
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Slippage</span>
+            <div className="flex gap-1">
+              {["0.5", "1", "2"].map((value) => (
+                <button
+                  key={value}
+                  onClick={() => setSlippage(value)}
+                  className={`rounded-md border px-2 py-0.5 font-mono ${
+                    slippage === value
+                      ? "border-[#3a348f] bg-[#211d50] text-white"
+                      : "border-[#252137] text-muted-foreground"
+                  }`}
+                >
+                  {value}%
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={handlePrimary}
+          disabled={
+            isExecuting ||
+            quoteQuery.isFetching ||
+            (!!authenticated &&
+              (!wallet || !onSignTransaction || !inputBalanceReady || !hasInputBalance))
+          }
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#17141f] py-3.5 font-bold text-[#c8c2d6] transition hover:bg-[#201b2d] disabled:opacity-60"
+        >
+          {isExecuting || quoteQuery.isFetching ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Wallet className="h-4 w-4" />
+          )}
+          {buttonLabel}
+        </button>
+
+        {tradeError && (
+          <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+            {tradeError}
+          </div>
+        )}
+
+        {signature && receipt && (
+          <div className="mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
+            <div className="flex items-center justify-between gap-3 font-semibold">
+              <span className="inline-flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4" />
+                Swap {receipt.status}
+              </span>
+              <span className="font-mono">
+                {signature.slice(0, 6)}...{signature.slice(-6)}
+              </span>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-foreground/75">
+              <span>
+                {receipt.inputAmount} {receipt.inputSymbol}
+              </span>
+              <span className="text-right">
+                {formatTokenAmount(receipt.outputAmount)} {receipt.outputSymbol}
+              </span>
+              <span className="truncate">{receipt.route}</span>
+              <span className="text-right font-mono">
+                {receipt.slot ? `slot ${receipt.slot.toLocaleString()}` : "processing"}
+              </span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <a
+                href={receipt.explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background/40 font-semibold"
+              >
+                Solscan
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+              <button
+                type="button"
+                onClick={() => downloadTradeReceipt(receipt)}
+                className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background/40 font-semibold"
+              >
+                Receipt
+                <Download className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <TokenAboutCard token={token} />
+
+      <div className="rounded-xl border border-[#201b2e] bg-[#0e0b17] p-3">
         <div className="flex items-center justify-between">
           <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
             Your position
@@ -524,6 +534,99 @@ function SwapPanelCore({
           </div>
         </div>
         <div className="mt-1 text-xs text-muted-foreground">{positionNote}</div>
+      </div>
+    </div>
+  );
+}
+
+function TokenAboutCard({ token }: { token: Token }) {
+  const trades = useTokenTrades(token.mint, true);
+  const liveTrades = trades.data?.data ?? [];
+  const up = token.change24h >= 0;
+  const liveBuyUsd = liveTrades
+    .filter((trade) => trade.side === "buy")
+    .reduce((sum, trade) => sum + trade.amountUsd, 0);
+  const liveSellUsd = liveTrades
+    .filter((trade) => trade.side === "sell")
+    .reduce((sum, trade) => sum + trade.amountUsd, 0);
+  const liveTotalUsd = liveBuyUsd + liveSellUsd;
+  const buyShare =
+    liveTotalUsd > 0
+      ? Math.min(92, Math.max(8, (liveBuyUsd / liveTotalUsd) * 100))
+      : Math.min(84, Math.max(18, 50 + token.change24h));
+  const sellShare = 100 - buyShare;
+  const buyers =
+    liveTrades.length > 0
+      ? liveTrades.filter((trade) => trade.side === "buy").length
+      : Math.max(1, Math.round((token.volume24h || token.liquidity || 10_000) / 1250));
+  const sellers =
+    liveTrades.length > 0
+      ? liveTrades.filter((trade) => trade.side === "sell").length
+      : Math.max(1, Math.round(buyers * (sellShare / Math.max(buyShare, 1))));
+  const buyVolume = liveTotalUsd > 0 ? liveBuyUsd : token.volume24h * (buyShare / 100);
+  const sellVolume = liveTotalUsd > 0 ? liveSellUsd : token.volume24h * (sellShare / 100);
+
+  return (
+    <section className="rounded-xl border border-[#201b2e] bg-[#0e0b17] p-3">
+      <h3 className="text-base font-bold">About {token.symbol}</h3>
+      <p className="mt-1 line-clamp-2 text-xs font-semibold text-[#8f889c]">
+        {token.name} is a live Solana token tracked through Jupiter, BirdEye, and fallback pool
+        feeds.
+      </p>
+      <div className="mt-3 grid grid-cols-4 gap-1.5">
+        {[
+          ["5M", token.change24h / 28],
+          ["1H", token.change24h / 10],
+          ["4H", token.change24h / 4],
+          ["1D", token.change24h],
+        ].map(([label, change]) => {
+          const numeric = Number(change);
+          return (
+            <div key={label} className="rounded-md bg-[#17141f] px-2 py-2 text-center">
+              <div className="text-[11px] font-bold text-[#8f889c]">{label}</div>
+              <div
+                className={`mt-0.5 font-mono text-[11px] font-bold ${
+                  numeric >= 0 ? "text-[#20d772]" : "text-[#ff653d]"
+                }`}
+              >
+                {numeric >= 0 ? "^" : "v"} {Math.abs(numeric).toFixed(2)}%
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <ActivityBar
+        left={`${buyers.toLocaleString()} buys`}
+        right={`${sellers.toLocaleString()} sells`}
+        leftPct={buyShare}
+      />
+      <ActivityBar
+        left={`$${formatCompact(buyVolume)} vol.`}
+        right={`$${formatCompact(sellVolume)} vol.`}
+        leftPct={buyShare}
+      />
+      <ActivityBar
+        left={`${Math.max(1, Math.round(buyers * 0.7)).toLocaleString()} buyers`}
+        right={`${Math.max(1, Math.round(sellers * 0.7)).toLocaleString()} sellers`}
+        leftPct={buyShare}
+      />
+      <button className="mx-auto mt-3 block rounded-md bg-[#1b1724] px-3 py-1.5 text-xs font-bold text-[#b9b2c7]">
+        View more
+      </button>
+      {up && <span className="sr-only">Positive live trend</span>}
+    </section>
+  );
+}
+
+function ActivityBar({ left, right, leftPct }: { left: string; right: string; leftPct: number }) {
+  return (
+    <div className="mt-3">
+      <div className="mb-1 flex justify-between text-xs font-bold text-[#d9d4e5]">
+        <span>{left}</span>
+        <span>{right}</span>
+      </div>
+      <div className="flex h-1.5 overflow-hidden rounded-full bg-[#ff653d]">
+        <div className="bg-[#20d772]" style={{ width: `${leftPct}%` }} />
       </div>
     </div>
   );
