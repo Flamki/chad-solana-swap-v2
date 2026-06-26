@@ -217,7 +217,7 @@ export function TradePage({ mint }: { mint: string }) {
                 detail={
                   history.isFetching
                     ? "Pulling live OHLCV candles for this token."
-                    : "No synthetic candles are shown. The chart will retry the live feed automatically."
+                    : "This token has live pricing, but chart candles have not landed from the market data providers yet."
                 }
               />
             )}

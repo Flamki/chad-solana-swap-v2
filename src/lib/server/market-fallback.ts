@@ -80,6 +80,45 @@ const intervalConfig = {
 
 export type FallbackInterval = keyof typeof intervalConfig;
 
+type CandlePoint = {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  value: number;
+};
+
+type RawTrade = {
+  id: string;
+  txHash?: string;
+  side: "buy" | "sell";
+  amountUsd: number;
+  tokens: number;
+  price: number;
+  wallet: string;
+  timestamp: number;
+};
+
+const intervalSeconds: Record<FallbackInterval, number> = {
+  "1m": 60,
+  "5m": 5 * 60,
+  "15m": 15 * 60,
+  "1H": 60 * 60,
+  "4H": 4 * 60 * 60,
+  "1D": 24 * 60 * 60,
+};
+
+const ohlcvFallbackOrder: Record<FallbackInterval, FallbackInterval[]> = {
+  "1m": ["1m"],
+  "5m": ["5m", "1m"],
+  "15m": ["15m", "5m", "1m"],
+  "1H": ["1H", "15m", "5m", "1m"],
+  "4H": ["4H", "1H", "15m", "5m"],
+  "1D": ["1D", "4H", "1H"],
+};
+
 async function fetchJson<T>(url: string, revalidate: number): Promise<T> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const response = await fetch(url, {
@@ -201,6 +240,40 @@ export async function ohlcvFromFallbackProviders(mint: string, interval: Fallbac
     throw new Error("No liquid pool found for chart");
   }
 
+  for (const candidate of ohlcvFallbackOrder[interval]) {
+    try {
+      const data = await fetchPoolOhlcv(poolAddress, candidate);
+      if (!data.length) continue;
+
+      return {
+        data:
+          candidate === interval
+            ? data
+            : aggregateCandles(data, interval).slice(-intervalConfig[interval].limit),
+        provider: "geckoterminal" as const,
+        updatedAt: new Date().toISOString(),
+      };
+    } catch {
+      // Keep walking down to fresher/smaller live buckets.
+    }
+  }
+
+  const tradeCandles = aggregateTrades(await rawTradesFromFallbackProviders(mint), interval);
+  if (tradeCandles.length) {
+    return {
+      data: tradeCandles,
+      provider: "geckoterminal" as const,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  throw new Error("No fallback chart candles available");
+}
+
+async function fetchPoolOhlcv(
+  poolAddress: string,
+  interval: FallbackInterval,
+): Promise<CandlePoint[]> {
   const config = intervalConfig[interval];
   const params = new URLSearchParams({
     aggregate: String(config.aggregate),
@@ -212,7 +285,7 @@ export async function ohlcvFromFallbackProviders(mint: string, interval: Fallbac
     20,
   );
 
-  const data = (payload.data?.attributes?.ohlcv_list ?? [])
+  return (payload.data?.attributes?.ohlcv_list ?? [])
     .map(([time, open, high, low, close, volume]) => ({
       time,
       open,
@@ -226,19 +299,34 @@ export async function ohlcvFromFallbackProviders(mint: string, interval: Fallbac
       [point.time, point.open, point.high, point.low, point.close].every(Number.isFinite),
     )
     .sort((a, b) => a.time - b.time);
-
-  if (!data.length) {
-    throw new Error("No fallback chart candles available");
-  }
-
-  return {
-    data,
-    provider: "geckoterminal" as const,
-    updatedAt: new Date().toISOString(),
-  };
 }
 
 export async function tradesFromFallbackProviders(mint: string) {
+  const trades = await rawTradesFromFallbackProviders(mint);
+  const now = Date.now();
+
+  if (!trades.length) {
+    throw new Error("No fallback pool trades available");
+  }
+
+  return trades.map((trade) => {
+    const ageSeconds = Math.max(1, Math.floor((now - trade.timestamp) / 1000));
+
+    return {
+      id: trade.id,
+      txHash: trade.txHash,
+      side: trade.side,
+      amountUsd: trade.amountUsd,
+      tokens: trade.tokens,
+      price: trade.price,
+      wallet: trade.wallet,
+      ago: formatAge(ageSeconds),
+      source: "GeckoTerminal",
+    };
+  });
+}
+
+async function rawTradesFromFallbackProviders(mint: string): Promise<RawTrade[]> {
   const poolAddress = await getBestPoolAddress(mint);
 
   if (!poolAddress) {
@@ -251,8 +339,8 @@ export async function tradesFromFallbackProviders(mint: string) {
   );
   const now = Date.now();
 
-  const trades = (payload.data ?? [])
-    .map((trade, index) => {
+  return (payload.data ?? [])
+    .map((trade, index): RawTrade | null => {
       const attributes = trade.attributes;
       if (!attributes) return null;
 
@@ -270,7 +358,6 @@ export async function tradesFromFallbackProviders(mint: string) {
       const timestamp = attributes.block_timestamp
         ? new Date(attributes.block_timestamp).getTime()
         : now;
-      const ageSeconds = Math.max(1, Math.floor((now - timestamp) / 1000));
       const wallet = attributes.tx_from_address;
 
       return {
@@ -281,17 +368,68 @@ export async function tradesFromFallbackProviders(mint: string) {
         tokens: Number.isFinite(tokens) ? tokens : 0,
         price: Number.isFinite(price) ? price : 0,
         wallet: wallet ? `${wallet.slice(0, 4)}...${wallet.slice(-4)}` : "unknown",
-        ago: formatAge(ageSeconds),
-        source: "GeckoTerminal",
+        timestamp,
       };
     })
-    .filter(Boolean);
+    .filter((trade): trade is RawTrade =>
+      Boolean(trade && Number.isFinite(trade.price) && trade.price > 0),
+    )
+    .sort((a, b) => a.timestamp - b.timestamp);
+}
 
-  if (!trades.length) {
-    throw new Error("No fallback pool trades available");
+function aggregateCandles(data: CandlePoint[], interval: FallbackInterval) {
+  const bucketSize = intervalSeconds[interval];
+  const buckets = new Map<number, CandlePoint>();
+
+  for (const point of data) {
+    const bucketTime = Math.floor(point.time / bucketSize) * bucketSize;
+    const bucket = buckets.get(bucketTime);
+
+    if (!bucket) {
+      buckets.set(bucketTime, { ...point, time: bucketTime, value: point.close });
+      continue;
+    }
+
+    bucket.high = Math.max(bucket.high, point.high);
+    bucket.low = Math.min(bucket.low, point.low);
+    bucket.close = point.close;
+    bucket.volume += point.volume;
+    bucket.value = point.close;
   }
 
-  return trades;
+  return [...buckets.values()].sort((a, b) => a.time - b.time);
+}
+
+function aggregateTrades(trades: RawTrade[], interval: FallbackInterval) {
+  const bucketSize = intervalSeconds[interval];
+  const buckets = new Map<number, CandlePoint>();
+
+  for (const trade of trades) {
+    const time = Math.floor(trade.timestamp / 1000);
+    const bucketTime = Math.floor(time / bucketSize) * bucketSize;
+    const bucket = buckets.get(bucketTime);
+
+    if (!bucket) {
+      buckets.set(bucketTime, {
+        time: bucketTime,
+        open: trade.price,
+        high: trade.price,
+        low: trade.price,
+        close: trade.price,
+        volume: trade.amountUsd,
+        value: trade.price,
+      });
+      continue;
+    }
+
+    bucket.high = Math.max(bucket.high, trade.price);
+    bucket.low = Math.min(bucket.low, trade.price);
+    bucket.close = trade.price;
+    bucket.volume += trade.amountUsd;
+    bucket.value = trade.price;
+  }
+
+  return [...buckets.values()].sort((a, b) => a.time - b.time);
 }
 
 function formatAge(seconds: number) {

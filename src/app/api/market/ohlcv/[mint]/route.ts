@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { birdeyeJsonWithMeta, ohlcvToPoints } from "@/lib/server/birdeye";
+import { birdeyeJsonWithMeta, ohlcvToPoints, tradesFromBirdeye } from "@/lib/server/birdeye";
 import { ohlcvFromFallbackProviders, type FallbackInterval } from "@/lib/server/market-fallback";
 
 export const revalidate = 15;
@@ -12,6 +12,15 @@ const intervalWindows: Record<string, number> = {
   "1H": 7 * 24 * 60 * 60,
   "4H": 30 * 24 * 60 * 60,
   "1D": 180 * 24 * 60 * 60,
+};
+
+const intervalSeconds: Record<string, number> = {
+  "1m": 60,
+  "5m": 5 * 60,
+  "15m": 15 * 60,
+  "1H": 60 * 60,
+  "4H": 4 * 60 * 60,
+  "1D": 24 * 60 * 60,
 };
 
 function getInterval(request: Request) {
@@ -46,7 +55,19 @@ export async function GET(request: Request, context: { params: Promise<{ mint: s
       });
     }
   } catch {
-    // Try the most liquid on-chain pool below.
+    // Try live swap aggregation and the most liquid on-chain pool below.
+  }
+
+  try {
+    const tradeCandles = await ohlcvFromBirdeyeTrades(mint, interval);
+    if (tradeCandles.data.length) {
+      return NextResponse.json({
+        ...tradeCandles,
+        provider: "birdeye",
+      });
+    }
+  } catch {
+    // GeckoTerminal still has broader historical pool coverage for many tokens.
   }
 
   try {
@@ -64,4 +85,72 @@ export async function GET(request: Request, context: { params: Promise<{ mint: s
       provider: "geckoterminal",
     });
   }
+}
+
+async function ohlcvFromBirdeyeTrades(mint: string, interval: string) {
+  type BirdeyeTradeItem = Parameters<typeof tradesFromBirdeye>[0][number];
+
+  const result = await birdeyeJsonWithMeta<{
+    items?: BirdeyeTradeItem[];
+  }>(`/defi/txs/token?address=${encodeURIComponent(mint)}&offset=0&limit=50&tx_type=swap`, {
+    cacheKey: `ohlcv-trades:${mint}:${interval}`,
+    next: { revalidate: 10 },
+  });
+
+  const bucketSize = intervalSeconds[interval] ?? intervalSeconds["15m"];
+  const buckets = new Map<
+    number,
+    {
+      time: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+      value: number;
+    }
+  >();
+
+  for (const item of result.data.items ?? []) {
+    const timestamp = item.blockUnixTime;
+    const leg =
+      item.base?.address === mint
+        ? item.base
+        : item.quote?.address === mint
+          ? item.quote
+          : item.base;
+    const price = item.tokenPrice ?? leg?.price ?? 0;
+    const tokens = Math.abs(leg?.uiAmount ?? 0);
+
+    if (!Number.isFinite(timestamp) || !Number.isFinite(price) || price <= 0) continue;
+
+    const bucketTime = Math.floor(timestamp! / bucketSize) * bucketSize;
+    const volume = tokens * price;
+    const bucket = buckets.get(bucketTime);
+
+    if (!bucket) {
+      buckets.set(bucketTime, {
+        time: bucketTime,
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+        volume: Number.isFinite(volume) ? volume : 0,
+        value: price,
+      });
+      continue;
+    }
+
+    bucket.high = Math.max(bucket.high, price);
+    bucket.low = Math.min(bucket.low, price);
+    bucket.close = price;
+    bucket.volume += Number.isFinite(volume) ? volume : 0;
+    bucket.value = price;
+  }
+
+  return {
+    data: [...buckets.values()].sort((a, b) => a.time - b.time),
+    status: result.status,
+    updatedAt: result.updatedAt,
+  };
 }
