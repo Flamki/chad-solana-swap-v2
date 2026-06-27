@@ -178,9 +178,6 @@
     font-synthesis: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: geometricPrecision;
-    overflow: hidden !important;
-    height: 100svh !important;
-    max-height: 100svh !important;
     margin: 0 !important;
     padding: 0 !important;
   }
