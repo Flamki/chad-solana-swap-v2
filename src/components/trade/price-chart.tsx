@@ -76,6 +76,7 @@ export function PriceChart({
       return quote === "sol" && solPrice > 0 ? priced / solPrice : priced;
     };
 
+    const seenTimes = new Set<Time>();
     const candleData: CandlestickData[] = data
       .map((point) => {
         const close = point.close ?? point.value;
@@ -92,21 +93,23 @@ export function PriceChart({
           close: transform(close),
         };
       })
-      .filter((point) => [point.open, point.high, point.low, point.close].every(Number.isFinite));
+      .filter((point) => {
+        const isValid = [point.open, point.high, point.low, point.close].every(Number.isFinite);
+        if (!isValid) return false;
+        if (seenTimes.has(point.time)) return false;
+        seenTimes.add(point.time);
+        return true;
+      });
 
-    const volumeData: HistogramData[] = data
-      .map((point, index) => {
-        const candle = candleData[index];
-        if (!candle) return null;
-
-        return {
-          time: candle.time,
-          value: point.volume ?? 0,
-          color:
-            candle.close >= candle.open ? "rgba(20, 241, 149, 0.42)" : "rgba(255, 76, 104, 0.46)",
-        };
-      })
-      .filter(Boolean) as HistogramData[];
+    const volumeData: HistogramData[] = candleData.map((candle) => {
+      const point = data.find((p) => (p.time as Time) === candle.time);
+      return {
+        time: candle.time,
+        value: point?.volume ?? 0,
+        color:
+          candle.close >= candle.open ? "rgba(20, 241, 149, 0.42)" : "rgba(255, 76, 104, 0.46)",
+      };
+    });
 
     return {
       candles: candleData,
@@ -226,17 +229,17 @@ export function PriceChart({
   }, [logScale]);
 
   return (
-    <div className="relative flex h-full min-h-[300px] w-full flex-col overflow-hidden rounded-xl bg-background/25">
-      <div className="flex min-h-12 items-center gap-2 overflow-x-auto border-b border-border/70 px-3 py-2 text-xs">
+    <div className="relative flex h-full min-h-[300px] w-full flex-col overflow-hidden bg-transparent">
+      <div className="flex min-h-[38px] items-center gap-2 overflow-x-auto border-b border-[#1b1726]/40 px-3.5 py-1 text-xs no-scrollbar bg-[#0c0a15]">
         <div className="flex items-center gap-1 pr-2">
           {intervals.map((item) => (
             <button
               key={item}
               onClick={() => onIntervalChange(item)}
-              className={`rounded-md px-2 py-1 font-mono transition ${
+              className={`rounded-md px-2 py-1 font-mono text-[11px] transition ${
                 interval === item
-                  ? "bg-primary/15 text-primary"
-                  : "text-muted-foreground hover:bg-card hover:text-foreground"
+                  ? "bg-[#1b1726]/60 text-white font-semibold"
+                  : "text-[#7a7488] hover:bg-[#1b1726]/30 hover:text-white"
               }`}
             >
               {item.replace("H", "h")}
@@ -275,15 +278,15 @@ export function PriceChart({
             <Divider />
           </>
         )}
-        <div className="flex items-center gap-1 text-muted-foreground">
-          <ChartCandlestick className="h-3.5 w-3.5 text-primary" />
-          Vol <span className="font-mono text-foreground">${formatCompact(latestVolume)}</span>
+        <div className="flex items-center gap-1 text-[#7a7488]">
+          <ChartCandlestick className="h-3.5 w-3.5 text-[#20d772]" />
+          Vol <span className="font-mono text-[#e8e4f0]">${formatCompact(latestVolume)}</span>
         </div>
         <div className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[10px]">
-          <span className={dataStatus === "live" ? "text-primary" : "text-amber-400"}>
-            {provider === "birdeye" ? "BirdEye" : "GeckoTerminal"} {dataStatus.toUpperCase()}
+          <span className={dataStatus === "live" ? "text-[#20d772]" : "text-amber-400"}>
+            ChadFeed {dataStatus.toUpperCase()}
           </span>
-          <span className="text-muted-foreground">{new Date(updatedAt).toLocaleTimeString()}</span>
+          <span className="text-[#554f63]">{new Date(updatedAt).toLocaleTimeString()}</span>
         </div>
       </div>
 
@@ -291,7 +294,7 @@ export function PriceChart({
         <TradingViewAdvancedChart symbol={tradingViewSymbol} interval={interval} />
       ) : (
         <div className="relative min-h-0 flex-1">
-          <div className="absolute left-0 top-0 z-10 flex h-full w-11 flex-col items-center gap-2 border-r border-border/50 bg-background/35 py-4 backdrop-blur">
+          <div className="absolute left-1.5 top-3 z-10 flex flex-col items-center gap-2 bg-transparent select-none">
             <ChartTool
               label="Toggle crosshair"
               active={crosshairEnabled}
@@ -313,8 +316,7 @@ export function PriceChart({
           <div className="pointer-events-none absolute left-14 top-3 z-10 rounded-lg bg-background/50 px-3 py-2 font-mono text-xs backdrop-blur">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-semibold text-foreground">
-                {priceLabel} ({metricLabel}) / {interval.replace("H", "h")} /{" "}
-                {provider === "birdeye" ? "BirdEye" : "GeckoTerminal"}
+                {priceLabel} ({metricLabel}) / {interval.replace("H", "h")}
               </span>
               <span className={up ? "text-primary" : "text-destructive"}>
                 {up ? "+" : ""}
@@ -443,7 +445,7 @@ function ChartTool({
 }
 
 function Divider() {
-  return <div className="h-5 w-px shrink-0 bg-border" />;
+  return <div className="h-4 w-px shrink-0 bg-[#1b1726]/60" />;
 }
 
 function Segmented<T extends string>({
@@ -456,15 +458,15 @@ function Segmented<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="flex shrink-0 rounded-lg border border-border bg-background/50 p-0.5">
+    <div className="flex shrink-0 rounded-lg border border-[#1b1726]/50 bg-[#08060f]/60 p-0.5">
       {options.map(([key, label]) => (
         <button
           key={key}
           onClick={() => onChange(key)}
-          className={`rounded-md px-2 py-1 font-mono transition ${
+          className={`rounded-md px-2 py-1 font-mono text-[11px] transition ${
             value === key
-              ? "bg-primary/15 text-primary"
-              : "text-muted-foreground hover:text-foreground"
+              ? "bg-[#1b1726]/60 text-white font-semibold"
+              : "text-[#7a7488] hover:text-white"
           }`}
         >
           {label}

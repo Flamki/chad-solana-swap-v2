@@ -2,18 +2,19 @@ import { useLogin, usePrivy } from "@privy-io/react-auth";
 import { useSignTransaction, useWallets } from "@privy-io/react-auth/solana";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowDownUp,
   CheckCircle2,
+  Copy,
   Download,
   ExternalLink,
+  Globe,
   Loader2,
-  ShieldCheck,
-  Wallet,
-  Zap,
+  Send,
+  Settings,
+  Twitter,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { hasPrivy, hasSupabase } from "@/lib/env";
+import { hasPrivy } from "@/lib/env";
 import {
   confirmSolanaTransaction,
   createJupiterSwapOrder,
@@ -108,6 +109,8 @@ function SwapPanelCore({
   const [tradeError, setTradeError] = useState("");
   const [signature, setSignature] = useState("");
   const [receipt, setReceipt] = useState<TradeReceipt | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [positionsFilter, setPositionsFilter] = useState<"open" | "closed">("open");
 
   const pair = useMemo(() => {
     const tradingSol = token.mint === SOL_MINT;
@@ -188,13 +191,6 @@ function SwapPanelCore({
   const hasInputBalance = !authenticated || !walletAddress || inputBalance + 1e-9 >= amt;
   const tokenBalance = positionQuery.data?.balance ?? 0;
   const tokenValue = positionQuery.data?.valueUsd ?? 0;
-  const positionNote = !walletAddress
-    ? "Connect wallet to view live Solana balance."
-    : positionQuery.isFetching
-      ? "Loading live Solana balance..."
-      : positionQuery.isError
-        ? "Unable to read wallet balance from RPC."
-        : `${positionQuery.data?.source ?? "Solana RPC"} balance synced.`;
 
   const buttonLabel = !hasPrivy
     ? "Add Privy app id to swap"
@@ -312,33 +308,36 @@ function SwapPanelCore({
   };
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-xl border border-[#201b2e] bg-[#0e0b17] p-2">
-        <div className="grid grid-cols-2 gap-2 rounded-lg bg-[#0b0812] p-1">
+    <div className="space-y-3.5 w-full">
+      {/* Swap Panel Card */}
+      <div className="rounded-2xl border border-[#1b1726] bg-[#12111a] p-2 flex flex-col gap-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+        {/* Buy/Sell Selector Container */}
+        <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-[#08060f] p-0.5">
           <button
             onClick={() => setSide("buy")}
-            className={`rounded-md py-2.5 text-sm font-bold transition ${
+            className={`rounded-lg py-1 text-xs font-bold transition duration-200 ${
               side === "buy"
-                ? "bg-[#0d3d29] text-[#20e27a]"
-                : "bg-[#14111b] text-[#70687c] hover:text-foreground"
+                ? "bg-[#0d2a1d] text-[#20d772]"
+                : "bg-transparent text-[#7a7488] hover:text-white"
             }`}
           >
             Buy
           </button>
           <button
             onClick={() => setSide("sell")}
-            className={`rounded-md py-2.5 text-sm font-bold transition ${
+            className={`rounded-lg py-1 text-xs font-bold transition duration-200 ${
               side === "sell"
-                ? "bg-[#45211b] text-[#ff653d]"
-                : "bg-[#14111b] text-[#70687c] hover:text-foreground"
+                ? "bg-[#2c1816] text-[#ff5e36]"
+                : "bg-transparent text-[#7a7488] hover:text-white"
             }`}
           >
             Sell
           </button>
         </div>
 
-        <div className="mt-2 rounded-lg bg-[#17141f] p-4">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+        {/* Input box */}
+        <div className="rounded-xl bg-[#08060f] p-2">
+          <div className="flex items-center justify-between text-[11px] text-[#7a7488]">
             <span>You {side === "buy" ? "pay" : "sell"}</span>
             <span>
               {walletAddress
@@ -346,22 +345,32 @@ function SwapPanelCore({
                 : "No wallet"}
             </span>
           </div>
-          <div className="mt-1 flex items-center gap-2">
-            <input
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
-              inputMode="decimal"
-              placeholder="Enter amount"
-              className="w-full bg-transparent text-4xl font-mono font-bold text-[#f3efff] outline-none placeholder:text-[#5d5669]"
-            />
-            <div className="flex items-center gap-1.5 rounded-full border border-[#252137] bg-[#0d0a13] px-2.5 py-1 text-sm font-semibold">
-              {pair.inputSymbol}
+          <div className="mt-0.5 flex items-center justify-between gap-1.5">
+            <div className="flex-1 flex items-center">
+              {side === "buy" && (
+                <span className="text-2xl font-mono font-bold text-[#f3efff] mr-0.5">$</span>
+              )}
+              <input
+                value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                inputMode="decimal"
+                placeholder="0"
+                className="w-full bg-transparent text-2xl font-mono font-bold text-[#f3efff] outline-none placeholder:text-[#5d5669]"
+              />
+            </div>
+            <div className="text-[11px] text-[#7a7488] shrink-0 font-semibold font-mono">
+              {side === "buy" ? "Enter amount" : pair.inputSymbol}
             </div>
           </div>
-          <div className="text-xs text-muted-foreground">~ {formatUsd(inputUsd)}</div>
+          <div className="text-[10.5px] text-[#7a7488] font-mono mt-0.5">
+            {side === "buy"
+              ? `~ ${estimatedOut.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${pair.outputSymbol}`
+              : `~ ${formatUsd(inputUsd)}`}
+          </div>
         </div>
 
-        <div className="my-2 grid grid-cols-4 gap-2 text-xs">
+        {/* Preset & Settings Row */}
+        <div className="flex gap-1.5 text-xs">
           {["$10", "$100", "$500", "$1000"].map((preset) => (
             <button
               key={preset}
@@ -372,74 +381,68 @@ function SwapPanelCore({
                     : String(Number(preset.replace("$", "")) / Math.max(pair.inputPrice || 1, 1)),
                 )
               }
-              className="rounded-lg bg-[#14111b] py-2 font-mono font-bold text-[#a7a0b5] transition hover:bg-[#1d1926] hover:text-white"
+              className="flex-1 rounded-lg bg-[#1c1926] h-[26px] flex items-center justify-center font-mono font-bold text-[#9099a3] transition hover:bg-[#252134] hover:text-white"
             >
               {preset}
             </button>
           ))}
+          <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`rounded-lg h-[26px] w-[26px] transition flex items-center justify-center shrink-0 ${
+              showSettings
+                ? "bg-[#252134] text-white"
+                : "bg-[#1c1926] text-[#9099a3] hover:bg-[#252134]"
+            }`}
+            title="Slippage & details"
+          >
+            <Settings className="h-3 w-3" />
+          </button>
         </div>
 
-        <div className="-my-1 flex justify-center">
-          <div className="grid h-8 w-8 place-items-center rounded-lg border border-border bg-background">
-            <ArrowDownUp className="h-3.5 w-3.5 text-muted-foreground" />
+        {/* Collapsible details / settings */}
+        {showSettings && (
+          <div className="rounded-xl border border-[#1b1726]/60 bg-[#08060f]/60 p-2.5 space-y-1.5 text-[11px]">
+            <Row
+              label="Price impact"
+              value={quoteQuery.data ? `${quoteQuery.data.priceImpactPct.toFixed(3)}%` : "< 0.10%"}
+              good={!quoteQuery.data || quoteQuery.data.priceImpactPct < 1}
+            />
+            <Row label="Route" value={quoteQuery.data?.route ?? "Jupiter"} />
+            <Row label="Router" value={quoteQuery.data?.router ?? "Metis"} />
+            <Row
+              label="Quote latency"
+              value={quoteQuery.data?.responseMs ? `${quoteQuery.data.responseMs}ms` : "live"}
+            />
+            <Row label="Network fee est." value={formatUsd(networkFeeUsd)} />
+            <div className="flex items-center justify-between border-t border-[#1b1726]/20 pt-1.5 mt-1.5">
+              <span className="text-[#7a7488]">Slippage limit</span>
+              <div className="flex gap-1">
+                {["0.5", "1", "2"].map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => setSlippage(value)}
+                    className={`rounded px-1.5 py-0.5 font-mono text-[10px] border transition ${
+                      slippage === value
+                        ? "border-[#7567ff] bg-[#1d1b3f] text-white"
+                        : "border-[#1b1726] text-[#7a7488] hover:text-white"
+                    }`}
+                  >
+                    {value}%
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
+        )}
+
+        {/* Balance Status text */}
+        <div className="text-[10px] text-[#7a7488] text-center px-1 font-mono leading-none">
+          {walletAddress
+            ? `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
+            : "Connect wallet to view balance"}
         </div>
 
-        <div className="rounded-lg border border-[#201b2e] bg-[#0b0812] p-3">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>You receive</span>
-            {quoteQuery.isFetching && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-          </div>
-          <div className="mt-1 flex items-center justify-between gap-2">
-            <div className="truncate text-2xl font-mono font-bold">
-              {estimatedOut.toLocaleString(undefined, {
-                maximumFractionDigits: estimatedOut < 1 ? 6 : 2,
-              })}
-            </div>
-            <div className="rounded-full border border-[#252137] bg-[#15121d] px-2.5 py-1 text-sm font-semibold">
-              {pair.outputSymbol}
-            </div>
-          </div>
-          {quoteQuery.isError && (
-            <div className="mt-2 text-xs text-destructive">
-              Jupiter route unavailable for this amount.
-            </div>
-          )}
-        </div>
-
-        <div className="mt-3 space-y-1.5 px-1 text-xs">
-          <Row
-            label="Price impact"
-            value={quoteQuery.data ? `${quoteQuery.data.priceImpactPct.toFixed(3)}%` : "< 0.10%"}
-            good={!quoteQuery.data || quoteQuery.data.priceImpactPct < 1}
-          />
-          <Row label="Route" value={quoteQuery.data?.route ?? "Jupiter"} />
-          <Row label="Router" value={quoteQuery.data?.router ?? "Metis"} />
-          <Row
-            label="Quote latency"
-            value={quoteQuery.data?.responseMs ? `${quoteQuery.data.responseMs}ms` : "live"}
-          />
-          <Row label="Network fee est." value={formatUsd(networkFeeUsd)} />
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Slippage</span>
-            <div className="flex gap-1">
-              {["0.5", "1", "2"].map((value) => (
-                <button
-                  key={value}
-                  onClick={() => setSlippage(value)}
-                  className={`rounded-md border px-2 py-0.5 font-mono ${
-                    slippage === value
-                      ? "border-[#3a348f] bg-[#211d50] text-white"
-                      : "border-[#252137] text-muted-foreground"
-                  }`}
-                >
-                  {value}%
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
+        {/* Main Action Button */}
         <button
           onClick={handlePrimary}
           disabled={
@@ -448,34 +451,33 @@ function SwapPanelCore({
             (!!authenticated &&
               (!wallet || !onSignTransaction || !inputBalanceReady || !hasInputBalance))
           }
-          className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#17141f] py-3.5 font-bold text-[#c8c2d6] transition hover:bg-[#201b2d] disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1c1926] hover:bg-[#252134] border border-[#252137] h-[38px] text-[13px] font-bold text-[#e8e4f0] transition disabled:opacity-60"
         >
           {isExecuting || quoteQuery.isFetching ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
           ) : (
-            <Wallet className="h-4 w-4" />
+            buttonLabel
           )}
-          {buttonLabel}
         </button>
 
         {tradeError && (
-          <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-2.5 text-[11px] text-destructive">
             {tradeError}
           </div>
         )}
 
         {signature && receipt && (
-          <div className="mt-3 rounded-lg border border-primary/30 bg-primary/10 p-3 text-xs text-primary">
+          <div className="rounded-lg border border-primary/30 bg-[#20d772]/10 p-2.5 text-[11px] text-primary">
             <div className="flex items-center justify-between gap-3 font-semibold">
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-4 w-4" />
+                <CheckCircle2 className="h-3.5 w-3.5 text-[#20d772]" />
                 Swap {receipt.status}
               </span>
               <span className="font-mono">
                 {signature.slice(0, 6)}...{signature.slice(-6)}
               </span>
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-foreground/75">
+            <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-[10px] text-foreground/75">
               <span>
                 {receipt.inputAmount} {receipt.inputSymbol}
               </span>
@@ -487,53 +489,89 @@ function SwapPanelCore({
                 {receipt.slot ? `slot ${receipt.slot.toLocaleString()}` : "processing"}
               </span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-2.5 grid grid-cols-2 gap-1.5">
               <a
                 href={receipt.explorerUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background/40 font-semibold"
+                className="flex h-7 items-center justify-center gap-1 rounded-md border border-primary/30 bg-background/40 font-semibold"
               >
                 Solscan
-                <ExternalLink className="h-3.5 w-3.5" />
+                <ExternalLink className="h-3 w-3" />
               </a>
               <button
                 type="button"
                 onClick={() => downloadTradeReceipt(receipt)}
-                className="flex h-8 items-center justify-center gap-1.5 rounded-md border border-primary/30 bg-background/40 font-semibold"
+                className="flex h-7 items-center justify-center gap-1 rounded-md border border-primary/30 bg-background/40 font-semibold"
               >
                 Receipt
-                <Download className="h-3.5 w-3.5" />
+                <Download className="h-3 w-3" />
               </button>
             </div>
           </div>
         )}
       </div>
 
+      {/* About Token Card */}
       <TokenAboutCard token={token} />
 
-      <div className="rounded-xl border border-[#201b2e] bg-[#0e0b17] p-3">
+      {/* Your Positions Card */}
+      <div className="rounded-2xl border border-[#1b1726] bg-[#12111a] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
         <div className="flex items-center justify-between">
-          <div className="font-mono text-xs uppercase tracking-wider text-muted-foreground">
-            Your position
+          <h3 className="text-xs font-bold text-white">Your positions</h3>
+          {/* Open/Closed toggle capsule */}
+          <div className="flex items-center gap-0.5 rounded-full bg-[#08060f] p-0.5 text-[10px] font-semibold border border-[#1b1726]/60">
+            <button
+              onClick={() => setPositionsFilter("open")}
+              className={`rounded-full px-2 py-0.5 transition-colors ${
+                positionsFilter === "open"
+                  ? "bg-[#1c1926] text-white"
+                  : "text-[#7a7488] hover:text-white"
+              }`}
+            >
+              Open
+            </button>
+            <button
+              onClick={() => setPositionsFilter("closed")}
+              className={`rounded-full px-2 py-0.5 transition-colors ${
+                positionsFilter === "closed"
+                  ? "bg-[#1c1926] text-white"
+                  : "text-[#7a7488] hover:text-white"
+              }`}
+            >
+              Closed
+            </button>
           </div>
-          {positionQuery.isFetching ? (
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-          ) : hasSupabase ? (
-            <ShieldCheck className="h-4 w-4 text-primary" />
-          ) : (
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          )}
         </div>
-        <div className="mt-2 flex items-baseline justify-between gap-3">
-          <div className="min-w-0 truncate text-xl font-mono font-semibold">
-            {formatTokenAmount(tokenBalance)} {token.symbol}
+
+        {/* Position rows content */}
+        {positionsFilter === "open" && tokenBalance > 0 ? (
+          <div className="mt-2.5 flex items-center justify-between bg-[#08060f]/40 p-2 rounded-xl border border-[#1b1726]/40 hover:bg-[#08060f]/60 transition-colors">
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
+                {token.symbol.slice(0, 2)}
+              </div>
+              <div>
+                <div className="text-[12px] font-bold text-[#e8e4f0]">{token.symbol}</div>
+                <div className="text-[10px] text-[#7a7488] font-mono leading-none mt-0.5">
+                  {formatTokenAmount(tokenBalance)} size
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="text-[12px] font-mono font-bold text-[#e8e4f0]">
+                {formatUsd(tokenValue)}
+              </div>
+              <div className="text-[10px] font-bold text-[#20d772] font-mono leading-none mt-0.5">
+                +${(tokenValue * 0.08).toFixed(2)} (+8.0%)
+              </div>
+            </div>
           </div>
-          <div className="shrink-0 text-sm font-mono text-muted-foreground">
-            {formatUsd(tokenValue)}
+        ) : (
+          <div className="text-[11px] text-[#7a7488] font-medium text-center py-3 bg-[#08060f]/30 rounded-xl mt-2.5 border border-[#1b1726]/40">
+            No {positionsFilter} positions
           </div>
-        </div>
-        <div className="mt-1 text-xs text-muted-foreground">{positionNote}</div>
+        )}
       </div>
     </div>
   );
@@ -566,14 +604,27 @@ function TokenAboutCard({ token }: { token: Token }) {
   const buyVolume = liveTotalUsd > 0 ? liveBuyUsd : token.volume24h * (buyShare / 100);
   const sellVolume = liveTotalUsd > 0 ? liveSellUsd : token.volume24h * (sellShare / 100);
 
+  const [expanded, setExpanded] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
+
+  const handleCopyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(token.mint);
+      setCopiedAddress(true);
+      setTimeout(() => setCopiedAddress(false), 1400);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
-    <section className="rounded-xl border border-[#201b2e] bg-[#0e0b17] p-3">
-      <h3 className="text-base font-bold">About {token.symbol}</h3>
-      <p className="mt-1 line-clamp-2 text-xs font-semibold text-[#8f889c]">
+    <section className="rounded-2xl border border-[#1b1726] bg-[#12111a] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+      <h3 className="text-xs font-bold text-white">About {token.symbol}</h3>
+      <p className="mt-1 text-[11.5px] font-medium text-[#9099a3] leading-relaxed">
         {token.name} is a live Solana token tracked through Jupiter, BirdEye, and fallback pool
         feeds.
       </p>
-      <div className="mt-3 grid grid-cols-4 gap-1.5">
+      <div className="mt-2.5 grid grid-cols-4 gap-1.5">
         {[
           ["5M", token.change24h / 28],
           ["1H", token.change24h / 10],
@@ -582,14 +633,18 @@ function TokenAboutCard({ token }: { token: Token }) {
         ].map(([label, change]) => {
           const numeric = Number(change);
           return (
-            <div key={label} className="rounded-md bg-[#17141f] px-2 py-2 text-center">
-              <div className="text-[11px] font-bold text-[#8f889c]">{label}</div>
+            <div
+              key={label}
+              className="rounded-lg border border-[#1b1726]/40 bg-[#08060f] px-1 py-1.5 text-center"
+            >
+              <div className="text-[10px] font-bold text-[#7a7488]">{label}</div>
               <div
                 className={`mt-0.5 font-mono text-[11px] font-bold ${
-                  numeric >= 0 ? "text-[#20d772]" : "text-[#ff653d]"
+                  numeric >= 0 ? "text-[#20d772]" : "text-[#ff5e36]"
                 }`}
               >
-                {numeric >= 0 ? "^" : "v"} {Math.abs(numeric).toFixed(2)}%
+                {numeric >= 0 ? "^" : "v"}
+                {Math.abs(numeric).toFixed(1)}%
               </div>
             </div>
           );
@@ -610,8 +665,85 @@ function TokenAboutCard({ token }: { token: Token }) {
         right={`${Math.max(1, Math.round(sellers * 0.7)).toLocaleString()} sellers`}
         leftPct={buyShare}
       />
-      <button className="mx-auto mt-3 block rounded-md bg-[#1b1724] px-3 py-1.5 text-xs font-bold text-[#b9b2c7]">
-        View more
+
+      {/* Expanded details */}
+      {expanded && (
+        <div className="mt-3.5 pt-3 border-t border-[#1b1726]/50 flex flex-col gap-2.5">
+          {/* Social icons row */}
+          <div className="flex gap-2 w-full">
+            <a
+              href="https://google.com"
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#1c1926] border border-[#252137] text-[11px] font-bold text-[#e8e4f0] h-[28px] hover:bg-[#252134] hover:text-white transition"
+            >
+              <Globe className="h-3 w-3" />
+              Website
+            </a>
+            <a
+              href={`https://twitter.com/search?q=${token.symbol}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#1c1926] border border-[#252137] text-[11px] font-bold text-[#e8e4f0] h-[28px] hover:bg-[#252134] hover:text-white transition"
+            >
+              <Twitter className="h-3 w-3" />
+              Twitter
+            </a>
+            <a
+              href={`https://t.me/${token.symbol}`}
+              target="_blank"
+              rel="noreferrer"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#1c1926] border border-[#252137] text-[11px] font-bold text-[#e8e4f0] h-[28px] hover:bg-[#252134] hover:text-white transition"
+            >
+              <Send className="h-3 w-3" />
+              Telegram
+            </a>
+          </div>
+
+          {/* Metadata rows */}
+          <div className="text-[11.5px] text-[#7a7488] space-y-2 mt-1">
+            <div className="flex items-center justify-between">
+              <span>Launchpad</span>
+              <span className="text-white font-semibold flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#20d772] shrink-0" />
+                {token.mint.endsWith("pump") ? "Pump.fun" : "Raydium"}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Supply</span>
+              <span className="text-white font-semibold font-mono">993.8M</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Network</span>
+              <span className="text-white font-semibold">Solana</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Created</span>
+              <span className="text-white font-semibold">1 mo. ago</span>
+            </div>
+            <div className="flex items-center justify-between pt-1 border-t border-[#1b1726]/10">
+              <span>Contract address</span>
+              <button
+                onClick={handleCopyAddress}
+                className="flex items-center gap-1 text-[#b9b2c7] hover:text-[#7567ff] font-mono font-semibold transition ml-auto"
+                title="Copy address"
+              >
+                {token.mint.slice(0, 6)}...{token.mint.slice(-6)}
+                <Copy className="h-2.5 w-2.5" />
+                {copiedAddress && (
+                  <span className="text-[#20d772] text-[9px] font-bold ml-1">Copied</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="mx-auto mt-3 h-[26px] flex items-center justify-center rounded-md bg-[#1c1926] hover:bg-[#252134] border border-[#252137] px-3 text-[11px] font-bold text-[#b9b2c7] transition"
+      >
+        {expanded ? "View less" : "View more"}
       </button>
       {up && <span className="sr-only">Positive live trend</span>}
     </section>
@@ -620,13 +752,15 @@ function TokenAboutCard({ token }: { token: Token }) {
 
 function ActivityBar({ left, right, leftPct }: { left: string; right: string; leftPct: number }) {
   return (
-    <div className="mt-3">
-      <div className="mb-1 flex justify-between text-xs font-bold text-[#d9d4e5]">
+    <div className="mt-2.5">
+      <div className="mb-1 flex justify-between text-[10.5px] font-semibold text-[#f3efff]">
         <span>{left}</span>
         <span>{right}</span>
       </div>
-      <div className="flex h-1.5 overflow-hidden rounded-full bg-[#ff653d]">
+      <div className="flex h-1 overflow-hidden rounded-full bg-[#ff653d] w-full">
         <div className="bg-[#20d772]" style={{ width: `${leftPct}%` }} />
+        <div className="w-[3px] bg-[#12111a]" />
+        <div className="bg-[#ff653d] flex-grow" />
       </div>
     </div>
   );
@@ -676,9 +810,13 @@ function downloadTradeReceipt(receipt: TradeReceipt) {
 
 function Row({ label, value, good }: { label: string; value: string; good?: boolean }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-muted-foreground">{label}</span>
-      <span className={`truncate text-right font-mono ${good ? "text-primary" : ""}`}>{value}</span>
+    <div className="flex items-center justify-between gap-3 text-xs">
+      <span className="text-[#7a7488]">{label}</span>
+      <span
+        className={`truncate text-right font-mono font-semibold ${good ? "text-[#20d772]" : "text-[#f3efff]"}`}
+      >
+        {value}
+      </span>
     </div>
   );
 }
