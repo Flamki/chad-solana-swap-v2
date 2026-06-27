@@ -310,9 +310,9 @@ function SwapPanelCore({
   return (
     <div className="space-y-3.5 w-full">
       {/* Swap Panel Card */}
-      <div className="rounded-2xl border border-[#1b1726] bg-[#12111a] p-2 flex flex-col gap-1.5 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+      <div className="rounded-2xl border border-[#1b1726]/70 bg-transparent p-2 flex flex-col gap-1.5">
         {/* Buy/Sell Selector Container */}
-        <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-[#08060f] p-0.5">
+        <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-transparent p-0.5">
           <button
             onClick={() => setSide("buy")}
             className={`rounded-lg py-1 text-xs font-bold transition duration-200 ${
@@ -336,7 +336,7 @@ function SwapPanelCore({
         </div>
 
         {/* Input box */}
-        <div className="rounded-xl bg-[#08060f] p-2">
+        <div className="rounded-xl border border-[#1b1726]/45 bg-transparent p-2">
           <div className="flex items-center justify-between text-[11px] text-[#7a7488]">
             <span>You {side === "buy" ? "pay" : "sell"}</span>
             <span>
@@ -381,7 +381,7 @@ function SwapPanelCore({
                     : String(Number(preset.replace("$", "")) / Math.max(pair.inputPrice || 1, 1)),
                 )
               }
-              className="flex-1 rounded-lg bg-[#1c1926] h-[26px] flex items-center justify-center font-mono font-bold text-[#9099a3] transition hover:bg-[#252134] hover:text-white"
+              className="flex-1 rounded-lg border border-[#1b1726]/45 bg-transparent h-[26px] flex items-center justify-center font-mono font-bold text-[#9099a3] transition hover:bg-[#1b1726]/45 hover:text-white"
             >
               {preset}
             </button>
@@ -391,7 +391,7 @@ function SwapPanelCore({
             className={`rounded-lg h-[26px] w-[26px] transition flex items-center justify-center shrink-0 ${
               showSettings
                 ? "bg-[#252134] text-white"
-                : "bg-[#1c1926] text-[#9099a3] hover:bg-[#252134]"
+                : "border border-[#1b1726]/45 bg-transparent text-[#9099a3] hover:bg-[#1b1726]/45"
             }`}
             title="Slippage & details"
           >
@@ -401,7 +401,7 @@ function SwapPanelCore({
 
         {/* Collapsible details / settings */}
         {showSettings && (
-          <div className="rounded-xl border border-[#1b1726]/60 bg-[#08060f]/60 p-2.5 space-y-1.5 text-[11px]">
+          <div className="rounded-xl border border-[#1b1726]/60 bg-transparent p-2.5 space-y-1.5 text-[11px]">
             <Row
               label="Price impact"
               value={quoteQuery.data ? `${quoteQuery.data.priceImpactPct.toFixed(3)}%` : "< 0.10%"}
@@ -451,7 +451,7 @@ function SwapPanelCore({
             (!!authenticated &&
               (!wallet || !onSignTransaction || !inputBalanceReady || !hasInputBalance))
           }
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#1c1926] hover:bg-[#252134] border border-[#252137] h-[38px] text-[13px] font-bold text-[#e8e4f0] transition disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-transparent hover:bg-[#1b1726]/55 border border-[#252137] h-[38px] text-[13px] font-bold text-[#e8e4f0] transition disabled:opacity-60"
         >
           {isExecuting || quoteQuery.isFetching ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin text-white" />
@@ -516,16 +516,16 @@ function SwapPanelCore({
       <TokenAboutCard token={token} />
 
       {/* Your Positions Card */}
-      <div className="rounded-2xl border border-[#1b1726] bg-[#12111a] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+      <div className="rounded-2xl border border-[#1b1726]/70 bg-transparent p-3">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold text-white">Your positions</h3>
           {/* Open/Closed toggle capsule */}
-          <div className="flex items-center gap-0.5 rounded-full bg-[#08060f] p-0.5 text-[10px] font-semibold border border-[#1b1726]/60">
+          <div className="flex items-center gap-0.5 rounded-full bg-transparent p-0.5 text-[10px] font-semibold border border-[#1b1726]/60">
             <button
               onClick={() => setPositionsFilter("open")}
               className={`rounded-full px-2 py-0.5 transition-colors ${
                 positionsFilter === "open"
-                  ? "bg-[#1c1926] text-white"
+                  ? "bg-[#1b1726]/70 text-white"
                   : "text-[#7a7488] hover:text-white"
               }`}
             >
@@ -535,7 +535,7 @@ function SwapPanelCore({
               onClick={() => setPositionsFilter("closed")}
               className={`rounded-full px-2 py-0.5 transition-colors ${
                 positionsFilter === "closed"
-                  ? "bg-[#1c1926] text-white"
+                  ? "bg-[#1b1726]/70 text-white"
                   : "text-[#7a7488] hover:text-white"
               }`}
             >
@@ -546,7 +546,7 @@ function SwapPanelCore({
 
         {/* Position rows content */}
         {positionsFilter === "open" && tokenBalance > 0 ? (
-          <div className="mt-2.5 flex items-center justify-between bg-[#08060f]/40 p-2 rounded-xl border border-[#1b1726]/40 hover:bg-[#08060f]/60 transition-colors">
+          <div className="mt-2.5 flex items-center justify-between bg-transparent p-2 rounded-xl border border-[#1b1726]/40 hover:bg-[#1b1726]/35 transition-colors">
             <div className="flex items-center gap-2">
               <div className="h-5 w-5 rounded-full bg-primary/20 flex items-center justify-center text-[9px] font-bold text-primary shrink-0">
                 {token.symbol.slice(0, 2)}
@@ -568,7 +568,7 @@ function SwapPanelCore({
             </div>
           </div>
         ) : (
-          <div className="text-[11px] text-[#7a7488] font-medium text-center py-3 bg-[#08060f]/30 rounded-xl mt-2.5 border border-[#1b1726]/40">
+          <div className="text-[11px] text-[#7a7488] font-medium text-center py-3 bg-transparent rounded-xl mt-2.5 border border-[#1b1726]/40">
             No {positionsFilter} positions
           </div>
         )}
@@ -618,7 +618,7 @@ function TokenAboutCard({ token }: { token: Token }) {
   };
 
   return (
-    <section className="rounded-2xl border border-[#1b1726] bg-[#12111a] p-3 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+    <section className="rounded-2xl border border-[#1b1726]/70 bg-transparent p-3">
       <h3 className="text-xs font-bold text-white">About {token.symbol}</h3>
       <p className="mt-1 text-[11.5px] font-medium text-[#9099a3] leading-relaxed">
         {token.name} is a live Solana token tracked through Jupiter, BirdEye, and fallback pool
@@ -635,7 +635,7 @@ function TokenAboutCard({ token }: { token: Token }) {
           return (
             <div
               key={label}
-              className="rounded-lg border border-[#1b1726]/40 bg-[#08060f] px-1 py-1.5 text-center"
+              className="rounded-lg border border-[#1b1726]/40 bg-transparent px-1 py-1.5 text-center"
             >
               <div className="text-[10px] font-bold text-[#7a7488]">{label}</div>
               <div
@@ -675,7 +675,7 @@ function TokenAboutCard({ token }: { token: Token }) {
               href="https://google.com"
               target="_blank"
               rel="noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#1c1926] border border-[#252137] text-[11px] font-bold text-[#e8e4f0] h-[28px] hover:bg-[#252134] hover:text-white transition"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-transparent border border-[#252137] text-[11px] font-bold text-[#e8e4f0] h-[28px] hover:bg-[#1b1726]/55 hover:text-white transition"
             >
               <Globe className="h-3 w-3" />
               Website
@@ -684,7 +684,7 @@ function TokenAboutCard({ token }: { token: Token }) {
               href={`https://twitter.com/search?q=${token.symbol}`}
               target="_blank"
               rel="noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#1c1926] border border-[#252137] text-[11px] font-bold text-[#e8e4f0] h-[28px] hover:bg-[#252134] hover:text-white transition"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-transparent border border-[#252137] text-[11px] font-bold text-[#e8e4f0] h-[28px] hover:bg-[#1b1726]/55 hover:text-white transition"
             >
               <Twitter className="h-3 w-3" />
               Twitter
@@ -693,7 +693,7 @@ function TokenAboutCard({ token }: { token: Token }) {
               href={`https://t.me/${token.symbol}`}
               target="_blank"
               rel="noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-[#1c1926] border border-[#252137] text-[11px] font-bold text-[#e8e4f0] h-[28px] hover:bg-[#252134] hover:text-white transition"
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-transparent border border-[#252137] text-[11px] font-bold text-[#e8e4f0] h-[28px] hover:bg-[#1b1726]/55 hover:text-white transition"
             >
               <Send className="h-3 w-3" />
               Telegram
@@ -741,7 +741,7 @@ function TokenAboutCard({ token }: { token: Token }) {
 
       <button
         onClick={() => setExpanded(!expanded)}
-        className="mx-auto mt-3 h-[26px] flex items-center justify-center rounded-md bg-[#1c1926] hover:bg-[#252134] border border-[#252137] px-3 text-[11px] font-bold text-[#b9b2c7] transition"
+        className="mx-auto mt-3 h-[26px] flex items-center justify-center rounded-md bg-transparent hover:bg-[#1b1726]/55 border border-[#252137] px-3 text-[11px] font-bold text-[#b9b2c7] transition"
       >
         {expanded ? "View less" : "View more"}
       </button>

@@ -59,7 +59,7 @@ function StoreBadges({ className = "" }: { className?: string }) {
 
 export function Landing() {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-black font-[Inter,system-ui,sans-serif] text-white">
+    <div className="min-h-screen overflow-x-hidden bg-black text-white">
       <section className="relative min-h-[85vh] w-full overflow-hidden">
         <Image
           src={HERO_BACKGROUND}

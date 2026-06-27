@@ -26,23 +26,16 @@ import {
   ArrowDownToLine,
   ArrowRight,
   ArrowUpFromLine,
-  CalendarDays,
   Check,
   ChevronDown,
-  Clock3,
+  ChevronRight,
   Copy,
   EyeOff,
-  Gift,
   KeyRound,
   Loader2,
   LogOut,
-  Pencil,
-  Repeat2,
   Settings,
-  ShieldCheck,
-  UserPlus,
   UserRound,
-  Wallet,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -69,15 +62,27 @@ import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
 
 type AccountDialog = "deposit" | "withdraw" | "manage" | null;
 
-export function TradeAccount({ solPrice }: { solPrice: number }) {
+export function TradeAccount({
+  solPrice,
+  onProfile,
+}: {
+  solPrice: number;
+  onProfile?: () => void;
+}) {
   if (!hasPrivy) {
     return <SignInButton />;
   }
 
-  return <ConnectedTradeAccount solPrice={solPrice} />;
+  return <ConnectedTradeAccount solPrice={solPrice} onProfile={onProfile} />;
 }
 
-function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
+function ConnectedTradeAccount({
+  solPrice,
+  onProfile,
+}: {
+  solPrice: number;
+  onProfile?: () => void;
+}) {
   const queryClient = useQueryClient();
   const { ready, authenticated, user } = usePrivy();
   const { wallets } = useWallets();
@@ -116,6 +121,7 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
     blurBalances ? "****" : loadingBalances ? "..." : formatUsd(value);
   const email = getLoginEmail(user);
   const displayName = getDisplayName(user, email);
+  const evmAddress = getEvmAddress(user);
   const profileInitial = displayName.charAt(0).toUpperCase();
   const shortAddress = `${address.slice(0, 4)}...${address.slice(-4)}`;
 
@@ -130,6 +136,14 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
   const setBalancePrivacy = (checked: boolean) => {
     setBlurBalances(checked);
     window.localStorage.setItem("chadwallet-blur-balances", String(checked));
+  };
+  const openProfile = () => {
+    if (onProfile) {
+      onProfile();
+      return;
+    }
+
+    setDialog("manage");
   };
 
   return (
@@ -189,7 +203,7 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
             Withdraw
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onSelect={() => setDialog("manage")} className="cursor-pointer py-2">
+          <DropdownMenuItem onSelect={openProfile} className="cursor-pointer py-2">
             <UserRound />
             Your profile
           </DropdownMenuItem>
@@ -249,22 +263,15 @@ function ConnectedTradeAccount({ solPrice }: { solPrice: number }) {
         onOpenChange={(open) => !open && setDialog(null)}
         email={email}
         address={address}
-        displayName={displayName}
-        profileInitial={profileInitial}
-        cashBalance={cashBalance}
-        portfolioValue={portfolioValue}
-        solBalance={solBalance}
-        loadingBalances={loadingBalances}
+        evmAddress={evmAddress}
         copied={copied}
         onCopy={(value, key) => copyText(value, key)}
-        onDeposit={() => setDialog("deposit")}
-        onWithdraw={() => setDialog("withdraw")}
       />
     </>
   );
 }
 
-function DepositDialog({
+export function DepositDialog({
   open,
   onOpenChange,
   address,
@@ -369,7 +376,7 @@ function DepositDialog({
   );
 }
 
-function WithdrawDialog({
+export function WithdrawDialog({
   open,
   onOpenChange,
   address,
@@ -517,41 +524,23 @@ function ManageAccountDialog({
   onOpenChange,
   email,
   address,
-  displayName,
-  profileInitial,
-  cashBalance,
-  portfolioValue,
-  solBalance,
-  loadingBalances,
+  evmAddress,
   copied,
   onCopy,
-  onDeposit,
-  onWithdraw,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   email: string | null;
   address: string;
-  displayName: string;
-  profileInitial: string;
-  cashBalance: number;
-  portfolioValue: number;
-  solBalance: number;
-  loadingBalances: boolean;
+  evmAddress: string | null;
   copied: string | null;
   onCopy: (value: string, key: string) => void;
-  onDeposit: () => void;
-  onWithdraw: () => void;
 }) {
   const { exportWallet } = useExportWallet();
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<"swaps" | "buys" | "sells">("swaps");
-  const handle = getProfileHandle(displayName, email);
-  const shortAddress = `${address.slice(0, 6)}...${address.slice(-6)}`;
-  const cashText = loadingBalances ? "..." : formatUsd(cashBalance);
-  const portfolioText = loadingBalances ? "..." : formatUsd(portfolioValue);
-  const solText = loadingBalances ? "..." : `${solBalance.toFixed(4)} SOL`;
+  const accountEmail = email ?? "Connected with wallet";
+  const chainAddress = evmAddress ?? "Not connected";
 
   const exportKeys = async () => {
     setError("");
@@ -567,326 +556,149 @@ function ManageAccountDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100svh-64px)] w-[min(1120px,calc(100vw-32px))] max-w-none overflow-hidden rounded-xl border-[#1b1726] bg-[#08060f] p-0 text-[#f4f1ff] shadow-[0_24px_90px_rgba(0,0,0,0.68)] [&>button]:right-5 [&>button]:top-5 [&>button]:text-[#8f879d] [&>button:hover]:text-white">
-        <DialogHeader className="sr-only">
-          <DialogTitle>{displayName} profile</DialogTitle>
-          <DialogDescription>
-            Trading profile, wallet balances, and account security.
+      <DialogContent className="w-[min(572px,calc(100vw-32px))] max-w-none rounded-[24px] border border-[#1f1b2c] bg-[#08060f]/96 p-5 text-[#f7f7f7] shadow-[0_28px_100px_rgba(0,0,0,0.72)] backdrop-blur-xl [&>button]:-top-14 [&>button]:right-6 [&>button]:grid [&>button]:h-12 [&>button]:w-12 [&>button]:place-items-center [&>button]:rounded-full [&>button]:border [&>button]:border-[#26213a] [&>button]:bg-[#0f0c18] [&>button]:text-white [&>button]:opacity-100 [&>button:hover]:bg-[#181421]">
+        <DialogHeader className="mb-5 text-center">
+          <DialogTitle className="text-[22px] font-medium leading-none text-white">
+            Manage account
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Login and linked wallet addresses for this ChadWallet account.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid min-h-[650px] grid-cols-[minmax(0,1fr)_300px] overflow-hidden">
-          <main className="terminal-scroll min-w-0 overflow-y-auto">
-            <div className="relative h-[150px] border-b border-[#1b1726] bg-[#14111b]">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_10%,rgba(83,95,255,0.28),transparent_26rem),linear-gradient(135deg,#161221,#090712_72%)]" />
-              <button
-                type="button"
-                className="absolute bottom-3 right-3 grid h-9 w-9 place-items-center rounded-lg bg-[#242132] text-[#e8e4f0] transition hover:bg-[#302b42]"
-                title="Edit profile banner"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-            </div>
-
-            <section className="px-7 pb-6">
-              <div className="-mt-12 flex items-end justify-between gap-6">
-                <div className="flex min-w-0 items-end gap-5">
-                  <div className="grid h-24 w-24 shrink-0 place-items-center rounded-full border-4 border-[#08060f] bg-[radial-gradient(circle_at_30%_20%,#6571ff,#19162b_68%)] text-4xl font-black text-white shadow-[0_18px_50px_rgba(0,0,0,0.45)]">
-                    {profileInitial}
-                  </div>
-                  <div className="min-w-0 pb-2">
-                    <h2 className="truncate text-[24px] font-black leading-none text-white">
-                      {displayName}
-                    </h2>
-                    <div className="mt-1 truncate text-[17px] font-semibold text-[#a9b0d4]">
-                      @{handle}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mb-1 flex shrink-0 items-center gap-3">
-                  <ProfileStat value="2" label="Following" />
-                  <ProfileStat value="0" label="Followers" />
-                  <button className="h-11 rounded-lg border border-[#252137] bg-[#15121d] px-5 text-sm font-black text-white transition hover:bg-[#1f1b2a]">
-                    Edit profile
-                  </button>
-                  <button
-                    className="grid h-11 w-12 place-items-center rounded-lg border border-[#252137] bg-[#15121d] text-white transition hover:bg-[#1f1b2a]"
-                    title="Rewards"
-                  >
-                    <Gift className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-5 border-b border-[#1b1726] pb-5 text-[13px] font-semibold text-[#9099a3]">
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock3 className="h-4 w-4 text-[#5c5669]" />
-                  No hold time
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Repeat2 className="h-4 w-4 text-[#5c5669]" />0 trades
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <CalendarDays className="h-4 w-4 text-[#5c5669]" />
-                  Joined Jun 2026
-                </span>
-                <button
-                  onClick={() => onCopy(address, "address")}
-                  className="inline-flex items-center gap-1.5 font-mono text-[12px] text-[#717893] transition hover:text-white"
-                >
-                  {shortAddress}
-                  {copied === "address" ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                </button>
-              </div>
-
-              <div className="mt-5 grid gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
-                <section className="min-w-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="font-mono text-[38px] font-black leading-none text-white">
-                        {portfolioText}
-                      </div>
-                      <div className="mt-1 flex items-center gap-2 font-mono text-sm font-bold">
-                        <span className="text-[#20d772]">+$0</span>
-                        <span className="text-[#a9b0d4]">24h</span>
-                      </div>
-                    </div>
-                    <div className="flex rounded-lg border border-[#252137] bg-[#0d0a13] p-1 text-xs font-black">
-                      {["24H", "7D", "30D", "ALL"].map((range) => (
-                        <button
-                          key={range}
-                          className={`h-7 rounded-md px-3 ${
-                            range === "24H"
-                              ? "bg-[#232031] text-white"
-                              : "text-[#5c5669] hover:text-white"
-                          }`}
-                        >
-                          {range}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="mt-7 h-[210px] rounded-lg border border-[#11101a] bg-[#070a0f] p-4">
-                    <div className="relative h-full">
-                      <div className="absolute left-0 right-0 top-[55%] h-px bg-[#20d772]" />
-                      <div className="absolute bottom-0 left-0 right-0 top-[55%] bg-gradient-to-b from-[#20d772]/10 to-transparent" />
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-[#1b1726] bg-[#0d0a13] p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="grid h-12 w-12 place-items-center rounded-full bg-[#201d2c] text-2xl font-black text-white">
-                        $
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold text-[#a9b0d4]">Cash balance</div>
-                        <div className="font-mono text-2xl font-black text-white">{cashText}</div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={onWithdraw}
-                        className="h-11 rounded-lg border border-[#252137] bg-[#15121d] px-5 text-sm font-black text-white transition hover:bg-[#1f1b2a]"
-                      >
-                        Withdraw
-                      </button>
-                      <button
-                        onClick={onDeposit}
-                        className="h-11 rounded-lg bg-[#5365ff] px-6 text-sm font-black text-white transition hover:bg-[#6373ff]"
-                      >
-                        Deposit
-                      </button>
-                    </div>
-                  </div>
-
-                  <section className="mt-4 overflow-hidden rounded-lg border border-[#1b1726] bg-[#0b0912]">
-                    <div className="flex h-11 items-center justify-between border-b border-[#1b1726] bg-[#15121d] px-3">
-                      <h3 className="text-sm font-black text-white">Your positions</h3>
-                      <div className="flex rounded-md border border-[#28243a] bg-[#0c0a13] p-0.5 text-xs font-black">
-                        <button className="rounded bg-[#20254f] px-2.5 py-1 text-[#6575ff]">
-                          Open
-                        </button>
-                        <button className="px-2.5 py-1 text-[#5c5669]">Closed</button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 border-b border-[#171320] px-4 py-2 text-xs font-semibold text-[#5c5669]">
-                      <span>Token</span>
-                      <span className="text-right">Position</span>
-                    </div>
-                    <div className="grid h-20 place-items-center text-sm font-semibold text-[#5c5669]">
-                      No open positions
-                    </div>
-                  </section>
-                </section>
-
-                <section className="min-w-0 overflow-hidden rounded-lg border border-[#1b1726] bg-[#0b0912]">
-                  <div className="flex h-12 items-center gap-4 border-b border-[#1b1726] bg-[#15121d] px-4 text-sm font-black">
-                    {[
-                      ["swaps", "All swaps"],
-                      ["buys", "Buys"],
-                      ["sells", "Sells"],
-                    ].map(([key, label]) => (
-                      <button
-                        key={key}
-                        onClick={() => setActiveTab(key as typeof activeTab)}
-                        className={
-                          activeTab === key ? "text-white" : "text-[#5c5669] hover:text-white"
-                        }
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-[1fr_1fr_1fr_0.8fr] border-b border-[#171320] px-4 py-2 text-xs font-semibold text-[#5c5669]">
-                    <span>Token</span>
-                    <span>Action</span>
-                    <span>MCap</span>
-                    <span className="text-right">Time</span>
-                  </div>
-                  <div className="grid h-[445px] place-items-center text-sm font-semibold text-[#5c5669]">
-                    No trades yet
-                  </div>
-                </section>
-              </div>
-
-              <section className="mt-6 rounded-lg border border-[#1b1726] bg-[#0b0912] p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-sm font-black text-white">Wallet security</h3>
-                    <p className="mt-0.5 text-xs font-semibold text-[#7a7488]">
-                      Verified login and embedded Solana wallet controls.
-                    </p>
-                  </div>
-                  <div className="font-mono text-xs font-bold text-[#7a7488]">{solText}</div>
-                </div>
-                <div className="grid gap-2 md:grid-cols-2">
-                  <AccountRow
-                    icon={<ShieldCheck className="h-4 w-4 text-[#6575ff]" />}
-                    label="Login email"
-                    value={email ?? "Connected with wallet"}
-                  />
-                  <AccountRow
-                    icon={<Wallet className="h-4 w-4 text-[#6575ff]" />}
-                    label="Solana address"
-                    value={address}
-                    action={
-                      <button
-                        onClick={() => onCopy(address, "address")}
-                        title="Copy Solana address"
-                        className="grid h-8 w-8 place-items-center rounded-md text-[#8f879d] hover:bg-[#1b1726] hover:text-white"
-                      >
-                        {copied === "address" ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                      </button>
-                    }
-                  />
-                </div>
-                <button
-                  onClick={exportKeys}
-                  disabled={exporting}
-                  className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#ff3d57]/45 text-sm font-black text-[#ff3d57] transition hover:bg-[#ff3d57]/10 disabled:opacity-50"
-                >
-                  {exporting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <KeyRound className="h-4 w-4" />
-                  )}
-                  Export wallet key
-                </button>
-                {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
-              </section>
-            </section>
-          </main>
-
-          <aside className="terminal-scroll border-l border-[#1b1726] bg-[#08060f] px-6 py-6">
-            <div className="mb-5 flex items-center gap-2">
-              <UserPlus className="h-5 w-5 text-[#5c5669]" />
-              <h3 className="text-lg font-black text-white">Follow top traders</h3>
-            </div>
-            <div className="space-y-4">
-              {profileSuggestions.map((trader) => (
-                <ProfileTrader key={trader.handle} trader={trader} />
-              ))}
-            </div>
-          </aside>
+        <div className="space-y-3">
+          <ManageAccountRow
+            label="Login email"
+            value={accountEmail}
+            leading={<GoogleMark />}
+            trailing={<ChevronRight className="h-5 w-5 text-[#62606d]" />}
+          />
+          <ManageAccountRow
+            label="Solana address"
+            value={address}
+            trailing={
+              <AccountCopyButton
+                copied={copied === "solana"}
+                disabled={!address}
+                onClick={() => onCopy(address, "solana")}
+              />
+            }
+          />
+          <ManageAccountRow
+            label="Base address"
+            value={chainAddress}
+            muted={!evmAddress}
+            trailing={
+              <AccountCopyButton
+                copied={copied === "base"}
+                disabled={!evmAddress}
+                onClick={() => evmAddress && onCopy(evmAddress, "base")}
+              />
+            }
+          />
+          <ManageAccountRow
+            label="Monad address"
+            value={chainAddress}
+            muted={!evmAddress}
+            trailing={
+              <AccountCopyButton
+                copied={copied === "monad"}
+                disabled={!evmAddress}
+                onClick={() => evmAddress && onCopy(evmAddress, "monad")}
+              />
+            }
+          />
+          <ManageAccountRow
+            label="BNB Chain address"
+            value={chainAddress}
+            muted={!evmAddress}
+            trailing={
+              <AccountCopyButton
+                copied={copied === "bnb"}
+                disabled={!evmAddress}
+                onClick={() => evmAddress && onCopy(evmAddress, "bnb")}
+              />
+            }
+          />
         </div>
+
+        <button
+          type="button"
+          onClick={exportKeys}
+          disabled={exporting}
+          className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[17px] font-medium text-[#ff672b] transition hover:bg-[#ff672b]/8 disabled:cursor-not-allowed disabled:opacity-55"
+        >
+          {exporting ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            <KeyRound className="h-5 w-5" />
+          )}
+          Export keys
+        </button>
+        {error && <p className="mt-2 text-center text-xs font-medium text-[#ff5f46]">{error}</p>}
       </DialogContent>
     </Dialog>
   );
 }
 
-const profileSuggestions = [
-  { name: "leo", handle: "@0xleo", color: "#ef5f46" },
-  { name: "asta", handle: "@astasol", color: "#d8b8c7" },
-  { name: "remus", handle: "@remusofmars", color: "#c48d42" },
-  { name: "Dr Gero", handle: "@0xg3ro", color: "#9db4d8" },
-  { name: "GCR Junior", handle: "@gcrJR", color: "#4cf57d" },
-  { name: "Daumen", handle: "@daumenxyz", color: "#d6ff46" },
-  { name: "inyourwalls", handle: "@inyourwalls", color: "#5a9c6f" },
-];
-
-function ProfileStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="min-w-[72px] border-r border-[#1b1726] pr-4 text-center last:border-r-0">
-      <div className="font-mono text-lg font-black text-white">{value}</div>
-      <div className="text-xs font-semibold text-[#a9b0d4]">{label}</div>
-    </div>
-  );
-}
-
-function ProfileTrader({ trader }: { trader: { name: string; handle: string; color: string } }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-black text-white"
-        style={{
-          background: `radial-gradient(circle at 30% 25%, ${trader.color}, #171421 70%)`,
-        }}
-      >
-        {trader.name.slice(0, 2).toUpperCase()}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-black text-white">{trader.name}</div>
-        <div className="truncate text-xs font-semibold text-[#a9b0d4]">{trader.handle}</div>
-      </div>
-      <button className="h-9 rounded-lg bg-[#5365ff] px-4 text-xs font-black text-white transition hover:bg-[#6373ff]">
-        Follow
-      </button>
-    </div>
-  );
-}
-
-function AccountRow({
-  icon,
+function ManageAccountRow({
   label,
   value,
-  action,
+  leading,
+  trailing,
+  muted,
 }: {
-  icon: React.ReactNode;
   label: string;
   value: string;
-  action?: React.ReactNode;
+  leading?: React.ReactNode;
+  trailing?: React.ReactNode;
+  muted?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border bg-card/50 p-3">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background">
-        {icon}
-      </span>
+    <div className="flex min-h-[82px] items-center gap-3 rounded-[14px] bg-[#17151f] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
+      {leading}
       <div className="min-w-0 flex-1">
-        <div className="text-xs font-semibold">{label}</div>
-        <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{value}</div>
+        <div className="text-[17px] font-medium leading-tight text-white">{label}</div>
+        <div
+          className={`mt-1 truncate text-[13px] font-medium leading-tight ${
+            muted ? "text-[#5b5868]" : "text-[#918c9e]"
+          }`}
+        >
+          {value}
+        </div>
       </div>
-      {action}
+      {trailing}
     </div>
+  );
+}
+
+function AccountCopyButton({
+  copied,
+  disabled,
+  onClick,
+}: {
+  copied: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={disabled ? "Address unavailable" : "Copy address"}
+      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#73707e] transition hover:bg-[#24212e] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+    >
+      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+    </button>
+  );
+}
+
+function GoogleMark() {
+  return (
+    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white text-[13px] font-black leading-none text-[#4285f4]">
+      G
+    </span>
   );
 }
 
@@ -983,10 +795,28 @@ function getDisplayName(user: ReturnType<typeof usePrivy>["user"], email: string
   return "Chad Trader";
 }
 
-function getProfileHandle(displayName: string, email: string | null) {
-  const base = email?.split("@")[0] || displayName;
-  const handle = base.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 18);
-  return handle || "ChadTrader";
+function getEvmAddress(user: ReturnType<typeof usePrivy>["user"]) {
+  if (!user) return null;
+
+  const walletAccount = user.linkedAccounts.find(
+    (linked) => hasStringAddress(linked) && /^0x[a-fA-F0-9]{40}$/.test(linked.address),
+  );
+
+  if (hasStringAddress(walletAccount)) return walletAccount.address;
+  if (hasStringAddress(user.wallet) && /^0x[a-fA-F0-9]{40}$/.test(user.wallet.address)) {
+    return user.wallet.address;
+  }
+
+  return null;
+}
+
+function hasStringAddress(value: unknown): value is { address: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "address" in value &&
+    typeof value.address === "string"
+  );
 }
 
 async function copyToClipboard(value: string) {

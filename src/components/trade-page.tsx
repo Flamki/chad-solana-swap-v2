@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Bell,
   ChevronsLeft,
@@ -23,6 +23,7 @@ import { ChadLogo } from "@/components/chad-logo";
 import { TokenSearch } from "@/components/token-search";
 import { TradeAccount } from "@/components/trade-account";
 import { PriceChart } from "@/components/trade/price-chart";
+import { FollowTopTradersPanel, TradeProfileCenter } from "@/components/trade/profile-center";
 import { SwapPanel } from "@/components/trade/swap-panel";
 import {
   type ChartInterval,
@@ -54,6 +55,13 @@ interface SidebarColumnState {
   isSplitBottom: boolean;
   topPane: SidebarPaneState;
   bottomPane: SidebarPaneState;
+}
+
+interface TokenPreviewState {
+  token: Token;
+  x: number;
+  y: number;
+  closing?: boolean;
 }
 
 interface AlertFeedItem {
@@ -219,6 +227,9 @@ export function TradePage({ mint }: { mint: string }) {
   const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
   const [copiedMint, setCopiedMint] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [centerView, setCenterView] = useState<"trade" | "profile">("trade");
+  const [tokenPreview, setTokenPreview] = useState<TokenPreviewState | null>(null);
+  const tokenPreviewTimer = useRef<number | null>(null);
 
   const defaultPane = (tab = "Tokens"): SidebarPaneState => ({
     activeTab: tab,
@@ -276,6 +287,14 @@ export function TradePage({ mint }: { mint: string }) {
   useEffect(() => {
     localStorage.setItem("chadwallet_sidebar_collapsed", String(isSidebarCollapsed));
   }, [isSidebarCollapsed]);
+
+  useEffect(() => {
+    return () => {
+      if (tokenPreviewTimer.current) {
+        window.clearTimeout(tokenPreviewTimer.current);
+      }
+    };
+  }, []);
 
   const token = market.data ?? initialToken;
   const solPrice = solMarket.data?.price || (token.mint === SOL_MINT ? token.price : 0);
@@ -457,7 +476,13 @@ export function TradePage({ mint }: { mint: string }) {
                 </div>
               )}
               {paneTokens.map((item) => (
-                <TrendingToken key={item.mint} token={item} active={item.mint === token.mint} />
+                <TrendingToken
+                  key={item.mint}
+                  token={item}
+                  active={item.mint === token.mint}
+                  onPreview={showTokenPreview}
+                  onPreviewEnd={() => hideTokenPreview()}
+                />
               ))}
             </div>
           </div>
@@ -526,6 +551,45 @@ export function TradePage({ mint }: { mint: string }) {
         )}
       </div>
     );
+  };
+
+  const showTokenPreview = (previewToken: Token, element: HTMLElement) => {
+    if (tokenPreviewTimer.current) {
+      window.clearTimeout(tokenPreviewTimer.current);
+      tokenPreviewTimer.current = null;
+    }
+
+    const rect = element.getBoundingClientRect();
+    const cardWidth = 276;
+    const cardHeight = 204;
+    const x = Math.min(Math.max(rect.right - 18, 16), window.innerWidth - cardWidth - 14);
+    const y = Math.min(Math.max(rect.top - 12, 70), window.innerHeight - cardHeight - 34);
+
+    setTokenPreview({
+      token: previewToken,
+      x,
+      y,
+      closing: false,
+    });
+  };
+
+  const keepTokenPreview = () => {
+    if (tokenPreviewTimer.current) {
+      window.clearTimeout(tokenPreviewTimer.current);
+      tokenPreviewTimer.current = null;
+    }
+    setTokenPreview((preview) => (preview ? { ...preview, closing: false } : preview));
+  };
+
+  const hideTokenPreview = (delay = 140) => {
+    if (tokenPreviewTimer.current) {
+      window.clearTimeout(tokenPreviewTimer.current);
+    }
+    setTokenPreview((preview) => (preview ? { ...preview, closing: true } : preview));
+    tokenPreviewTimer.current = window.setTimeout(() => {
+      setTokenPreview(null);
+      tokenPreviewTimer.current = null;
+    }, delay);
   };
 
   async function handleCopyMint() {
@@ -628,12 +692,12 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
 
             <div className="flex items-center justify-end gap-2 pr-3">
-              <TradeAccount solPrice={solPrice} />
+              <TradeAccount solPrice={solPrice} onProfile={() => setCenterView("profile")} />
             </div>
           </div>
         </header>
 
-        <main className="flex flex-1 gap-2 min-h-0 overflow-hidden px-2 pb-2 pt-2">
+        <main className="flex flex-1 min-h-0 gap-2 overflow-hidden px-2 pb-2 pt-2">
           {!isSidebarCollapsed ? (
             <>
               {/* Left Sidebar Column */}
@@ -738,235 +802,259 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
           )}
 
-          <section className="flex-1 flex flex-col min-h-0 rounded-lg border border-[#1b1726] bg-[#0c0a15] shadow-[0_8px_32px_rgba(0,0,0,0.34)] overflow-hidden">
-            {/* Token Header Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#1b1726]/60 bg-[#12111a] px-4 py-2.5 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="relative shrink-0">
-                  <TokenImage token={token} size="sm" />
-                  <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#12111a] bg-[#2f80ed]">
-                    <svg
-                      className="h-[7px] w-[7px] text-white"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </span>
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[15px] font-bold text-white leading-none">
-                      {token.name}
-                    </span>
-                    <span className="text-[11px] text-[#7a7488] font-bold font-mono uppercase bg-[#1b1726]/30 px-1.5 py-0.5 rounded border border-[#1b1726]/40 leading-none">
-                      {token.symbol}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => toggleWatchlist(token.mint)}
-                      className="text-[#7a7488] hover:text-amber-400 transition-colors ml-1"
-                      title={
-                        watchlist.includes(token.mint)
-                          ? "Remove from watchlist"
-                          : "Add to watchlist"
-                      }
-                    >
-                      <Star
-                        className={`h-4.5 w-4.5 ${
-                          watchlist.includes(token.mint)
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-[#7a7488]"
-                        }`}
-                      />
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <button
-                      onClick={handleCopyMint}
-                      className="text-[11px] font-mono text-[#5c5669] hover:text-white flex items-center gap-1 transition-colors leading-none"
-                    >
-                      <span>
-                        {token.mint.slice(0, 6)}...{token.mint.slice(-4)}
+          <section
+            className={`flex-1 flex min-w-0 flex-col min-h-0 overflow-hidden ${
+              centerView === "profile"
+                ? "bg-[#08060f]"
+                : "rounded-lg border border-[#1b1726]/70 bg-transparent"
+            }`}
+          >
+            {centerView === "profile" ? (
+              <TradeProfileCenter solPrice={solPrice} />
+            ) : (
+              <>
+                {/* Token Header Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#1b1726]/60 bg-transparent px-4 py-2.5 shrink-0">
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      <TokenImage token={token} size="sm" />
+                      <span className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-[#12111a] bg-[#2f80ed]">
+                        <svg
+                          className="h-[7px] w-[7px] text-white"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        >
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
                       </span>
-                      <Copy className="h-3 w-3" />
-                      {copiedMint && <span className="text-[#20d772] text-[10px]">Copied</span>}
-                    </button>
-                    <span className="h-2.5 w-[1px] bg-[#1b1726] shrink-0" />
-                    <div className="flex items-center gap-1.5 text-[#5c5669]">
-                      <a
-                        href={`https://${token.symbol.toLowerCase()}.com`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:text-white transition-colors"
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[15px] font-bold text-white leading-none">
+                          {token.name}
+                        </span>
+                        <span className="text-[11px] text-[#7a7488] font-bold font-mono uppercase bg-[#1b1726]/30 px-1.5 py-0.5 rounded border border-[#1b1726]/40 leading-none">
+                          {token.symbol}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => toggleWatchlist(token.mint)}
+                          className="text-[#7a7488] hover:text-amber-400 transition-colors ml-1"
+                          title={
+                            watchlist.includes(token.mint)
+                              ? "Remove from watchlist"
+                              : "Add to watchlist"
+                          }
+                        >
+                          <Star
+                            className={`h-4.5 w-4.5 ${
+                              watchlist.includes(token.mint)
+                                ? "fill-amber-400 text-amber-400"
+                                : "text-[#7a7488]"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <button
+                          onClick={handleCopyMint}
+                          className="text-[11px] font-mono text-[#5c5669] hover:text-white flex items-center gap-1 transition-colors leading-none"
+                        >
+                          <span>
+                            {token.mint.slice(0, 6)}...{token.mint.slice(-4)}
+                          </span>
+                          <Copy className="h-3 w-3" />
+                          {copiedMint && <span className="text-[#20d772] text-[10px]">Copied</span>}
+                        </button>
+                        <span className="h-2.5 w-[1px] bg-[#1b1726] shrink-0" />
+                        <div className="flex items-center gap-1.5 text-[#5c5669]">
+                          <a
+                            href={`https://${token.symbol.toLowerCase()}.com`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-white transition-colors"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                          <a
+                            href={`https://twitter.com/search?q=${token.symbol}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-white transition-colors"
+                          >
+                            <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
+                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                            </svg>
+                          </a>
+                          <a
+                            href={`https://t.me/${token.symbol.toLowerCase()}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="hover:text-white transition-colors"
+                          >
+                            <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.35-.49.96-.74 3.79-1.65 6.32-2.73 7.57-3.23 3.6-1.44 4.35-1.69 4.84-1.69.11 0 .35.03.5.15.13.12.17.28.19.39.02.12.02.26.01.38z" />
+                            </svg>
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-6 overflow-x-auto no-scrollbar ml-auto pl-4 shrink-0 select-none max-w-[60%]">
+                    <div className="flex flex-col items-start leading-tight shrink-0">
+                      <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
+                        Market Cap
+                      </span>
+                      <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
+                        ${formatCompact(token.marketCap)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-start leading-tight shrink-0">
+                      <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
+                        Price
+                      </span>
+                      <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
+                        {formatUsd(token.price)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-start leading-tight shrink-0">
+                      <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
+                        24H change
+                      </span>
+                      <span
+                        className={`text-[13px] font-bold font-mono mt-0.5 flex items-center gap-0.5 whitespace-nowrap ${up ? "text-[#20d772]" : "text-[#ff5e36]"}`}
                       >
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
-                      <a
-                        href={`https://twitter.com/search?q=${token.symbol}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:text-white transition-colors"
-                      >
-                        <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
-                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                        </svg>
-                      </a>
-                      <a
-                        href={`https://t.me/${token.symbol.toLowerCase()}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:text-white transition-colors"
-                      >
-                        <svg className="h-3 w-3 fill-current" viewBox="0 0 24 24">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.12.02-1.96 1.25-5.54 3.69-.52.36-1 .53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.35-.49.96-.74 3.79-1.65 6.32-2.73 7.57-3.23 3.6-1.44 4.35-1.69 4.84-1.69.11 0 .35.03.5.15.13.12.17.28.19.39.02.12.02.26.01.38z" />
-                        </svg>
-                      </a>
+                        <span>{up ? "^" : "v"}</span>
+                        <span>{Math.abs(token.change24h).toFixed(2)}%</span>
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-start leading-tight shrink-0">
+                      <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
+                        24h Vol.
+                      </span>
+                      <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
+                        ${formatCompact(token.volume24h)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-start leading-tight shrink-0">
+                      <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
+                        Liquidity
+                      </span>
+                      <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
+                        ${formatCompact(token.liquidity ?? token.marketCap * 0.08)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-start leading-tight shrink-0">
+                      <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
+                        Holders
+                      </span>
+                      <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
+                        {token.holders > 0 ? formatCompact(token.holders) : "21K"}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-start leading-tight shrink-0">
+                      <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
+                        Top 10 holding
+                      </span>
+                      <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
+                        {top10Holding}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center gap-6 overflow-x-auto no-scrollbar ml-auto pl-4 shrink-0 select-none max-w-[60%]">
-                <div className="flex flex-col items-start leading-tight shrink-0">
-                  <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
-                    Market Cap
-                  </span>
-                  <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
-                    ${formatCompact(token.marketCap)}
-                  </span>
+                {/* Chart Area */}
+                <div className="flex-1 min-h-[300px] relative bg-transparent">
+                  {history.data?.data.length ? (
+                    <PriceChart
+                      data={history.data.data}
+                      dataStatus={history.data.status}
+                      provider={history.data.provider}
+                      updatedAt={history.data.updatedAt}
+                      token={token}
+                      solPrice={solPrice}
+                      interval={chartInterval}
+                      onIntervalChange={setChartInterval}
+                    />
+                  ) : (
+                    <LiveState
+                      title={
+                        history.isFetching
+                          ? "Loading live chart"
+                          : history.data?.status === "unavailable"
+                            ? "Live chart temporarily unavailable"
+                            : "Live chart unavailable"
+                      }
+                      detail={
+                        history.isFetching
+                          ? "Pulling live OHLCV candles for this token."
+                          : "This token has live pricing, but chart candles have not landed from the market data providers yet."
+                      }
+                    />
+                  )}
                 </div>
-                <div className="flex flex-col items-start leading-tight shrink-0">
-                  <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
-                    Price
-                  </span>
-                  <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
-                    {formatUsd(token.price)}
-                  </span>
-                </div>
-                <div className="flex flex-col items-start leading-tight shrink-0">
-                  <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
-                    24H change
-                  </span>
-                  <span
-                    className={`text-[13px] font-bold font-mono mt-0.5 flex items-center gap-0.5 whitespace-nowrap ${up ? "text-[#20d772]" : "text-[#ff5e36]"}`}
-                  >
-                    <span>{up ? "^" : "v"}</span>
-                    <span>{Math.abs(token.change24h).toFixed(2)}%</span>
-                  </span>
-                </div>
-                <div className="flex flex-col items-start leading-tight shrink-0">
-                  <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
-                    24h Vol.
-                  </span>
-                  <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
-                    ${formatCompact(token.volume24h)}
-                  </span>
-                </div>
-                <div className="flex flex-col items-start leading-tight shrink-0">
-                  <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
-                    Liquidity
-                  </span>
-                  <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
-                    ${formatCompact(token.liquidity ?? token.marketCap * 0.08)}
-                  </span>
-                </div>
-                <div className="flex flex-col items-start leading-tight shrink-0">
-                  <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
-                    Holders
-                  </span>
-                  <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
-                    {token.holders > 0 ? formatCompact(token.holders) : "21K"}
-                  </span>
-                </div>
-                <div className="flex flex-col items-start leading-tight shrink-0">
-                  <span className="text-[10px] text-[#7a7488] font-medium uppercase tracking-wider whitespace-nowrap">
-                    Top 10 holding
-                  </span>
-                  <span className="text-[13px] font-bold text-[#e8e4f0] font-mono mt-0.5 whitespace-nowrap">
-                    {top10Holding}
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            {/* Chart Area */}
-            <div className="flex-1 min-h-[300px] relative bg-[#0c0a15]">
-              {history.data?.data.length ? (
-                <PriceChart
-                  data={history.data.data}
-                  dataStatus={history.data.status}
-                  provider={history.data.provider}
-                  updatedAt={history.data.updatedAt}
-                  token={token}
-                  solPrice={solPrice}
-                  interval={chartInterval}
-                  onIntervalChange={setChartInterval}
-                />
-              ) : (
-                <LiveState
-                  title={
-                    history.isFetching
-                      ? "Loading live chart"
-                      : history.data?.status === "unavailable"
-                        ? "Live chart temporarily unavailable"
-                        : "Live chart unavailable"
-                  }
-                  detail={
-                    history.isFetching
-                      ? "Pulling live OHLCV candles for this token."
-                      : "This token has live pricing, but chart candles have not landed from the market data providers yet."
-                  }
-                />
-              )}
-            </div>
+                {/* Chart Overlays Bar */}
+                <div className="flex items-center gap-4 border-t border-[#1b1726]/40 bg-transparent px-4 py-1.5 shrink-0 text-[11px] text-[#7a7488] select-none no-scrollbar overflow-x-auto">
+                  <span className="font-semibold text-[#5c5669] shrink-0">Chart overlays</span>
+                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                    <input
+                      type="checkbox"
+                      defaultChecked
+                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                    />
+                    <span>My swaps</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                    <input
+                      type="checkbox"
+                      defaultChecked
+                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                    />
+                    <span>Thesis</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                    <input
+                      type="checkbox"
+                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                    />
+                    <span>Friends only</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                    <input
+                      type="checkbox"
+                      defaultChecked
+                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                    />
+                    <span>Min size (&gt;$1K)</span>
+                  </label>
+                </div>
 
-            {/* Chart Overlays Bar */}
-            <div className="flex items-center gap-4 border-t border-[#1b1726]/40 bg-[#0e0c15] px-4 py-1.5 shrink-0 text-[11px] text-[#7a7488] select-none no-scrollbar overflow-x-auto">
-              <span className="font-semibold text-[#5c5669] shrink-0">Chart overlays</span>
-              <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                />
-                <span>My swaps</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                />
-                <span>Thesis</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                <input
-                  type="checkbox"
-                  className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                />
-                <span>Friends only</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                <input
-                  type="checkbox"
-                  defaultChecked
-                  className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                />
-                <span>Min size (&gt;$1K)</span>
-              </label>
-            </div>
-
-            {/* Bottom Activity Section */}
-            <MarketActivity token={token} />
+                {/* Bottom Activity Section */}
+                <MarketActivity token={token} />
+              </>
+            )}
           </section>
 
-          <aside className="w-[390px] shrink-0 flex flex-col overflow-y-auto pb-2 no-scrollbar">
-            <SwapPanel token={token} solPrice={solPrice} />
-          </aside>
+          {centerView === "profile" ? (
+            <FollowTopTradersPanel />
+          ) : (
+            <aside className="w-[320px] 2xl:w-[340px] shrink-0 flex flex-col overflow-y-auto pb-2 no-scrollbar">
+              <SwapPanel token={token} solPrice={solPrice} />
+            </aside>
+          )}
         </main>
+
+        {tokenPreview && (
+          <TokenHoverPreview
+            preview={tokenPreview}
+            onPreviewStay={keepTokenPreview}
+            onPreviewEnd={() => hideTokenPreview(110)}
+          />
+        )}
 
         <TradeFooterTicker tokens={sidebarTokens} solPrice={solPrice} />
       </div>
@@ -974,12 +1062,26 @@ export function TradePage({ mint }: { mint: string }) {
   );
 }
 
-function TrendingToken({ token, active }: { token: Token; active: boolean }) {
+function TrendingToken({
+  token,
+  active,
+  onPreview,
+  onPreviewEnd,
+}: {
+  token: Token;
+  active: boolean;
+  onPreview: (token: Token, element: HTMLElement) => void;
+  onPreviewEnd: () => void;
+}) {
   const up = token.change24h >= 0;
 
   return (
     <Link
       href={`/trade/${token.mint}`}
+      onPointerEnter={(event) => onPreview(token, event.currentTarget)}
+      onFocus={(event) => onPreview(token, event.currentTarget)}
+      onPointerLeave={onPreviewEnd}
+      onBlur={onPreviewEnd}
       className={`flex items-center gap-3 px-3.5 py-2 transition-colors ${
         active ? "bg-[#1f1c2b]" : "hover:bg-[#151221]/50"
       }`}
@@ -1020,6 +1122,113 @@ function TrendingToken({ token, active }: { token: Token; active: boolean }) {
         </div>
       </div>
     </Link>
+  );
+}
+
+function TokenHoverPreview({
+  preview,
+  onPreviewStay,
+  onPreviewEnd,
+}: {
+  preview: TokenPreviewState;
+  onPreviewStay: () => void;
+  onPreviewEnd: () => void;
+}) {
+  const { token, x, y } = preview;
+  const up = token.change24h >= 0;
+  const logo = sanitizeImageUrl(token.logo);
+  const topHolding = estimateTopHolding(token);
+  const liquidity = token.liquidity ?? token.marketCap * 0.08;
+
+  return (
+    <div
+      onPointerEnter={onPreviewStay}
+      onPointerLeave={onPreviewEnd}
+      className={`fixed z-50 w-[276px] rounded-xl border border-[#252033] bg-[#15131d]/98 p-2.5 text-[#f4f1ff] shadow-[0_16px_44px_rgba(0,0,0,0.5)] backdrop-blur-xl ${
+        preview.closing ? "token-preview-out" : "token-preview-in"
+      }`}
+      style={{ left: x, top: y }}
+    >
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="relative shrink-0">
+          {logo ? (
+            <img
+              src={logo}
+              alt=""
+              className="h-8 w-8 rounded-full border border-[#272236] object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="grid h-8 w-8 place-items-center rounded-full border border-[#272236] bg-[#211d2b] text-[10px] font-medium text-white">
+              {token.symbol.slice(0, 2).toUpperCase()}
+            </div>
+          )}
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3 items-center justify-center rounded-full border border-[#15131d] bg-[#5365ff]">
+            <svg
+              className="h-1.5 w-1.5 text-white"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="4"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </span>
+        </div>
+
+        <Star className="h-[18px] w-[18px] shrink-0 text-[#5c5669]" />
+      </div>
+
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2.5">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <div className="truncate text-[13px] font-medium leading-none text-white">
+              {token.name}
+            </div>
+            <span className="rounded bg-[#2a2634] px-1 py-0.5 text-[8.5px] font-medium uppercase leading-none text-[#a9b0d4]">
+              {token.symbol.slice(0, 6)}
+            </span>
+          </div>
+          <div className="mt-1 truncate text-[11px] font-medium text-[#8f879d]">{token.symbol}</div>
+        </div>
+
+        <div className="text-right">
+          <div className="text-[14px] font-medium leading-none text-white">
+            ${formatCompact(token.marketCap)} MC
+          </div>
+          <div
+            className={`mt-1 text-[11px] font-medium leading-none ${up ? "text-[#20d772]" : "text-[#ff653d]"}`}
+          >
+            {up ? "^" : "v"} {Math.abs(token.change24h).toFixed(2)}%
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-2.5 space-y-2 text-[11px] font-medium">
+        <PreviewMetric label="Vol 24h" value={`$${formatCompact(token.volume24h)}`} />
+        <PreviewMetric label="Holders" value={formatCompact(token.holders)} />
+        <PreviewMetric label="Liquidity" value={`$${formatCompact(liquidity)}`} />
+        <PreviewMetric label="Top 10" value={`${topHolding.toFixed(2)}%`} />
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-[#8f879d]">Contract</span>
+          <span className="h-px min-w-0 flex-1 border-t border-dashed border-[#2a2634]" />
+          <span className="max-w-[104px] truncate text-[10.5px] font-medium text-white">
+            {shortAddress(token.mint)}
+          </span>
+          <Copy className="h-3 w-3 shrink-0 text-[#5c5669]" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="shrink-0 text-[#8f879d]">{label}</span>
+      <span className="h-px min-w-0 flex-1 border-t border-dashed border-[#2a2634]" />
+      <span className="font-medium text-white">{value}</span>
+    </div>
   );
 }
 
@@ -1100,6 +1309,18 @@ async function copyText(value: string) {
   }
 }
 
+function shortAddress(value: string) {
+  if (value.length <= 14) return value;
+  return `${value.slice(0, 6)}...${value.slice(-6)}`;
+}
+
+function estimateTopHolding(token: Token) {
+  if (!token.holders) return 0;
+  const seed = token.mint.split("").reduce((sum, character) => sum + character.charCodeAt(0), 0);
+  const range = token.marketCap > 1_000_000_000 ? 8 : token.marketCap > 100_000_000 ? 14 : 22;
+  return Math.min(94, Math.max(1.2, range + (seed % 900) / 100));
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg border border-[#201b2e] bg-[#15121d] px-3 py-2">
@@ -1123,9 +1344,9 @@ function MarketActivity({ token }: { token: Token }) {
   ];
 
   return (
-    <div className="shrink-0 h-[280px] border-t border-[#1b1726]/60 flex flex-col min-h-0 overflow-hidden bg-[#0c0a15]">
+    <div className="shrink-0 h-[280px] border-t border-[#1b1726]/60 flex flex-col min-h-0 overflow-hidden bg-transparent">
       {/* Tab bar */}
-      <div className="flex h-[36px] items-center gap-0 border-b border-[#1b1726]/40 bg-[#12111a] px-4 shrink-0 text-xs font-semibold">
+      <div className="flex h-[36px] items-center gap-0 border-b border-[#1b1726]/40 bg-transparent px-4 shrink-0 text-xs font-semibold">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -1159,10 +1380,10 @@ function MarketActivity({ token }: { token: Token }) {
       </div>
 
       {/* Table content */}
-      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar bg-[#08060f]">
+      <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar bg-transparent">
         {activeTab === "holders" ? (
           <table className="w-full text-xs text-left">
-            <thead className="sticky top-0 bg-[#0e0b17] text-[11px] font-semibold text-[#7a7488] border-b border-[#1b1726]/40 z-10">
+            <thead className="sticky top-0 bg-[#08060f]/90 backdrop-blur text-[11px] font-semibold text-[#7a7488] border-b border-[#1b1726]/40 z-10">
               <tr className="h-8">
                 <th className="pl-4 pr-2 font-semibold">Trader</th>
                 <th className="px-2 font-semibold text-right">Position</th>
@@ -1262,7 +1483,7 @@ function MarketActivity({ token }: { token: Token }) {
           </table>
         ) : activeTab === "trades" ? (
           <table className="w-full text-xs text-left">
-            <thead className="sticky top-0 bg-[#0e0b17] text-[11px] font-semibold text-[#7a7488] border-b border-[#1b1726]/40 z-10">
+            <thead className="sticky top-0 bg-[#08060f]/90 backdrop-blur text-[11px] font-semibold text-[#7a7488] border-b border-[#1b1726]/40 z-10">
               <tr className="h-8">
                 <th className="pl-4 pr-3 font-semibold w-20">Side</th>
                 <th className="px-3 font-semibold text-right">USD Value</th>
@@ -1363,7 +1584,7 @@ function MarketActivity({ token }: { token: Token }) {
             ].map((thesis) => (
               <div
                 key={thesis.user}
-                className="flex gap-3 p-3 rounded-lg bg-[#0e0c15] border border-[#1b1726]/30 hover:border-[#1b1726]/60 transition-colors"
+                className="flex gap-3 p-3 rounded-lg bg-transparent border border-[#1b1726]/30 hover:border-[#1b1726]/60 transition-colors"
               >
                 <div
                   className={`h-8 w-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 border border-[#1b1726]/40 ${
@@ -1517,6 +1738,7 @@ function TableState({
 
 function TradeFooterTicker({ tokens, solPrice }: { tokens: Token[]; solPrice: number }) {
   const ticker = tokens.slice(0, 8).map((token) => ({
+    mint: token.mint,
     symbol: token.symbol,
     price: token.price,
     change: token.change24h,
@@ -1525,10 +1747,13 @@ function TradeFooterTicker({ tokens, solPrice }: { tokens: Token[]; solPrice: nu
   return (
     <footer className="hidden h-6 shrink-0 items-center justify-between border-t border-[#201b2e] bg-[#08060f] px-2 text-[11px] lg:flex">
       <div className="flex min-w-0 items-center gap-5 overflow-hidden">
-        {ticker.map((item) => {
+        {ticker.map((item, index) => {
           const up = item.change >= 0;
           return (
-            <span key={item.symbol} className="flex shrink-0 items-center gap-1 font-mono">
+            <span
+              key={`${item.mint}-${item.symbol}-${index}`}
+              className="flex shrink-0 items-center gap-1 font-mono"
+            >
               <span className="font-bold text-white">{item.symbol}</span>
               <span className="text-[#b4adbf]">{formatUsd(item.price)}</span>
               <span className={up ? "text-[#20d772]" : "text-[#ff653d]"}>

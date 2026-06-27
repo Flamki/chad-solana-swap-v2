@@ -133,7 +133,7 @@ export function PriceChart({
       layout: {
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: "rgba(245, 245, 255, 0.62)",
-        fontFamily: "JetBrains Mono, ui-monospace, monospace",
+        fontFamily: "Aeonik, ui-sans-serif, system-ui, sans-serif",
       },
       grid: {
         vertLines: { color: "rgba(255,255,255,0.05)" },

@@ -4,6 +4,28 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: "Aeonik";
+  src:
+    local("Aeonik Regular"),
+    local("Aeonik-Regular"),
+    url("/fonts/Aeonik-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Aeonik";
+  src:
+    local("Aeonik Medium"),
+    local("Aeonik-Medium"),
+    url("/fonts/Aeonik-Medium.woff2") format("woff2");
+  font-weight: 500 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /*
  * Design system definition.
  *
@@ -104,8 +126,8 @@
     oklch(0.06 0.01 260);
   --shadow-glow-green: 0 0 40px oklch(0.58 0.2 274 / 0.35);
   --shadow-glow-purple: 0 0 40px oklch(0.58 0.2 274 / 0.35);
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-display: "Aeonik", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Aeonik", ui-sans-serif, system-ui, sans-serif;
 }
 
 .dark {
@@ -153,7 +175,9 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-display);
+    font-synthesis: none;
     -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
     overflow: hidden !important;
     height: 100svh !important;
     max-height: 100svh !important;
@@ -667,35 +691,22 @@ html {
   --fomo-muted: #8d879a;
   --fomo-green: #20d772;
   --fomo-red: #ff653d;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif !important;
+  font-family: var(--font-display) !important;
   background:
     radial-gradient(circle at 52% -18%, rgba(80, 63, 132, 0.18), transparent 32rem), var(--fomo-bg);
 }
 
-.fomo-terminal h1,
-.fomo-terminal h2,
-.fomo-terminal h3,
-.fomo-terminal button,
-.fomo-terminal input,
-.fomo-terminal span,
-.fomo-terminal div {
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif !important;
+.fomo-terminal :where(*) {
+  font-family: var(--font-display) !important;
+  font-synthesis: none;
+}
+
+.fomo-terminal :where(.font-bold, .font-extrabold, .font-black) {
+  font-weight: 500 !important;
+}
+
+.fomo-terminal :where(.font-semibold) {
+  font-weight: 500 !important;
 }
 
 .fomo-terminal .fomo-logo img {
@@ -831,6 +842,38 @@ html {
 .no-scrollbar {
   -ms-overflow-style: none !important;
   scrollbar-width: none !important;
+}
+
+.token-preview-in {
+  animation: token-preview-in 130ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: top left;
+}
+
+.token-preview-out {
+  animation: token-preview-out 110ms cubic-bezier(0.4, 0, 1, 1) both;
+  transform-origin: top left;
+}
+
+@keyframes token-preview-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-6px, 4px, 0) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes token-preview-out {
+  from {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate3d(-4px, 2px, 0) scale(0.985);
+  }
 }
 
 /* Responsive mobile viewport blocker styles */
