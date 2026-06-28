@@ -746,6 +746,40 @@ html {
   background: #171320;
 }
 
+.fomo-terminal .token-live-row {
+  position: relative;
+  isolation: isolate;
+}
+
+.fomo-terminal .token-live-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.fomo-terminal .token-live-row-up::before {
+  animation: token-row-flash-up 850ms ease-out;
+}
+
+.fomo-terminal .token-live-row-down::before {
+  animation: token-row-flash-down 850ms ease-out;
+}
+
+.fomo-terminal .token-live-value {
+  transition: color 120ms ease;
+}
+
+.fomo-terminal .token-live-value-up {
+  animation: token-value-flash-up 850ms ease-out;
+}
+
+.fomo-terminal .token-live-value-down {
+  animation: token-value-flash-down 850ms ease-out;
+}
+
 .fomo-terminal header button:not(.token-search-trigger),
 .fomo-terminal header [role="button"] {
   border-color: var(--fomo-border);
@@ -754,6 +788,60 @@ html {
 
 .fomo-terminal [data-radix-popper-content-wrapper] {
   color: #f4f1ff;
+}
+
+@keyframes token-row-flash-up {
+  0% {
+    opacity: 1;
+    background: linear-gradient(90deg, rgba(32, 215, 114, 0.22), rgba(32, 215, 114, 0.04));
+    box-shadow: inset 2px 0 0 #20d772;
+  }
+  100% {
+    opacity: 0;
+    background: linear-gradient(90deg, rgba(32, 215, 114, 0), rgba(32, 215, 114, 0));
+    box-shadow: inset 2px 0 0 rgba(32, 215, 114, 0);
+  }
+}
+
+@keyframes token-row-flash-down {
+  0% {
+    opacity: 1;
+    background: linear-gradient(90deg, rgba(255, 101, 61, 0.22), rgba(255, 101, 61, 0.04));
+    box-shadow: inset 2px 0 0 #ff653d;
+  }
+  100% {
+    opacity: 0;
+    background: linear-gradient(90deg, rgba(255, 101, 61, 0), rgba(255, 101, 61, 0));
+    box-shadow: inset 2px 0 0 rgba(255, 101, 61, 0);
+  }
+}
+
+@keyframes token-value-flash-up {
+  0% {
+    color: #ffffff;
+    text-shadow: 0 0 14px rgba(32, 215, 114, 0.82);
+  }
+  26% {
+    color: #20d772;
+  }
+  100% {
+    color: inherit;
+    text-shadow: none;
+  }
+}
+
+@keyframes token-value-flash-down {
+  0% {
+    color: #ffffff;
+    text-shadow: 0 0 14px rgba(255, 101, 61, 0.82);
+  }
+  26% {
+    color: #ff653d;
+  }
+  100% {
+    color: inherit;
+    text-shadow: none;
+  }
 }
 
 .fomo-terminal .trade-chart-card {

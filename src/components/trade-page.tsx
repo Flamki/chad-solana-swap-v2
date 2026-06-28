@@ -1117,6 +1117,9 @@ function TrendingToken({
   onPreviewEnd: () => void;
 }) {
   const up = token.change24h >= 0;
+  const priceFlash = useValueFlash(token.price);
+  const marketCapFlash = useValueFlash(token.marketCap);
+  const rowFlash = priceFlash ?? marketCapFlash;
 
   return (
     <Link
@@ -1125,9 +1128,9 @@ function TrendingToken({
       onFocus={(event) => onPreview(token, event.currentTarget)}
       onPointerLeave={onPreviewEnd}
       onBlur={onPreviewEnd}
-      className={`flex items-center gap-3 px-3.5 py-2 transition-colors ${
+      className={`token-live-row flex items-center gap-3 px-3.5 py-2 transition-colors ${
         active ? "bg-[#1f1c2b]" : "hover:bg-[#151221]/50"
-      }`}
+      } ${rowFlash === "up" ? "token-live-row-up" : rowFlash === "down" ? "token-live-row-down" : ""}`}
     >
       <div className="relative shrink-0">
         <TokenImage token={token} size="sm" />
@@ -1148,12 +1151,28 @@ function TrendingToken({
           <span className="truncate text-[13.5px] font-bold text-[#e8e4f0] leading-none">
             {token.name}
           </span>
-          <span className="text-[13.5px] font-bold text-[#e8e4f0] leading-none">
+          <span
+            className={`token-live-value text-[13.5px] font-bold leading-none ${
+              marketCapFlash === "up"
+                ? "token-live-value-up"
+                : marketCapFlash === "down"
+                  ? "token-live-value-down"
+                  : "text-[#e8e4f0]"
+            }`}
+          >
             ${formatCompact(token.marketCap)} MC
           </span>
         </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="truncate text-[11.5px] text-[#7a7488] leading-none">
+          <span
+            className={`token-live-value truncate text-[11.5px] leading-none ${
+              priceFlash === "up"
+                ? "token-live-value-up"
+                : priceFlash === "down"
+                  ? "token-live-value-down"
+                  : "text-[#7a7488]"
+            }`}
+          >
             {formatUsd(token.price)}
           </span>
           <span
@@ -1166,6 +1185,36 @@ function TrendingToken({
       </div>
     </Link>
   );
+}
+
+function useValueFlash(value: number) {
+  const previous = useRef(value);
+  const timeout = useRef<number | null>(null);
+  const [flash, setFlash] = useState<"up" | "down" | null>(null);
+
+  useEffect(() => {
+    if (!Number.isFinite(value)) return;
+
+    const last = previous.current;
+    previous.current = value;
+
+    if (!Number.isFinite(last) || value === last) return;
+
+    if (timeout.current) {
+      window.clearTimeout(timeout.current);
+    }
+
+    setFlash(value > last ? "up" : "down");
+    timeout.current = window.setTimeout(() => setFlash(null), 850);
+
+    return () => {
+      if (timeout.current) {
+        window.clearTimeout(timeout.current);
+      }
+    };
+  }, [value]);
+
+  return flash;
 }
 
 function TokenHoverPreview({
