@@ -99,6 +99,18 @@ export type WalletTransferRecord = {
   createdAt: string;
 };
 
+export type AppLeaderboardUser = {
+  wallet: string;
+  username: string;
+  displayName: string;
+  avatarDataUrl: string;
+  trades: number;
+  buys: number;
+  sells: number;
+  lastTradeAt: string | null;
+  updatedAt: string | null;
+};
+
 export type ChartInterval = "1m" | "5m" | "15m" | "1H" | "4H" | "1D";
 
 export type PricePoint = {
@@ -880,6 +892,82 @@ export async function fetchWalletTransfers(wallet: string, signal?: AbortSignal)
   );
 }
 
+export async function fetchAppLeaderboard(signal?: AbortSignal) {
+  if (!supabase) return [];
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const [{ data: profiles, error: profileError }, { data: receipts, error: receiptError }] =
+    await Promise.all([
+      supabase
+        .from("user_profiles")
+        .select("wallet,username,display_name,avatar_data_url,updated_at")
+        .order("updated_at", { ascending: false })
+        .limit(100),
+      supabase
+        .from("trade_receipts")
+        .select("wallet,side,created_at,mode,status")
+        .eq("mode", "mainnet")
+        .order("created_at", { ascending: false })
+        .limit(500),
+    ]);
+
+  if (profileError) throw profileError;
+  if (receiptError) throw receiptError;
+
+  const users = new Map<string, AppLeaderboardUser>();
+
+  for (const profile of profiles ?? []) {
+    users.set(profile.wallet, {
+      wallet: profile.wallet,
+      username: profile.username,
+      displayName: profile.display_name,
+      avatarDataUrl: profile.avatar_data_url,
+      trades: 0,
+      buys: 0,
+      sells: 0,
+      lastTradeAt: null,
+      updatedAt: profile.updated_at,
+    });
+  }
+
+  for (const receipt of receipts ?? []) {
+    const wallet = receipt.wallet;
+    const current =
+      users.get(wallet) ??
+      ({
+        wallet,
+        username: shortWalletAddress(wallet),
+        displayName: shortWalletAddress(wallet),
+        avatarDataUrl: "",
+        trades: 0,
+        buys: 0,
+        sells: 0,
+        lastTradeAt: null,
+        updatedAt: null,
+      } satisfies AppLeaderboardUser);
+
+    current.trades += 1;
+    if (receipt.side === "buy") {
+      current.buys += 1;
+    } else {
+      current.sells += 1;
+    }
+    if (!current.lastTradeAt || receipt.created_at > current.lastTradeAt) {
+      current.lastTradeAt = receipt.created_at;
+    }
+    users.set(wallet, current);
+  }
+
+  return Array.from(users.values())
+    .sort((left, right) => {
+      if (right.trades !== left.trades) return right.trades - left.trades;
+      const rightTime = new Date(right.lastTradeAt ?? right.updatedAt ?? 0).getTime();
+      const leftTime = new Date(left.lastTradeAt ?? left.updatedAt ?? 0).getTime();
+      return rightTime - leftTime;
+    })
+    .slice(0, 10);
+}
+
 export function useTrendingTokens() {
   return useQuery({
     queryKey: ["trending-tokens"],
@@ -969,6 +1057,17 @@ export function useWalletTransfers(wallet?: string) {
     queryFn: ({ signal }) => fetchWalletTransfers(wallet!, signal),
     enabled: Boolean(wallet && supabase),
     refetchInterval: 30_000,
+    staleTime: 10_000,
+    retry: 1,
+  });
+}
+
+export function useAppLeaderboard() {
+  return useQuery({
+    queryKey: ["app-leaderboard"],
+    queryFn: ({ signal }) => fetchAppLeaderboard(signal),
+    enabled: Boolean(supabase),
+    refetchInterval: 15_000,
     staleTime: 10_000,
     retry: 1,
   });
@@ -1082,6 +1181,10 @@ function getOwnedTokenBalance(balances: RpcTokenBalance[], owner: string, mint: 
       total + Number(balance.uiTokenAmount?.uiAmountString ?? balance.uiTokenAmount?.uiAmount ?? 0)
     );
   }, 0);
+}
+
+function shortWalletAddress(wallet: string) {
+  return `${wallet.slice(0, 5)}...${wallet.slice(-4)}`;
 }
 
 function toPortfolioHistoryPoint({

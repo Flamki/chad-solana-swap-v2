@@ -1083,7 +1083,7 @@ export function TradePage({ mint }: { mint: string }) {
           </section>
 
           {centerView === "profile" ? (
-            <FollowTopTradersPanel token={token} />
+            <FollowTopTradersPanel />
           ) : (
             <aside className="w-[320px] 2xl:w-[340px] shrink-0 flex flex-col overflow-y-auto pb-2 no-scrollbar">
               <SwapPanel token={token} solPrice={solPrice} />

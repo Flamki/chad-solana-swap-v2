@@ -55,15 +55,15 @@ import {
   type WalletTransferRecord,
   recordWalletTransfer,
   recordUserProfile,
+  useAppLeaderboard,
   usePortfolioHistory,
   useStoredTradeReceipts,
   useStoredUserProfile,
-  useTokenTrades,
   useTokenPosition,
   useWalletTransfers,
 } from "@/lib/market-data";
 import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
-import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, type Token } from "@/lib/tokens";
+import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
 
 const RECEIPT_KEY = "chadwallet-trade-receipts";
 const PROFILE_KEY = "chadwallet-profile";
@@ -155,6 +155,33 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
     if (swapTab === "sells") return receipts.filter((receipt) => receipt.side === "sell");
     return receipts;
   }, [receipts, swapTab]);
+
+  useEffect(() => {
+    if (!ready || !authenticated || !address || storedProfile.isFetching || storedProfile.data) {
+      return;
+    }
+
+    void recordUserProfile({
+      wallet: address,
+      username: defaultHandle,
+      displayName: defaultDisplayName,
+      bio: "",
+      avatarDataUrl: "",
+      bannerDataUrl: "",
+    }).finally(() => {
+      void queryClient.invalidateQueries({ queryKey: ["user-profile", address] });
+      void queryClient.invalidateQueries({ queryKey: ["app-leaderboard"] });
+    });
+  }, [
+    address,
+    authenticated,
+    defaultDisplayName,
+    defaultHandle,
+    queryClient,
+    ready,
+    storedProfile.data,
+    storedProfile.isFetching,
+  ]);
 
   const positions = [
     ...(cashBalance > 0
@@ -708,48 +735,12 @@ function ProfileEditField({
   );
 }
 
-export function FollowTopTradersPanel({ token }: { token: Token }) {
-  const trades = useTokenTrades(token.mint, true);
-  const traders = useMemo(() => {
-    const byWallet = new Map<
-      string,
-      {
-        wallet: string;
-        buyUsd: number;
-        sellUsd: number;
-        volumeUsd: number;
-        trades: number;
-        lastAgo: string;
-      }
-    >();
-
-    for (const trade of trades.data?.data ?? []) {
-      if (!trade.wallet || trade.wallet === "Unknown") continue;
-      const current = byWallet.get(trade.wallet) ?? {
-        wallet: trade.wallet,
-        buyUsd: 0,
-        sellUsd: 0,
-        volumeUsd: 0,
-        trades: 0,
-        lastAgo: trade.ago,
-      };
-
-      if (trade.side === "buy") {
-        current.buyUsd += trade.amountUsd;
-      } else {
-        current.sellUsd += trade.amountUsd;
-      }
-
-      current.volumeUsd += trade.amountUsd;
-      current.trades += 1;
-      current.lastAgo = current.lastAgo || trade.ago;
-      byWallet.set(trade.wallet, current);
-    }
-
-    return Array.from(byWallet.values())
-      .sort((left, right) => right.volumeUsd - left.volumeUsd)
-      .slice(0, 10);
-  }, [trades.data]);
+export function FollowTopTradersPanel() {
+  const { user } = usePrivy();
+  const { wallets } = useWallets();
+  const walletAddress = wallets[0]?.address ?? user?.wallet?.address;
+  const leaderboard = useAppLeaderboard();
+  const traders = leaderboard.data ?? [];
 
   return (
     <aside className="terminal-scroll w-[320px] shrink-0 overflow-y-auto px-3 pt-2 max-xl:hidden 2xl:w-[340px]">
@@ -757,14 +748,13 @@ export function FollowTopTradersPanel({ token }: { token: Token }) {
         <div className="border-b border-[#1b1726] px-3 py-3">
           <div className="text-[15px] font-black leading-none text-white">Top traders</div>
           <div className="mt-1 text-[11px] font-semibold text-[#7a7488]">
-            Live wallets trading {token.symbol}
+            ChadWallet users ranked by recorded swaps
           </div>
         </div>
 
         <div className="divide-y divide-[#171320]">
           {traders.map((trader, index) => {
-            const netUsd = trader.buyUsd - trader.sellUsd;
-            const netPositive = netUsd >= 0;
+            const isYou = trader.wallet === walletAddress;
 
             return (
               <a
@@ -778,30 +768,43 @@ export function FollowTopTradersPanel({ token }: { token: Token }) {
                   <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#2a2540] bg-[#171320] font-mono text-[10px] font-black text-white">
                     #{index + 1}
                   </div>
+                  <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-[#2a2540] bg-[#201d2c] text-[10px] font-black text-white">
+                    {trader.avatarDataUrl ? (
+                      <img
+                        src={trader.avatarDataUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      trader.displayName.slice(0, 2).toUpperCase()
+                    )}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-mono text-[12px] font-bold text-white">
-                        {shortWallet(trader.wallet)}
+                      <span className="truncate text-[12px] font-bold text-white">
+                        {trader.displayName}
+                        {isYou ? <span className="ml-1 text-[#7da1ff]">(you)</span> : null}
                       </span>
                       <span className="font-mono text-[12px] font-black text-[#e8e4f0]">
-                        {formatUsd(trader.volumeUsd)}
+                        {trader.trades}
                       </span>
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-2 text-[11px] font-semibold">
-                      <span className="text-[#7a7488]">
-                        {trader.trades} swaps · {trader.lastAgo}
+                      <span className="truncate font-mono text-[#7a7488]">
+                        @{trader.username || shortWallet(trader.wallet)}
                       </span>
-                      <span className={netPositive ? "text-[#20d772]" : "text-[#ff653d]"}>
-                        {netPositive ? "+" : "-"}
-                        {formatCompact(Math.abs(netUsd))}
-                      </span>
+                      <span className="text-[#7a7488]">swaps</span>
                     </div>
-                    <div className="mt-2 grid grid-cols-2 gap-2 text-[10.5px] font-bold">
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-[10.5px] font-bold">
                       <span className="rounded-md bg-[#071d14] px-2 py-1 text-[#20d772]">
-                        Buy {formatUsd(trader.buyUsd)}
+                        B {trader.buys}
                       </span>
                       <span className="rounded-md bg-[#24100d] px-2 py-1 text-[#ff653d]">
-                        Sell {formatUsd(trader.sellUsd)}
+                        S {trader.sells}
+                      </span>
+                      <span className="truncate rounded-md bg-[#15121d] px-2 py-1 text-[#a9b0d4]">
+                        {trader.lastTradeAt ? formatRelativeDate(trader.lastTradeAt) : "new"}
                       </span>
                     </div>
                   </div>
@@ -811,15 +814,15 @@ export function FollowTopTradersPanel({ token }: { token: Token }) {
             );
           })}
 
-          {trades.isFetching && !traders.length ? (
+          {leaderboard.isFetching && !traders.length ? (
             <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
-              Loading live traders
+              Loading app users
             </div>
           ) : null}
 
-          {!trades.isFetching && !traders.length ? (
+          {!leaderboard.isFetching && !traders.length ? (
             <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
-              No live trader wallets available yet
+              No ChadWallet users recorded yet
             </div>
           ) : null}
         </div>
@@ -1390,6 +1393,22 @@ function normalizeSendError(error: unknown) {
 
 function shortWallet(wallet: string) {
   return `${wallet.slice(0, 5)}...${wallet.slice(-4)}`;
+}
+
+function formatRelativeDate(value: string) {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "new";
+
+  const seconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+
+  return `${Math.floor(hours / 24)}d`;
 }
 
 function buildPortfolioShape(points: PortfolioHistoryPoint[], range: PortfolioHistoryRange) {
