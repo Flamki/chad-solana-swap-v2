@@ -219,6 +219,18 @@ function watchlistStorageKey(wallet?: string) {
   return wallet ? `${legacyWatchlistStorageKey}:${wallet}` : legacyWatchlistStorageKey;
 }
 
+function readStoredWatchlist(key: string) {
+  try {
+    return (JSON.parse(localStorage.getItem(key) || "[]") as string[]).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredWatchlist(key: string, mints: string[]) {
+  localStorage.setItem(key, JSON.stringify(Array.from(new Set(mints.filter(Boolean)))));
+}
+
 function normalizeSidebarPane(pane: SidebarPaneState): SidebarPaneState {
   return hiddenSidebarTabs.has(pane.activeTab) ? { ...pane, activeTab: "Tokens" } : pane;
 }
@@ -341,19 +353,26 @@ export function TradePage({ mint }: { mint: string }) {
   const watchlistMarkets = useWatchlistTokenMarkets(watchlist);
 
   useEffect(() => {
-    const keys = Array.from(
-      new Set([watchlistStorageKey(walletAddress), legacyWatchlistStorageKey]),
-    );
-    const saved = keys.flatMap((key) => {
-      try {
-        return JSON.parse(localStorage.getItem(key) || "[]") as string[];
-      } catch {
-        return [];
-      }
-    });
+    if (!walletAddress) {
+      setWatchlist(readStoredWatchlist(legacyWatchlistStorageKey));
+      return;
+    }
 
-    if (saved.length) {
-      setWatchlist(Array.from(new Set(saved.filter(Boolean))));
+    const walletKey = watchlistStorageKey(walletAddress);
+    const hasWalletList = localStorage.getItem(walletKey) !== null;
+    const walletSaved = readStoredWatchlist(walletKey);
+    const legacySaved = readStoredWatchlist(legacyWatchlistStorageKey);
+    const saved = Array.from(new Set(hasWalletList ? walletSaved : legacySaved));
+
+    setWatchlist(saved);
+
+    if (!hasWalletList && legacySaved.length) {
+      writeStoredWatchlist(walletKey, legacySaved);
+      localStorage.removeItem(legacyWatchlistStorageKey);
+
+      for (const mint of legacySaved) {
+        void syncWatchlistToken({ wallet: walletAddress, mint, watched: true });
+      }
     }
   }, [walletAddress]);
 
@@ -361,24 +380,20 @@ export function TradePage({ mint }: { mint: string }) {
     if (!storedWatchlist.data) return;
     setWatchlist((current) => {
       const merged = Array.from(new Set([...storedWatchlist.data, ...current]));
-      localStorage.setItem(watchlistStorageKey(walletAddress), JSON.stringify(merged));
+      writeStoredWatchlist(watchlistStorageKey(walletAddress), merged);
       return merged;
     });
   }, [storedWatchlist.data, walletAddress]);
-
-  useEffect(() => {
-    if (!walletAddress || !watchlist.length) return;
-
-    for (const mint of watchlist) {
-      void syncWatchlistToken({ wallet: walletAddress, mint, watched: true });
-    }
-  }, [walletAddress, watchlist]);
 
   const toggleWatchlist = (mint: string) => {
     setWatchlist((prev) => {
       const next = prev.includes(mint) ? prev.filter((m) => m !== mint) : [...prev, mint];
       const watched = next.includes(mint);
-      localStorage.setItem(watchlistStorageKey(walletAddress), JSON.stringify(next));
+      writeStoredWatchlist(watchlistStorageKey(walletAddress), next);
+      if (walletAddress) {
+        localStorage.removeItem(legacyWatchlistStorageKey);
+        queryClient.setQueryData(["watchlist", walletAddress], next);
+      }
       void syncWatchlistToken({ wallet: walletAddress, mint, watched }).finally(() => {
         if (walletAddress) {
           void queryClient.invalidateQueries({ queryKey: ["watchlist", walletAddress] });
