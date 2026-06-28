@@ -6,7 +6,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Bell,
   ChevronsLeft,
   ChevronsRight,
   Columns2,
@@ -206,8 +205,21 @@ function LeaderboardRow({ item }: { item: LeaderboardItem }) {
   );
 }
 
-const sidebarPrimaryTabs = ["Alerts", "Tokens", "Leaderboard", "Feed"];
+const sidebarPrimaryTabs = ["Tokens", "Leaderboard", "Feed"];
 const sidebarFilterTabs = ["Watchlist", "Crypto", "Trending", "Most held", "Graduates"];
+const hiddenSidebarTabs = new Set(["Alerts"]);
+
+function normalizeSidebarPane(pane: SidebarPaneState): SidebarPaneState {
+  return hiddenSidebarTabs.has(pane.activeTab) ? { ...pane, activeTab: "Tokens" } : pane;
+}
+
+function normalizeSidebarColumn(column: SidebarColumnState): SidebarColumnState {
+  return {
+    ...column,
+    topPane: normalizeSidebarPane(column.topPane),
+    bottomPane: normalizeSidebarPane(column.bottomPane),
+  };
+}
 
 export function TradePage({ mint }: { mint: string }) {
   const queryClient = useQueryClient();
@@ -238,14 +250,14 @@ export function TradePage({ mint }: { mint: string }) {
     isActive: true,
     isSplitBottom: false,
     topPane: defaultPane("Tokens"),
-    bottomPane: defaultPane("Alerts"),
+    bottomPane: defaultPane("Tokens"),
   });
 
   const [rightCol, setRightCol] = useState<SidebarColumnState>({
     isActive: false,
     isSplitBottom: false,
     topPane: defaultPane("Tokens"),
-    bottomPane: defaultPane("Alerts"),
+    bottomPane: defaultPane("Tokens"),
   });
 
   // Restore sidebar layout configurations on mount
@@ -256,14 +268,14 @@ export function TradePage({ mint }: { mint: string }) {
 
     if (savedLeftCol) {
       try {
-        setLeftCol(JSON.parse(savedLeftCol));
+        setLeftCol(normalizeSidebarColumn(JSON.parse(savedLeftCol)));
       } catch (e) {
         console.error("Failed to parse left col state", e);
       }
     }
     if (savedRightCol) {
       try {
-        setRightCol(JSON.parse(savedRightCol));
+        setRightCol(normalizeSidebarColumn(JSON.parse(savedRightCol)));
       } catch (e) {
         console.error("Failed to parse right col state", e);
       }
@@ -425,14 +437,6 @@ export function TradePage({ mint }: { mint: string }) {
                       : "text-[#9099a3] hover:text-white"
                   }`}
                 >
-                  {tab === "Alerts" && (
-                    <span className="relative flex h-3.5 w-3.5 items-center justify-center mr-1">
-                      <Bell
-                        className={`h-3.5 w-3.5 ${tab === pane.activeTab ? "text-white" : "text-[#9099a3]"}`}
-                      />
-                      <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-[#ff5e36]" />
-                    </span>
-                  )}
                   {tab}
                 </button>
               </div>
