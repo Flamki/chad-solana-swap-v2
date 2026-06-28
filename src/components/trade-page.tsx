@@ -1099,7 +1099,7 @@ export function TradePage({ mint }: { mint: string }) {
           />
         )}
 
-        <TradeFooterTicker tokens={sidebarTokens} solPrice={solPrice} />
+        <TradeFooterTicker solPrice={solPrice} />
       </div>
     </>
   );
@@ -1854,39 +1854,12 @@ function TableState({
   );
 }
 
-function TradeFooterTicker({ tokens, solPrice }: { tokens: Token[]; solPrice: number }) {
-  const ticker = tokens.slice(0, 8).map((token) => ({
-    mint: token.mint,
-    symbol: token.symbol,
-    price: token.price,
-    change: token.change24h,
-  }));
-
+function TradeFooterTicker({ solPrice }: { solPrice: number }) {
   return (
-    <footer className="hidden h-6 shrink-0 items-center justify-between border-t border-[#201b2e] bg-[#08060f] px-2 text-[11px] lg:flex">
-      <div className="flex min-w-0 items-center gap-5 overflow-hidden">
-        {ticker.map((item, index) => {
-          const up = item.change >= 0;
-          return (
-            <span
-              key={`${item.mint}-${item.symbol}-${index}`}
-              className="flex shrink-0 items-center gap-1 font-mono"
-            >
-              <span className="font-bold text-white">{item.symbol}</span>
-              <span className="text-[#b4adbf]">{formatUsd(item.price)}</span>
-              <span className={up ? "text-[#20d772]" : "text-[#ff653d]"}>
-                {up ? "^" : "v"} {Math.abs(item.change).toFixed(2)}%
-              </span>
-            </span>
-          );
-        })}
-        {solPrice > 0 && <span className="sr-only">SOL reference {solPrice}</span>}
-      </div>
-      <div className="flex items-center gap-4 text-[#70687c]">
-        <span className="font-semibold text-[#20d772]">* Stable</span>
-        <span>Privacy</span>
-        <span>Terms</span>
-        <span>Help</span>
+    <footer className="hidden h-6 shrink-0 items-center border-t border-[#201b2e] bg-[#08060f] px-2 text-[11px] lg:flex">
+      <div className="flex min-w-0 items-center gap-1.5 overflow-hidden font-mono">
+        <span className="font-bold text-white">SOL</span>
+        <span className="text-[#b4adbf]">{solPrice > 0 ? formatUsd(solPrice) : "..."}</span>
       </div>
     </footer>
   );
