@@ -1117,7 +1117,6 @@ function TrendingToken({
   onPreviewEnd: () => void;
 }) {
   const direction = token.change24h > 0 ? "up" : token.change24h < 0 ? "down" : "flat";
-  const up = direction === "up";
   const priceFlash = useValueFlash(token.price);
   const marketCapFlash = useValueFlash(token.marketCap);
   const rowFlash = priceFlash.direction ?? marketCapFlash.direction;
@@ -1161,7 +1160,7 @@ function TrendingToken({
           </span>
           <span
             key={`mc-${marketCapFlash.tick}`}
-            className={`token-live-value token-live-mcap text-[13.5px] font-bold leading-none ${toneClass} ${
+            className={`token-live-value token-live-mcap text-[13.5px] font-bold leading-none text-[#e8e4f0] ${
               marketCapFlash.direction === "up"
                 ? "token-live-value-up"
                 : marketCapFlash.direction === "down"
