@@ -18,6 +18,7 @@ import {
 } from "@solana/kit";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowLeft,
   CalendarDays,
   Check,
   Clock3,
@@ -80,20 +81,43 @@ type StoredProfile = {
   bannerDataUrl: string;
 };
 
-export function TradeProfileCenter({ solPrice }: { solPrice: number }) {
+export function TradeProfileCenter({
+  solPrice,
+  viewedWallet,
+  onBackToOwnProfile,
+}: {
+  solPrice: number;
+  viewedWallet?: string | null;
+  onBackToOwnProfile?: () => void;
+}) {
   if (!hasPrivy) {
     return <SignedOutProfile />;
   }
 
-  return <ConnectedTradeProfileCenter solPrice={solPrice} />;
+  return (
+    <ConnectedTradeProfileCenter
+      solPrice={solPrice}
+      viewedWallet={viewedWallet}
+      onBackToOwnProfile={onBackToOwnProfile}
+    />
+  );
 }
 
-function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
+function ConnectedTradeProfileCenter({
+  solPrice,
+  viewedWallet,
+  onBackToOwnProfile,
+}: {
+  solPrice: number;
+  viewedWallet?: string | null;
+  onBackToOwnProfile?: () => void;
+}) {
   const queryClient = useQueryClient();
   const { ready, authenticated, user } = usePrivy();
   const { wallets } = useWallets();
   const wallet = wallets[0];
   const address = wallet?.address ?? user?.wallet?.address;
+  const isViewingOtherProfile = Boolean(viewedWallet && viewedWallet !== address);
   const email = getLoginEmail(user);
   const defaultDisplayName = getDisplayName(user, email);
   const defaultHandle = getProfileHandle(defaultDisplayName, email);
@@ -214,6 +238,10 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
 
   if (!ready || !authenticated || !address) {
     return <SignedOutProfile />;
+  }
+
+  if (isViewingOtherProfile && viewedWallet) {
+    return <ViewedTradeProfile walletAddress={viewedWallet} onBack={onBackToOwnProfile} />;
   }
 
   const linkedAccounts = user?.linkedAccounts ?? [];
@@ -508,6 +536,171 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
   );
 }
 
+function ViewedTradeProfile({
+  walletAddress,
+  onBack,
+}: {
+  walletAddress: string;
+  onBack?: () => void;
+}) {
+  const storedProfile = useStoredUserProfile(walletAddress);
+  const receipts = useStoredTradeReceipts(walletAddress);
+  const [copied, setCopied] = useState(false);
+  const fallbackProfile = useMemo<StoredProfile>(
+    () => ({
+      username: shortWallet(walletAddress),
+      displayName: shortWallet(walletAddress),
+      bio: "",
+      avatarDataUrl: "",
+      bannerDataUrl: "",
+    }),
+    [walletAddress],
+  );
+  const { profile } = useStoredProfile(walletAddress, fallbackProfile, storedProfile.data);
+  const displayName = profile.displayName || shortWallet(walletAddress);
+  const handle = profile.username || shortWallet(walletAddress);
+  const initial = displayName.charAt(0).toUpperCase();
+  const tradeCount = receipts.data?.length ?? 0;
+  const buyCount = receipts.data?.filter((receipt) => receipt.side === "buy").length ?? 0;
+  const sellCount = receipts.data?.filter((receipt) => receipt.side === "sell").length ?? 0;
+
+  const copyAddress = async () => {
+    const copiedAddress = await copyToClipboard(walletAddress);
+    if (!copiedAddress) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1400);
+  };
+
+  return (
+    <div className="terminal-scroll h-full min-h-0 w-full min-w-0 overflow-y-auto overflow-x-hidden bg-[#08060f]">
+      <div className="mx-auto w-full max-w-[1040px] min-w-0 pb-6 pt-0">
+        <div className="relative h-[150px] min-w-0 overflow-hidden rounded-xl bg-[#15131d] max-xl:h-[128px]">
+          {profile.bannerDataUrl ? (
+            <img
+              src={profile.bannerDataUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(83,95,255,0.2),transparent_30rem),linear-gradient(135deg,#171420,#111019_70%)]" />
+          )}
+        </div>
+
+        <section className="relative z-10 -mt-8 min-w-0">
+          <div className="flex min-w-0 items-start justify-between gap-5 max-[1180px]:flex-wrap">
+            <div className="flex min-w-0 flex-1 items-end gap-4">
+              <div className="relative z-20 grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border-[5px] border-[#08060f] bg-[radial-gradient(circle_at_30%_20%,#6571ff,#19162b_68%)] text-3xl font-black text-white shadow-[0_18px_48px_rgba(0,0,0,0.45)] 2xl:h-24 2xl:w-24 2xl:text-4xl">
+                {profile.avatarDataUrl ? (
+                  <img src={profile.avatarDataUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initial
+                )}
+              </div>
+              <div className="min-w-0 pb-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h1 className="truncate text-[20px] font-black leading-none text-white 2xl:text-[22px]">
+                    {displayName}
+                  </h1>
+                  <span className="rounded-md border border-[#252137] bg-[#15121d] px-2 py-1 text-[11px] font-black text-[#a9b0d4]">
+                    Trader
+                  </span>
+                </div>
+                <div className="mt-1 truncate text-[15px] font-semibold text-[#a9b0d4] 2xl:text-[17px]">
+                  @{handle}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2 pt-7 max-[1180px]:ml-[96px] max-[1180px]:pt-0">
+              {onBack ? (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#252137] bg-[#15121d] px-4 text-sm font-black text-white transition hover:bg-[#1f1b2a]"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Your profile
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {profile.bio ? (
+            <p className="mt-4 max-w-2xl text-[15px] font-semibold leading-relaxed text-white">
+              {profile.bio}
+            </p>
+          ) : null}
+
+          <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-[#1b1726] pb-5 text-[12px] font-semibold text-[#a9b0d4] 2xl:text-[13px]">
+            <span className="inline-flex items-center gap-1.5">
+              <Repeat2 className="h-4 w-4 text-[#5c5669]" />
+              {tradeCount} trades
+            </span>
+            <span className="text-[#20d772]">{buyCount} buys</span>
+            <span className="text-[#ff653d]">{sellCount} sells</span>
+            <button
+              onClick={copyAddress}
+              className="inline-flex items-center gap-1.5 font-mono text-[12px] text-[#717893] transition hover:text-white"
+            >
+              {walletAddress.slice(0, 6)}...{walletAddress.slice(-6)}
+              {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+
+          <section className="mt-5 min-w-0 overflow-hidden rounded-lg border border-[#1b1726] bg-[#0b0912]">
+            <div className="flex h-12 items-center gap-4 border-b border-[#1b1726] bg-[#15121d] px-4 text-sm font-black">
+              <span className="text-white">Recorded swaps</span>
+              <span className="text-[#5c5669]">Mainnet receipts from ChadWallet</span>
+            </div>
+            <div className="grid min-w-0 grid-cols-[minmax(58px,0.75fr)_minmax(52px,0.55fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(66px,0.7fr)] border-b border-[#171320] px-4 py-2 text-xs font-semibold text-[#5c5669]">
+              <span className="min-w-0 truncate">Token</span>
+              <span className="min-w-0 truncate">Action</span>
+              <span className="min-w-0 truncate">Amount</span>
+              <span className="min-w-0 truncate">Tx</span>
+              <span className="min-w-0 truncate text-right">Time</span>
+            </div>
+            {receipts.data?.length ? (
+              <div className="divide-y divide-[#171320]">
+                {receipts.data.map((receipt) => (
+                  <a
+                    key={receipt.signature}
+                    href={receipt.explorerUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="grid min-w-0 grid-cols-[minmax(58px,0.75fr)_minmax(52px,0.55fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(66px,0.7fr)] px-4 py-3 text-xs font-semibold transition hover:bg-[#151221]"
+                  >
+                    <span className="min-w-0 truncate text-white">{receipt.outputSymbol}</span>
+                    <span
+                      className={`min-w-0 truncate ${
+                        receipt.side === "buy" ? "text-[#20d772]" : "text-[#ff653d]"
+                      }`}
+                    >
+                      {receipt.side.toUpperCase()}
+                    </span>
+                    <span className="min-w-0 truncate font-mono text-[#a9b0d4]">
+                      {receipt.inputAmount} {receipt.inputSymbol}
+                    </span>
+                    <span className="min-w-0 truncate font-mono text-[#7da1ff]">
+                      {receipt.signature.slice(0, 4)}...{receipt.signature.slice(-4)}
+                    </span>
+                    <span className="min-w-0 truncate text-right text-[#5c5669]">
+                      {new Date(receipt.createdAt).toLocaleDateString()}
+                    </span>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <div className="grid h-[380px] place-items-center text-sm font-semibold text-[#5c5669] max-xl:h-[280px]">
+                {receipts.isFetching ? "Loading profile activity" : "No recorded swaps yet"}
+              </div>
+            )}
+          </section>
+        </section>
+      </div>
+    </div>
+  );
+}
+
 function EditProfileDialog({
   open,
   onOpenChange,
@@ -735,7 +928,11 @@ function ProfileEditField({
   );
 }
 
-export function FollowTopTradersPanel() {
+export function FollowTopTradersPanel({
+  onSelectProfile,
+}: {
+  onSelectProfile?: (wallet: string) => void;
+}) {
   const { user } = usePrivy();
   const { wallets } = useWallets();
   const walletAddress = wallets[0]?.address ?? user?.wallet?.address;
@@ -744,31 +941,30 @@ export function FollowTopTradersPanel() {
 
   return (
     <aside className="terminal-scroll w-[320px] shrink-0 overflow-y-auto px-3 pt-2 max-xl:hidden 2xl:w-[340px]">
-      <div className="rounded-xl border border-[#1b1726] bg-[#0b0912]">
-        <div className="border-b border-[#1b1726] px-3 py-3">
-          <div className="text-[15px] font-black leading-none text-white">Top traders</div>
-          <div className="mt-1 text-[11px] font-semibold text-[#7a7488]">
-            ChadWallet users ranked by recorded swaps
+      <div className="rounded-xl border border-[#1b1726] bg-[#0b0912] px-3 py-3">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <div className="text-[15px] font-black leading-none text-white">Follow top traders</div>
+            <div className="mt-1 text-[11px] font-semibold text-[#7a7488]">ChadWallet profiles</div>
           </div>
+          <span className="rounded-md border border-[#252137] bg-[#15121d] px-2 py-1 text-[10px] font-black text-[#7da1ff]">
+            LIVE
+          </span>
         </div>
 
-        <div className="divide-y divide-[#171320]">
+        <div className="space-y-2">
           {traders.map((trader, index) => {
             const isYou = trader.wallet === walletAddress;
 
             return (
-              <a
+              <button
                 key={trader.wallet}
-                href={`https://solscan.io/account/${trader.wallet}`}
-                target="_blank"
-                rel="noreferrer"
-                className="block px-3 py-3 transition hover:bg-[#151221]"
+                type="button"
+                onClick={() => onSelectProfile?.(trader.wallet)}
+                className="flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition hover:bg-[#151221]"
               >
-                <div className="flex items-center gap-3">
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#2a2540] bg-[#171320] font-mono text-[10px] font-black text-white">
-                    #{index + 1}
-                  </div>
-                  <div className="grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full border border-[#2a2540] bg-[#201d2c] text-[10px] font-black text-white">
+                <div className="relative">
+                  <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-[#2a2540] bg-[#201d2c] text-[11px] font-black text-white">
                     {trader.avatarDataUrl ? (
                       <img
                         src={trader.avatarDataUrl}
@@ -780,37 +976,23 @@ export function FollowTopTradersPanel() {
                       trader.displayName.slice(0, 2).toUpperCase()
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-[12px] font-bold text-white">
-                        {trader.displayName}
-                        {isYou ? <span className="ml-1 text-[#7da1ff]">(you)</span> : null}
-                      </span>
-                      <span className="font-mono text-[12px] font-black text-[#e8e4f0]">
-                        {trader.trades}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center justify-between gap-2 text-[11px] font-semibold">
-                      <span className="truncate font-mono text-[#7a7488]">
-                        @{trader.username || shortWallet(trader.wallet)}
-                      </span>
-                      <span className="text-[#7a7488]">swaps</span>
-                    </div>
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-[10.5px] font-bold">
-                      <span className="rounded-md bg-[#071d14] px-2 py-1 text-[#20d772]">
-                        B {trader.buys}
-                      </span>
-                      <span className="rounded-md bg-[#24100d] px-2 py-1 text-[#ff653d]">
-                        S {trader.sells}
-                      </span>
-                      <span className="truncate rounded-md bg-[#15121d] px-2 py-1 text-[#a9b0d4]">
-                        {trader.lastTradeAt ? formatRelativeDate(trader.lastTradeAt) : "new"}
-                      </span>
-                    </div>
-                  </div>
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[#5c5669]" />
+                  <span className="absolute -bottom-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full border border-[#0b0912] bg-[#5365ff] px-1 font-mono text-[8px] font-black text-white">
+                    {index + 1}
+                  </span>
                 </div>
-              </a>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-[13px] font-black text-white">
+                    {trader.displayName}
+                    {isYou ? <span className="ml-1 text-[#7da1ff]">(you)</span> : null}
+                  </div>
+                  <div className="mt-0.5 truncate text-[11px] font-semibold text-[#8f879d]">
+                    @{trader.username || shortWallet(trader.wallet)}
+                  </div>
+                </div>
+                <div className="shrink-0 rounded-lg bg-[#5365ff] px-4 py-2 text-[12px] font-black text-white transition">
+                  {isYou ? "You" : "View"}
+                </div>
+              </button>
             );
           })}
 
@@ -831,15 +1013,27 @@ export function FollowTopTradersPanel() {
   );
 }
 
-export function ProfileSendPanel({ solPrice }: { solPrice: number }) {
+export function ProfileSendPanel({
+  solPrice,
+  recipientWallet,
+}: {
+  solPrice: number;
+  recipientWallet?: string | null;
+}) {
   if (!hasPrivy) {
     return null;
   }
 
-  return <ConnectedProfileSendPanel solPrice={solPrice} />;
+  return <ConnectedProfileSendPanel solPrice={solPrice} recipientWallet={recipientWallet} />;
 }
 
-function ConnectedProfileSendPanel({ solPrice }: { solPrice: number }) {
+function ConnectedProfileSendPanel({
+  solPrice,
+  recipientWallet,
+}: {
+  solPrice: number;
+  recipientWallet?: string | null;
+}) {
   const queryClient = useQueryClient();
   const { ready, authenticated } = usePrivy();
   const { wallets } = useWallets();
@@ -854,7 +1048,7 @@ function ConnectedProfileSendPanel({ solPrice }: { solPrice: number }) {
   });
   const transfers = useWalletTransfers(address);
   const rpc = useMemo(() => (hasRpcEndpoint ? createSolanaRpc(env.solanaRpcUrl) : null), []);
-  const [recipient, setRecipient] = useState("");
+  const [recipient, setRecipient] = useState(recipientWallet ?? "");
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
@@ -870,6 +1064,10 @@ function ConnectedProfileSendPanel({ solPrice }: { solPrice: number }) {
     Number.isFinite(amountNumber) &&
     amountNumber > 0 &&
     amountNumber <= Math.max(solBalance - 0.001, 0);
+
+  useEffect(() => {
+    setRecipient(recipientWallet ?? "");
+  }, [recipientWallet]);
 
   const sendTransfer = async () => {
     setError("");
@@ -1393,22 +1591,6 @@ function normalizeSendError(error: unknown) {
 
 function shortWallet(wallet: string) {
   return `${wallet.slice(0, 5)}...${wallet.slice(-4)}`;
-}
-
-function formatRelativeDate(value: string) {
-  const timestamp = new Date(value).getTime();
-  if (!Number.isFinite(timestamp)) return "new";
-
-  const seconds = Math.max(1, Math.floor((Date.now() - timestamp) / 1000));
-  if (seconds < 60) return `${seconds}s`;
-
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m`;
-
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-
-  return `${Math.floor(hours / 24)}d`;
 }
 
 function buildPortfolioShape(points: PortfolioHistoryPoint[], range: PortfolioHistoryRange) {

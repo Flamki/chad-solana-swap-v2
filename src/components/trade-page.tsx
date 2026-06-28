@@ -25,7 +25,11 @@ import { ChadLogo } from "@/components/chad-logo";
 import { TokenSearch } from "@/components/token-search";
 import { TradeAccount } from "@/components/trade-account";
 import { PriceChart } from "@/components/trade/price-chart";
-import { FollowTopTradersPanel, TradeProfileCenter } from "@/components/trade/profile-center";
+import {
+  FollowTopTradersPanel,
+  ProfileSendPanel,
+  TradeProfileCenter,
+} from "@/components/trade/profile-center";
 import { SwapPanel } from "@/components/trade/swap-panel";
 import {
   type ChartInterval,
@@ -238,6 +242,7 @@ export function TradePage({ mint }: { mint: string }) {
   const [copiedMint, setCopiedMint] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [centerView, setCenterView] = useState<"trade" | "profile">("trade");
+  const [selectedProfileWallet, setSelectedProfileWallet] = useState<string | null>(null);
   const [tokenPreview, setTokenPreview] = useState<TokenPreviewState | null>(null);
   const tokenPreviewTimer = useRef<number | null>(null);
 
@@ -308,6 +313,7 @@ export function TradePage({ mint }: { mint: string }) {
 
   useEffect(() => {
     setCenterView("trade");
+    setSelectedProfileWallet(null);
     setLeftCol((current) => ({
       ...current,
       isActive: true,
@@ -719,7 +725,13 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
 
             <div className="flex items-center justify-end gap-2 pr-3">
-              <TradeAccount solPrice={solPrice} onProfile={() => setCenterView("profile")} />
+              <TradeAccount
+                solPrice={solPrice}
+                onProfile={() => {
+                  setSelectedProfileWallet(null);
+                  setCenterView("profile");
+                }}
+              />
             </div>
           </div>
         </header>
@@ -841,7 +853,11 @@ export function TradePage({ mint }: { mint: string }) {
             }`}
           >
             {centerView === "profile" ? (
-              <TradeProfileCenter solPrice={solPrice} />
+              <TradeProfileCenter
+                solPrice={solPrice}
+                viewedWallet={selectedProfileWallet}
+                onBackToOwnProfile={() => setSelectedProfileWallet(null)}
+              />
             ) : (
               <>
                 {/* Token Header Bar */}
@@ -1083,7 +1099,16 @@ export function TradePage({ mint }: { mint: string }) {
           </section>
 
           {centerView === "profile" ? (
-            <FollowTopTradersPanel />
+            selectedProfileWallet && selectedProfileWallet !== walletAddress ? (
+              <ProfileSendPanel solPrice={solPrice} recipientWallet={selectedProfileWallet} />
+            ) : (
+              <FollowTopTradersPanel
+                onSelectProfile={(profileWallet) => {
+                  setSelectedProfileWallet(profileWallet);
+                  setCenterView("profile");
+                }}
+              />
+            )
           ) : (
             <aside className="w-[320px] 2xl:w-[340px] shrink-0 flex flex-col overflow-y-auto pb-2 no-scrollbar">
               <SwapPanel token={token} solPrice={solPrice} />
