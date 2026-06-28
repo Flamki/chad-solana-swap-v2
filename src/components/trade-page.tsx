@@ -1116,10 +1116,17 @@ function TrendingToken({
   onPreview: (token: Token, element: HTMLElement) => void;
   onPreviewEnd: () => void;
 }) {
-  const up = token.change24h >= 0;
+  const direction = token.change24h > 0 ? "up" : token.change24h < 0 ? "down" : "flat";
+  const up = direction === "up";
   const priceFlash = useValueFlash(token.price);
   const marketCapFlash = useValueFlash(token.marketCap);
-  const rowFlash = priceFlash ?? marketCapFlash;
+  const rowFlash = priceFlash.direction ?? marketCapFlash.direction;
+  const toneClass =
+    direction === "up"
+      ? "token-live-tone-up"
+      : direction === "down"
+        ? "token-live-tone-down"
+        : "token-live-tone-flat";
 
   return (
     <Link
@@ -1131,6 +1138,7 @@ function TrendingToken({
       className={`token-live-row flex items-center gap-3 px-3.5 py-2 transition-colors ${
         active ? "bg-[#1f1c2b]" : "hover:bg-[#151221]/50"
       } ${rowFlash === "up" ? "token-live-row-up" : rowFlash === "down" ? "token-live-row-down" : ""}`}
+      data-flash-id={`${priceFlash.tick}-${marketCapFlash.tick}`}
     >
       <div className="relative shrink-0">
         <TokenImage token={token} size="sm" />
@@ -1152,37 +1160,36 @@ function TrendingToken({
             {token.name}
           </span>
           <span
-            className={`token-live-value text-[13.5px] font-bold leading-none ${
-              marketCapFlash === "up"
+            key={`mc-${marketCapFlash.tick}`}
+            className={`token-live-value token-live-mcap text-[13.5px] font-bold leading-none ${toneClass} ${
+              marketCapFlash.direction === "up"
                 ? "token-live-value-up"
-                : marketCapFlash === "down"
+                : marketCapFlash.direction === "down"
                   ? "token-live-value-down"
-                  : up
-                    ? "text-[#20d772]"
-                    : "text-[#ff653d]"
+                  : ""
             }`}
           >
-            ${formatCompact(token.marketCap)} MC
+            <span className="token-live-money">${formatCompact(token.marketCap)}</span>
+            <span className="token-live-unit"> MC</span>
           </span>
         </div>
         <div className="flex items-center justify-between mt-1">
           <span
-            className={`token-live-value truncate text-[11.5px] leading-none ${
-              priceFlash === "up"
+            key={`price-${priceFlash.tick}`}
+            className={`token-live-value token-live-price truncate text-[11.5px] leading-none ${
+              priceFlash.direction === "up"
                 ? "token-live-value-up"
-                : priceFlash === "down"
+                : priceFlash.direction === "down"
                   ? "token-live-value-down"
-                  : up
-                    ? "text-[#928ba0]"
-                    : "text-[#a17f73]"
+                  : ""
             }`}
           >
             {formatUsd(token.price)}
           </span>
           <span
-            className={`font-semibold text-[11px] leading-none flex items-center gap-0.5 ${up ? "text-[#20d772]" : "text-[#ff5e36]"}`}
+            className={`token-change-pill flex items-center gap-1 text-[11px] font-semibold leading-none ${toneClass}`}
           >
-            <span>{up ? "^" : "v"}</span>
+            <span className="token-change-triangle" aria-hidden="true" />
             <span>{Math.abs(token.change24h).toFixed(2)}%</span>
           </span>
         </div>
@@ -1194,7 +1201,10 @@ function TrendingToken({
 function useValueFlash(value: number) {
   const previous = useRef(value);
   const timeout = useRef<number | null>(null);
-  const [flash, setFlash] = useState<"up" | "down" | null>(null);
+  const [flash, setFlash] = useState<{ direction: "up" | "down" | null; tick: number }>({
+    direction: null,
+    tick: 0,
+  });
 
   useEffect(() => {
     if (!Number.isFinite(value)) return;
@@ -1208,8 +1218,14 @@ function useValueFlash(value: number) {
       window.clearTimeout(timeout.current);
     }
 
-    setFlash(value > last ? "up" : "down");
-    timeout.current = window.setTimeout(() => setFlash(null), 850);
+    setFlash((current) => ({
+      direction: value > last ? "up" : "down",
+      tick: current.tick + 1,
+    }));
+    timeout.current = window.setTimeout(
+      () => setFlash((current) => ({ ...current, direction: null })),
+      950,
+    );
 
     return () => {
       if (timeout.current) {

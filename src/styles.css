@@ -773,6 +773,31 @@ html {
   transition: color 120ms ease;
 }
 
+.fomo-terminal .token-live-tone-up {
+  color: #20d772;
+}
+
+.fomo-terminal .token-live-tone-down {
+  color: #ff653d;
+}
+
+.fomo-terminal .token-live-tone-flat {
+  color: #e8e4f0;
+}
+
+.fomo-terminal .token-live-price {
+  color: #7a7488;
+}
+
+.fomo-terminal .token-live-tone-up .token-live-unit,
+.fomo-terminal .token-live-tone-flat .token-live-unit {
+  color: #e8e4f0;
+}
+
+.fomo-terminal .token-live-tone-down .token-live-unit {
+  color: #ff653d;
+}
+
 .fomo-terminal .token-live-value-up {
   color: #20d772;
   animation: token-value-flash-up 950ms ease-out;
@@ -781,6 +806,38 @@ html {
 .fomo-terminal .token-live-value-down {
   color: #ff653d;
   animation: token-value-flash-down 950ms ease-out;
+}
+
+.fomo-terminal .token-change-pill {
+  min-width: max-content;
+  font-variant-numeric: tabular-nums;
+}
+
+.fomo-terminal .token-change-triangle {
+  display: inline-block;
+  width: 0;
+  height: 0;
+}
+
+.fomo-terminal .token-live-tone-up .token-change-triangle {
+  border-right: 3.5px solid transparent;
+  border-bottom: 6px solid currentColor;
+  border-left: 3.5px solid transparent;
+  transform: translateY(-0.5px);
+}
+
+.fomo-terminal .token-live-tone-down .token-change-triangle {
+  border-top: 6px solid currentColor;
+  border-right: 3.5px solid transparent;
+  border-left: 3.5px solid transparent;
+  transform: translateY(0.5px);
+}
+
+.fomo-terminal .token-live-tone-flat .token-change-triangle {
+  width: 6px;
+  height: 1.5px;
+  border-radius: 99px;
+  background: currentColor;
 }
 
 .fomo-terminal header button:not(.token-search-trigger),
