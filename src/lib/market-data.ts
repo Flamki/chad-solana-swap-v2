@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { env, hasJupiterKey, hasRpcEndpoint, hasSupabase } from "@/lib/env";
 import { fetchMarketJson } from "@/lib/market-api";
-import { SOL_MINT, type Token, mergeToken } from "@/lib/tokens";
+import { SOL_MINT, USDC_MINT, type Token, mergeToken } from "@/lib/tokens";
 
 type JupiterPriceResponse = Record<
   string,
@@ -120,6 +120,47 @@ export type TokenPosition = {
   source: string;
 };
 
+export type PortfolioHistoryRange = "24H" | "7D" | "30D" | "ALL";
+
+export type PortfolioHistoryPoint = {
+  timestamp: number;
+  value: number;
+  solBalance: number;
+  usdcBalance: number;
+  source: "current" | "transaction";
+};
+
+type RpcSignatureInfo = {
+  signature: string;
+  blockTime?: number | null;
+  err?: unknown;
+};
+
+type RpcTokenBalance = {
+  mint?: string;
+  owner?: string;
+  uiTokenAmount?: {
+    uiAmount?: number | null;
+    uiAmountString?: string;
+  };
+};
+
+type RpcParsedTransaction = {
+  blockTime?: number | null;
+  meta?: {
+    err?: unknown;
+    preBalances?: number[];
+    postBalances?: number[];
+    preTokenBalances?: RpcTokenBalance[];
+    postTokenBalances?: RpcTokenBalance[];
+  };
+  transaction?: {
+    message?: {
+      accountKeys?: Array<string | { pubkey?: string }>;
+    };
+  };
+};
+
 export async function fetchJupiterPrices(mints: string[], signal?: AbortSignal) {
   const ids = Array.from(new Set(mints)).filter(Boolean).slice(0, 50);
   if (!ids.length) return {};
@@ -231,7 +272,8 @@ export async function fetchJupiterQuote({
 
   const response = await fetch(`/api/trade/quote?${params}`, { signal });
   if (!response.ok) {
-    throw new Error(`Jupiter quote failed (${response.status})`);
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(payload?.error ?? `Jupiter quote failed (${response.status})`);
   }
 
   return (await response.json()) as JupiterQuote;
@@ -451,6 +493,109 @@ export async function fetchTokenPosition({
   };
 }
 
+export async function fetchPortfolioHistory({
+  owner,
+  range,
+  solPrice,
+  currentSolBalance,
+  currentUsdcBalance,
+  signal,
+}: {
+  owner: string;
+  range: PortfolioHistoryRange;
+  solPrice: number;
+  currentSolBalance: number;
+  currentUsdcBalance: number;
+  signal?: AbortSignal;
+}): Promise<PortfolioHistoryPoint[]> {
+  if (!hasRpcEndpoint) {
+    throw new Error("Missing Solana RPC endpoint");
+  }
+
+  const now = Date.now();
+  const rangeStart = now - getPortfolioHistoryRangeSpan(range);
+  const currentPoint = toPortfolioHistoryPoint({
+    timestamp: now,
+    solBalance: currentSolBalance,
+    usdcBalance: currentUsdcBalance,
+    solPrice,
+    source: "current",
+  });
+
+  const signatures = await solanaRpc<RpcSignatureInfo[]>(
+    "getSignaturesForAddress",
+    [owner, { limit: 100, commitment: "confirmed" }],
+    signal,
+  );
+  const historySignatures = signatures
+    .filter((item) => item.blockTime && item.blockTime * 1000 >= rangeStart)
+    .slice(0, 50);
+
+  if (!historySignatures.length) {
+    return [currentPoint];
+  }
+
+  const transactions = await Promise.all(
+    historySignatures.map(async (item) => {
+      try {
+        const transaction = await solanaRpc<RpcParsedTransaction | null>(
+          "getTransaction",
+          [
+            item.signature,
+            {
+              commitment: "confirmed",
+              encoding: "jsonParsed",
+              maxSupportedTransactionVersion: 0,
+            },
+          ],
+          signal,
+        );
+        return { signature: item.signature, transaction };
+      } catch {
+        return { signature: item.signature, transaction: null };
+      }
+    }),
+  );
+
+  let solBalance = currentSolBalance;
+  let usdcBalance = currentUsdcBalance;
+  const points: PortfolioHistoryPoint[] = [currentPoint];
+
+  for (const { transaction } of transactions) {
+    if (!transaction?.blockTime || transaction.meta?.err) continue;
+
+    const solDelta = getSolBalanceDelta(transaction, owner);
+    const usdcDelta = getTokenBalanceDelta(transaction, owner, USDC_MINT);
+    if (Math.abs(solDelta) < 0.000000001 && Math.abs(usdcDelta) < 0.000001) continue;
+
+    const transactionTime = transaction.blockTime * 1000;
+    points.push(
+      toPortfolioHistoryPoint({
+        timestamp: transactionTime,
+        solBalance,
+        usdcBalance,
+        solPrice,
+        source: "transaction",
+      }),
+    );
+    solBalance -= solDelta;
+    usdcBalance -= usdcDelta;
+    points.push(
+      toPortfolioHistoryPoint({
+        timestamp: transactionTime - 1,
+        solBalance,
+        usdcBalance,
+        solPrice,
+        source: "transaction",
+      }),
+    );
+  }
+
+  return dedupePortfolioHistoryPoints(points)
+    .filter((point) => point.timestamp >= rangeStart)
+    .sort((left, right) => left.timestamp - right.timestamp);
+}
+
 const supabase =
   hasSupabase && env.supabaseUrl && env.supabaseAnonKey
     ? createClient(env.supabaseUrl, env.supabaseAnonKey)
@@ -576,4 +721,112 @@ export function useTokenPosition({
     staleTime: 15_000,
     retry: 1,
   });
+}
+
+export function usePortfolioHistory({
+  owner,
+  range,
+  solPrice,
+  currentSolBalance,
+  currentUsdcBalance,
+  enabled = true,
+}: {
+  owner?: string;
+  range: PortfolioHistoryRange;
+  solPrice: number;
+  currentSolBalance: number;
+  currentUsdcBalance: number;
+  enabled?: boolean;
+}) {
+  return useQuery({
+    queryKey: ["portfolio-history", owner, range, solPrice, currentSolBalance, currentUsdcBalance],
+    queryFn: ({ signal }) =>
+      fetchPortfolioHistory({
+        owner: owner!,
+        range,
+        solPrice,
+        currentSolBalance,
+        currentUsdcBalance,
+        signal,
+      }),
+    enabled: Boolean(owner && hasRpcEndpoint && enabled),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+function getSolBalanceDelta(transaction: RpcParsedTransaction, owner: string) {
+  const accountIndex = transaction.transaction?.message?.accountKeys?.findIndex(
+    (account) => getRpcAccountKey(account)?.toLowerCase() === owner.toLowerCase(),
+  );
+
+  if (accountIndex === undefined || accountIndex < 0) return 0;
+
+  const preBalance = transaction.meta?.preBalances?.[accountIndex] ?? 0;
+  const postBalance = transaction.meta?.postBalances?.[accountIndex] ?? 0;
+  return (postBalance - preBalance) / 1_000_000_000;
+}
+
+function getTokenBalanceDelta(transaction: RpcParsedTransaction, owner: string, mint: string) {
+  const preBalance = getOwnedTokenBalance(transaction.meta?.preTokenBalances ?? [], owner, mint);
+  const postBalance = getOwnedTokenBalance(transaction.meta?.postTokenBalances ?? [], owner, mint);
+  return postBalance - preBalance;
+}
+
+function getOwnedTokenBalance(balances: RpcTokenBalance[], owner: string, mint: string) {
+  return balances.reduce((total, balance) => {
+    if (balance.owner?.toLowerCase() !== owner.toLowerCase()) return total;
+    if (balance.mint !== mint) return total;
+    return (
+      total + Number(balance.uiTokenAmount?.uiAmountString ?? balance.uiTokenAmount?.uiAmount ?? 0)
+    );
+  }, 0);
+}
+
+function toPortfolioHistoryPoint({
+  timestamp,
+  solBalance,
+  usdcBalance,
+  solPrice,
+  source,
+}: {
+  timestamp: number;
+  solBalance: number;
+  usdcBalance: number;
+  solPrice: number;
+  source: PortfolioHistoryPoint["source"];
+}): PortfolioHistoryPoint {
+  const safeSolBalance = Math.max(0, solBalance);
+  const safeUsdcBalance = Math.max(0, usdcBalance);
+
+  return {
+    timestamp,
+    solBalance: safeSolBalance,
+    usdcBalance: safeUsdcBalance,
+    value: safeUsdcBalance + safeSolBalance * solPrice,
+    source,
+  };
+}
+
+function dedupePortfolioHistoryPoints(points: PortfolioHistoryPoint[]) {
+  const byTimestamp = new Map<number, PortfolioHistoryPoint>();
+  for (const point of points) {
+    byTimestamp.set(point.timestamp, point);
+  }
+  return Array.from(byTimestamp.values());
+}
+
+function getRpcAccountKey(account: string | { pubkey?: string }) {
+  return typeof account === "string" ? account : account.pubkey;
+}
+
+function getPortfolioHistoryRangeSpan(range: PortfolioHistoryRange) {
+  const hour = 60 * 60 * 1000;
+  const day = 24 * hour;
+
+  if (range === "24H") return day;
+  if (range === "7D") return 7 * day;
+  if (range === "30D") return 30 * day;
+  return 180 * day;
 }

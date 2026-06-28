@@ -7,6 +7,7 @@ import { CalendarDays, Check, Clock3, Copy, Pencil, Repeat2, UserPlus } from "lu
 import {
   type ChangeEvent,
   type FormEvent,
+  type PointerEvent,
   type ReactNode,
   useEffect,
   useMemo,
@@ -22,7 +23,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { hasPrivy } from "@/lib/env";
-import { useTokenPosition } from "@/lib/market-data";
+import {
+  type PortfolioHistoryPoint,
+  type PortfolioHistoryRange,
+  usePortfolioHistory,
+  useTokenPosition,
+} from "@/lib/market-data";
 import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
 
 const RECEIPT_KEY = "chadwallet-trade-receipts";
@@ -97,7 +103,7 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
   const [dialog, setDialog] = useState<"deposit" | "withdraw" | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [range, setRange] = useState<"24H" | "7D" | "30D" | "ALL">("24H");
+  const [range, setRange] = useState<PortfolioHistoryRange>("24H");
   const [swapTab, setSwapTab] = useState<"swaps" | "buys" | "sells">("swaps");
   const [positionTab, setPositionTab] = useState<"open" | "closed">("open");
   const receipts = useTradeReceipts(address);
@@ -106,6 +112,14 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
   const solValue = sol.data?.valueUsd ?? 0;
   const portfolioValue = cashBalance + solValue;
   const loadingBalances = sol.isFetching || usdc.isFetching;
+  const portfolioHistory = usePortfolioHistory({
+    owner: address,
+    range,
+    solPrice,
+    currentSolBalance: solBalance,
+    currentUsdcBalance: cashBalance,
+    enabled: !loadingBalances,
+  });
   const visibleReceipts = useMemo(() => {
     if (swapTab === "buys") return receipts.filter((receipt) => receipt.side === "buy");
     if (swapTab === "sells") return receipts.filter((receipt) => receipt.side === "sell");
@@ -253,12 +267,12 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
                 </div>
               </div>
 
-              <div className="mt-7 h-[235px] min-w-0 bg-[#070a0f] max-xl:h-[210px]">
-                <div className="relative h-full border-b border-[#101722]">
-                  <div className="absolute left-2 right-0 top-[55%] h-0.5 bg-[#20d772]" />
-                  <div className="absolute bottom-0 left-2 right-0 top-[55%] bg-gradient-to-b from-[#20d772]/10 to-transparent" />
-                </div>
-              </div>
+              <PortfolioValueChart
+                points={portfolioHistory.data ?? []}
+                range={range}
+                loading={loadingBalances || portfolioHistory.isFetching}
+                unavailable={Boolean(portfolioHistory.error)}
+              />
 
               <div className="mt-0 flex min-w-0 items-center justify-between gap-4 py-4 max-[1180px]:flex-wrap">
                 <div className="flex min-w-0 items-center gap-3">
@@ -697,6 +711,133 @@ function ProfileStat({ value, label }: { value: string; label: string }) {
   );
 }
 
+function PortfolioValueChart({
+  points,
+  range,
+  loading,
+  unavailable,
+}: {
+  points: PortfolioHistoryPoint[];
+  range: PortfolioHistoryRange;
+  loading: boolean;
+  unavailable: boolean;
+}) {
+  const [hover, setHover] = useState<{
+    point: PortfolioHistoryPoint;
+    pixelX: number;
+    viewX: number;
+    y: number;
+  } | null>(null);
+  const shape = useMemo(() => buildPortfolioShape(points, range), [points, range]);
+  const hasHistory = shape.chartPoints.length > 0;
+  const hasLine = Boolean(shape.linePath);
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (loading || !shape.chartPoints.length) return;
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const cursorX = clamp((event.clientX - rect.left) / rect.width, 0, 1) * shape.width;
+    const nearest = shape.chartPoints.reduce((best, point) =>
+      Math.abs(point.x - cursorX) < Math.abs(best.x - cursorX) ? point : best,
+    );
+
+    setHover({
+      point: nearest.point,
+      pixelX: (nearest.x / shape.width) * rect.width,
+      viewX: nearest.x,
+      y: nearest.y,
+    });
+  };
+
+  const tooltipSide =
+    hover && hover.pixelX > 320
+      ? "translateX(-100%)"
+      : hover && hover.pixelX > 140
+        ? "translateX(-50%)"
+        : "translateX(0)";
+
+  return (
+    <div className="mt-7 h-[235px] min-w-0 bg-[#151920] max-xl:h-[210px]">
+      <div
+        className="relative h-full cursor-crosshair overflow-hidden"
+        onPointerMove={handlePointerMove}
+        onPointerLeave={() => setHover(null)}
+      >
+        <svg
+          viewBox="0 0 1000 235"
+          preserveAspectRatio="none"
+          className="absolute inset-0 h-full w-full"
+          aria-label="Portfolio value chart"
+        >
+          <defs>
+            <linearGradient id="portfolio-value-fill" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#f4c430" stopOpacity="0.24" />
+              <stop offset="100%" stopColor="#f4c430" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          {hasLine ? <path d={shape.areaPath} fill="url(#portfolio-value-fill)" /> : null}
+          {hasLine ? (
+            <path
+              d={shape.linePath}
+              fill="none"
+              stroke="#f4c430"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="3"
+            />
+          ) : null}
+          {hover ? (
+            <>
+              <line
+                x1={hover.viewX}
+                x2={hover.viewX}
+                y1="0"
+                y2="235"
+                stroke="#f4c430"
+                strokeOpacity="0.18"
+              />
+              <circle
+                cx={hover.viewX}
+                cy={hover.y}
+                r="5"
+                fill="#f4c430"
+                stroke="#151920"
+                strokeWidth="3"
+              />
+            </>
+          ) : null}
+        </svg>
+
+        {loading ? (
+          <div className="absolute inset-0 grid place-items-center text-sm font-bold text-[#7a7488]">
+            Loading wallet history
+          </div>
+        ) : unavailable ? (
+          <div className="absolute inset-0 grid place-items-center px-6 text-center text-sm font-bold text-[#7a7488]">
+            Wallet history unavailable from Solana RPC
+          </div>
+        ) : !hasHistory ? (
+          <div className="absolute inset-0 grid place-items-center px-6 text-center text-sm font-bold text-[#7a7488]">
+            No confirmed wallet history yet
+          </div>
+        ) : hover ? (
+          <div
+            className="pointer-events-none absolute top-3 z-10 rounded-lg border border-[#3b3342] bg-[#141119]/95 px-3 py-2 shadow-[0_18px_48px_rgba(0,0,0,0.42)]"
+            style={{ left: hover.pixelX, transform: tooltipSide }}
+          >
+            <div className="font-mono text-sm font-black text-white">
+              {formatUsd(hover.point.value)}
+            </div>
+            <div className="mt-1 whitespace-nowrap text-[11px] font-semibold text-[#a9b0d4]">
+              {formatPortfolioPointTime(hover.point.timestamp, range)}
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function ProfileTrader({ trader }: { trader: { name: string; handle: string; color: string } }) {
   return (
     <div className="flex min-h-[48px] items-center gap-3 rounded-lg px-1.5 py-2 transition-colors hover:bg-[#151221]/50">
@@ -828,6 +969,98 @@ function normalizeHandle(value: string) {
 
 function isDataImage(value: unknown): value is string {
   return typeof value === "string" && /^data:image\/(png|jpe?g|webp|gif);base64,/.test(value);
+}
+
+function buildPortfolioShape(points: PortfolioHistoryPoint[], range: PortfolioHistoryRange) {
+  const width = 1000;
+  const height = 235;
+  const top = 24;
+  const bottom = 26;
+  const baseline = height - bottom;
+  const sortedPoints = points
+    .filter((point) => Number.isFinite(point.timestamp) && Number.isFinite(point.value))
+    .sort((left, right) => left.timestamp - right.timestamp);
+
+  if (!sortedPoints.length) {
+    return {
+      areaPath: "",
+      chartPoints: [] as Array<{ point: PortfolioHistoryPoint; x: number; y: number }>,
+      linePath: "",
+      width,
+    };
+  }
+
+  const now = Date.now();
+  const spanMs = getPortfolioRangeSpan(range);
+  const rangeStart = range === "ALL" ? sortedPoints[0].timestamp : now - spanMs;
+  const rangeEnd = Math.max(now, sortedPoints[sortedPoints.length - 1].timestamp);
+  const rangeSpan = Math.max(1, rangeEnd - rangeStart);
+  const values = sortedPoints.map((point) => point.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min;
+
+  const chartPoints = sortedPoints.map((point) => {
+    const x = clamp(((point.timestamp - rangeStart) / rangeSpan) * width, 0, width);
+    if (!span) return { point, x, y: 130 };
+    const y = top + ((max - point.value) / span) * (height - top - bottom - 18);
+    return { point, x, y };
+  });
+
+  const linePoints =
+    chartPoints.length === 1
+      ? [
+          { ...chartPoints[0], x: 0 },
+          { ...chartPoints[0], x: width },
+        ]
+      : chartPoints;
+  const linePath = buildStepLinePath(linePoints);
+  const first = linePoints[0] ?? { x: 0, y: 130 };
+  const last = linePoints[linePoints.length - 1] ?? first;
+
+  return {
+    areaPath: `${linePath} L ${last.x} ${baseline} L ${first.x} ${baseline} Z`,
+    chartPoints,
+    linePath,
+    width,
+  };
+}
+
+function buildStepLinePath(points: Array<{ x: number; y: number }>) {
+  if (!points.length) return "";
+
+  return points.slice(1).reduce((path, point, index) => {
+    const previous = points[index];
+    return `${path} L ${point.x} ${previous.y} L ${point.x} ${point.y}`;
+  }, `M ${points[0].x} ${points[0].y}`);
+}
+
+function getPortfolioRangeSpan(range: PortfolioHistoryRange) {
+  const hour = 60 * 60 * 1000;
+  const day = 24 * hour;
+
+  if (range === "24H") return day;
+  if (range === "7D") return 7 * day;
+  if (range === "30D") return 30 * day;
+  return 180 * day;
+}
+
+function formatPortfolioPointTime(timestamp: number, range: PortfolioHistoryRange) {
+  const date = new Date(timestamp);
+
+  if (range === "24H") {
+    return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  }
+
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(range === "ALL" ? { year: "numeric" } : {}),
+  });
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function readImageAsDataUrl(file: File) {

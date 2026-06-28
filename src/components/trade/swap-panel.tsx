@@ -30,6 +30,7 @@ import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, rawAmountFromUi } from "
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
+const MAX_PRICE_IMPACT_PCT = 25;
 
 type TradeReceipt = {
   signature: string;
@@ -54,6 +55,16 @@ function formatTokenAmount(value: number) {
   return value.toLocaleString(undefined, {
     maximumFractionDigits: value < 1 ? 6 : 2,
   });
+}
+
+function sanitizeDecimalInput(value: string, decimals: number) {
+  const cleaned = value.replace(/[^0-9.]/g, "");
+  const [whole = "", ...fractionParts] = cleaned.split(".");
+  const fraction = fractionParts.join("").slice(0, decimals);
+  const wholePart = whole.replace(/^0+(?=\d)/, "") || (whole ? "0" : "");
+
+  if (!fractionParts.length) return wholePart;
+  return `${wholePart || "0"}.${fraction}`;
 }
 
 export function SwapPanel({ token, solPrice }: { token: Token; solPrice: number }) {
@@ -142,6 +153,7 @@ function SwapPanelCore({
   const amt = Number.parseFloat(amount) || 0;
   const rawAmount = rawAmountFromUi(amt, pair.inputDecimals);
   const slippageBps = Math.round((Number.parseFloat(slippage) || 1) * 100);
+  const hasValidAmount = Number.isFinite(amt) && amt > 0 && rawAmount > 0n;
 
   const quoteQuery = useQuery({
     queryKey: [
@@ -162,7 +174,7 @@ function SwapPanelCore({
         taker: walletAddress,
         signal,
       }),
-    enabled: rawAmount > 0n && pair.inputMint !== pair.outputMint,
+    enabled: hasValidAmount && pair.inputMint !== pair.outputMint,
     staleTime: 12_000,
     refetchInterval: 20_000,
     retry: 1,
@@ -194,32 +206,73 @@ function SwapPanelCore({
     isTradeTestMode || !authenticated || !walletAddress || inputBalance + 1e-9 >= amt;
   const tokenBalance = positionQuery.data?.balance ?? 0;
   const tokenValue = positionQuery.data?.valueUsd ?? 0;
+  const quoteReady = Boolean(quoteQuery.data && hasValidAmount);
+  const priceImpactTooHigh =
+    quoteReady && (quoteQuery.data?.priceImpactPct ?? 0) > MAX_PRICE_IMPACT_PCT;
+  const quoteError = quoteQuery.error instanceof Error ? quoteQuery.error.message : "";
+  const quoteUnavailable = hasValidAmount && quoteQuery.isError && !quoteQuery.data;
+  const amountTooSmall = amount.length > 0 && amt > 0 && rawAmount <= 0n;
+  const inputIsUsd = pair.inputSymbol === "USDC";
+  const quoteStatus = !hasValidAmount
+    ? amountTooSmall
+      ? `Minimum precision is ${pair.inputDecimals} decimals`
+      : "Enter an amount to fetch a live Jupiter quote"
+    : quoteQuery.isFetching
+      ? "Fetching live Jupiter quote"
+      : priceImpactTooHigh
+        ? `Price impact ${quoteQuery.data!.priceImpactPct.toFixed(1)}% is too high`
+        : quoteReady
+          ? `${formatTokenAmount(quoteQuery.data!.outUiAmount)} ${pair.outputSymbol} via ${quoteQuery.data!.route}`
+          : quoteUnavailable
+            ? quoteError || "No live Jupiter route for this amount"
+            : "Waiting for live Jupiter quote";
 
-  const buttonLabel = isTradeTestMode
-    ? quoteQuery.isFetching
-      ? "Refreshing quote"
-      : `Paper ${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`
-    : !hasPrivy
-      ? "Add Privy app id to swap"
-      : !authenticated
-        ? `Connect wallet to ${side}`
-        : !wallet || !onSignTransaction
-          ? "Wallet unavailable"
-          : quoteQuery.isFetching
-            ? "Refreshing quote"
-            : !inputBalanceReady
-              ? "Checking balance"
-              : !hasInputBalance
-                ? `Deposit ${pair.inputSymbol} first`
-                : `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
+  const buttonLabel = (() => {
+    if (isTradeTestMode) {
+      if (quoteQuery.isFetching) return "Refreshing quote";
+      if (!hasValidAmount) return `Enter ${pair.inputSymbol} amount`;
+      if (!quoteReady) return "Waiting for quote";
+      return `Paper ${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
+    }
+
+    if (!hasPrivy) return "Add Privy app id to swap";
+    if (!authenticated) return `Connect wallet to ${side}`;
+    if (!wallet || !onSignTransaction) return "Wallet unavailable";
+    if (!hasValidAmount) return `Enter ${pair.inputSymbol} amount`;
+    if (quoteQuery.isFetching) return "Refreshing quote";
+    if (quoteUnavailable) return "No Jupiter quote";
+    if (!quoteReady) return "Waiting for quote";
+    if (priceImpactTooHigh) return "Price impact too high";
+    if (!inputBalanceReady) return "Checking balance";
+    if (!hasInputBalance) return `Deposit ${pair.inputSymbol} first`;
+    return `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
+  })();
+  const primaryDisabled =
+    isExecuting ||
+    quoteQuery.isFetching ||
+    (isTradeTestMode && (!hasValidAmount || !quoteReady)) ||
+    (!isTradeTestMode &&
+      authenticated &&
+      (!wallet ||
+        !onSignTransaction ||
+        !hasValidAmount ||
+        !quoteReady ||
+        priceImpactTooHigh ||
+        !inputBalanceReady ||
+        !hasInputBalance));
 
   const handlePrimary = async () => {
     if (isTradeTestMode) {
-      if (!quoteQuery.data || rawAmount <= 0n) {
-        setTradeError("Live Jupiter quote is not ready.");
+      if (!quoteReady) {
+        setTradeError(quoteUnavailable ? quoteStatus : "Waiting for live Jupiter quote.");
         return;
       }
 
+      const quote = quoteQuery.data;
+      if (!quote) {
+        setTradeError("Waiting for live Jupiter quote.");
+        return;
+      }
       setIsExecuting(true);
       setTradeError("");
       setSignature("");
@@ -240,9 +293,9 @@ function SwapPanelCore({
           inputSymbol: pair.inputSymbol,
           outputSymbol: pair.outputSymbol,
           inputAmount: amount,
-          outputAmount: quoteQuery.data.outUiAmount,
-          route: quoteQuery.data.route,
-          router: quoteQuery.data.router,
+          outputAmount: quote.outUiAmount,
+          route: quote.route,
+          router: quote.router,
           tokenMint: token.mint,
           createdAt: new Date().toISOString(),
         };
@@ -276,8 +329,13 @@ function SwapPanelCore({
       return;
     }
 
-    if (!quoteQuery.data || rawAmount <= 0n) {
-      setTradeError("Live Jupiter quote is not ready.");
+    if (priceImpactTooHigh) {
+      setTradeError(quoteStatus);
+      return;
+    }
+
+    if (!quoteReady) {
+      setTradeError(quoteUnavailable ? quoteStatus : "Waiting for live Jupiter quote.");
       return;
     }
 
@@ -364,7 +422,10 @@ function SwapPanelCore({
         {/* Buy/Sell Selector Container */}
         <div className="grid grid-cols-2 gap-1.5 rounded-xl bg-transparent p-0.5">
           <button
-            onClick={() => setSide("buy")}
+            onClick={() => {
+              setSide("buy");
+              setTradeError("");
+            }}
             className={`rounded-lg py-1 text-xs font-bold transition duration-200 ${
               side === "buy"
                 ? "bg-[#0d2a1d] text-[#20d772]"
@@ -374,7 +435,10 @@ function SwapPanelCore({
             Buy
           </button>
           <button
-            onClick={() => setSide("sell")}
+            onClick={() => {
+              setSide("sell");
+              setTradeError("");
+            }}
             className={`rounded-lg py-1 text-xs font-bold transition duration-200 ${
               side === "sell"
                 ? "bg-[#2c1816] text-[#ff5e36]"
@@ -397,25 +461,36 @@ function SwapPanelCore({
           </div>
           <div className="mt-0.5 flex items-center justify-between gap-1.5">
             <div className="flex-1 flex items-center">
-              {side === "buy" && (
+              {inputIsUsd && (
                 <span className="text-2xl font-mono font-bold text-[#f3efff] mr-0.5">$</span>
               )}
               <input
                 value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ""))}
+                onChange={(e) => {
+                  setAmount(sanitizeDecimalInput(e.target.value, pair.inputDecimals));
+                  setTradeError("");
+                }}
                 inputMode="decimal"
                 placeholder="0"
                 className="w-full bg-transparent text-2xl font-mono font-bold text-[#f3efff] outline-none placeholder:text-[#5d5669]"
               />
             </div>
             <div className="text-[11px] text-[#7a7488] shrink-0 font-semibold font-mono">
-              {side === "buy" ? "Enter amount" : pair.inputSymbol}
+              {pair.inputSymbol}
             </div>
           </div>
           <div className="text-[10.5px] text-[#7a7488] font-mono mt-0.5">
-            {side === "buy"
-              ? `~ ${estimatedOut.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${pair.outputSymbol}`
-              : `~ ${formatUsd(inputUsd)}`}
+            {quoteQuery.isFetching
+              ? "Fetching Jupiter quote..."
+              : priceImpactTooHigh
+                ? quoteStatus
+                : quoteReady
+                  ? side === "buy"
+                    ? `~ ${estimatedOut.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${pair.outputSymbol}`
+                    : `~ ${formatUsd(inputUsd)}`
+                  : quoteUnavailable
+                    ? "No Jupiter route for this amount"
+                    : quoteStatus}
           </div>
         </div>
 
@@ -424,13 +499,14 @@ function SwapPanelCore({
           {["$10", "$100", "$500", "$1000"].map((preset) => (
             <button
               key={preset}
-              onClick={() =>
+              onClick={() => {
                 setAmount(
                   side === "buy" && pair.inputSymbol !== "SOL"
                     ? preset.replace("$", "")
                     : String(Number(preset.replace("$", "")) / Math.max(pair.inputPrice || 1, 1)),
-                )
-              }
+                );
+                setTradeError("");
+              }}
               className="flex-1 rounded-lg border border-[#1b1726]/45 bg-transparent h-[26px] flex items-center justify-center font-mono font-bold text-[#9099a3] transition hover:bg-[#1b1726]/45 hover:text-white"
             >
               {preset}
@@ -497,13 +573,7 @@ function SwapPanelCore({
         {/* Main Action Button */}
         <button
           onClick={handlePrimary}
-          disabled={
-            isExecuting ||
-            quoteQuery.isFetching ||
-            (!isTradeTestMode &&
-              !!authenticated &&
-              (!wallet || !onSignTransaction || !inputBalanceReady || !hasInputBalance))
-          }
+          disabled={primaryDisabled}
           className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-transparent hover:bg-[#1b1726]/55 border border-[#252137] h-[38px] text-[13px] font-bold text-[#e8e4f0] transition disabled:opacity-60"
         >
           {isExecuting || quoteQuery.isFetching ? (
