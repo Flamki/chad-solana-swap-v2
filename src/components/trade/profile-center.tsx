@@ -54,10 +54,12 @@ import {
   type TradeReceiptRecord,
   type UserProfileRecord,
   type WalletTransferRecord,
+  type FollowStats,
   recordWalletTransfer,
   recordUserProfile,
   syncFollowTrader,
   useAppLeaderboard,
+  useFollowStats,
   usePortfolioHistory,
   useStoredFollowedTraders,
   useStoredTradeReceipts,
@@ -159,6 +161,7 @@ function ConnectedTradeProfileCenter({
   const [positionTab, setPositionTab] = useState<"open" | "closed">("open");
   const storedReceipts = useStoredTradeReceipts(address);
   const localReceipts = useLocalTradeReceipts(address);
+  const followStats = useFollowStats(address);
   const receipts = useMemo(
     () => mergeTradeReceipts(storedReceipts.data ?? [], localReceipts),
     [localReceipts, storedReceipts.data],
@@ -166,6 +169,8 @@ function ConnectedTradeProfileCenter({
   const cashBalance = usdc.data?.balance ?? 0;
   const solBalance = sol.data?.balance ?? 0;
   const solValue = sol.data?.valueUsd ?? 0;
+  const followingCount = followStats.data?.following ?? 0;
+  const followersCount = followStats.data?.followers ?? 0;
   const portfolioValue = cashBalance + solValue;
   const loadingBalances = sol.isFetching || usdc.isFetching;
   const portfolioHistory = usePortfolioHistory({
@@ -292,8 +297,8 @@ function ConnectedTradeProfileCenter({
             </div>
 
             <div className="flex min-w-0 shrink-0 items-center gap-2 pt-7 max-[1180px]:ml-[96px] max-[1180px]:pt-0">
-              <ProfileStat value="0" label="Following" />
-              <ProfileStat value="0" label="Followers" />
+              <ProfileStat value={followingCount.toLocaleString()} label="Following" />
+              <ProfileStat value={followersCount.toLocaleString()} label="Followers" />
               <button
                 onClick={() => setEditingProfile(true)}
                 className="h-10 rounded-lg border border-[#252137] bg-[#15121d] px-4 text-sm font-black text-white transition hover:bg-[#1f1b2a]"
@@ -547,6 +552,7 @@ function ViewedTradeProfile({
 }) {
   const storedProfile = useStoredUserProfile(walletAddress);
   const receipts = useStoredTradeReceipts(walletAddress);
+  const followStats = useFollowStats(walletAddress);
   const [copied, setCopied] = useState(false);
   const fallbackProfile = useMemo<StoredProfile>(
     () => ({
@@ -565,6 +571,8 @@ function ViewedTradeProfile({
   const tradeCount = receipts.data?.length ?? 0;
   const buyCount = receipts.data?.filter((receipt) => receipt.side === "buy").length ?? 0;
   const sellCount = receipts.data?.filter((receipt) => receipt.side === "sell").length ?? 0;
+  const followingCount = followStats.data?.following ?? 0;
+  const followersCount = followStats.data?.followers ?? 0;
 
   const copyAddress = async () => {
     const copiedAddress = await copyToClipboard(walletAddress);
@@ -614,6 +622,8 @@ function ViewedTradeProfile({
             </div>
 
             <div className="flex shrink-0 items-center gap-2 pt-7 max-[1180px]:ml-[96px] max-[1180px]:pt-0">
+              <ProfileStat value={followingCount.toLocaleString()} label="Following" />
+              <ProfileStat value={followersCount.toLocaleString()} label="Followers" />
               {onBack ? (
                 <button
                   type="button"
@@ -955,9 +965,20 @@ export function FollowTopTradersPanel({
     if (!walletAddress || targetWallet === walletAddress) return;
 
     const following = !followed.has(targetWallet);
+    const delta = following ? 1 : -1;
     setLocalFollowed(targetWallet, following);
+    queryClient.setQueryData<FollowStats>(["follow-stats", walletAddress], (current) => ({
+      following: Math.max(0, (current?.following ?? 0) + delta),
+      followers: current?.followers ?? 0,
+    }));
+    queryClient.setQueryData<FollowStats>(["follow-stats", targetWallet], (current) => ({
+      following: current?.following ?? 0,
+      followers: Math.max(0, (current?.followers ?? 0) + delta),
+    }));
     void syncFollowTrader({ wallet: walletAddress, targetWallet, following }).finally(() => {
       void queryClient.invalidateQueries({ queryKey: ["followed-traders", walletAddress] });
+      void queryClient.invalidateQueries({ queryKey: ["follow-stats", walletAddress] });
+      void queryClient.invalidateQueries({ queryKey: ["follow-stats", targetWallet] });
     });
   };
 

@@ -111,6 +111,11 @@ export type AppLeaderboardUser = {
   updatedAt: string | null;
 };
 
+export type FollowStats = {
+  following: number;
+  followers: number;
+};
+
 export type ChartInterval = "1m" | "5m" | "15m" | "1H" | "4H" | "1D";
 
 export type PricePoint = {
@@ -809,6 +814,36 @@ export async function fetchFollowedTraders(wallet: string, signal?: AbortSignal)
   return (data ?? []).map((item) => item.target_wallet).filter(Boolean);
 }
 
+export async function fetchFollowStats(wallet: string, signal?: AbortSignal): Promise<FollowStats> {
+  if (!supabase) return { following: 0, followers: 0 };
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const [followingResult, followersResult] = await Promise.all([
+    supabase
+      .from("user_follows")
+      .select("*", { count: "exact", head: true })
+      .eq("follower_wallet", wallet),
+    supabase
+      .from("user_follows")
+      .select("*", { count: "exact", head: true })
+      .eq("target_wallet", wallet),
+  ]);
+
+  if (followingResult.error) {
+    if (followingResult.error.code === "42P01") return { following: 0, followers: 0 };
+    throw followingResult.error;
+  }
+  if (followersResult.error) {
+    if (followersResult.error.code === "42P01") return { following: 0, followers: 0 };
+    throw followersResult.error;
+  }
+
+  return {
+    following: followingResult.count ?? 0,
+    followers: followersResult.count ?? 0,
+  };
+}
+
 export async function syncFollowTrader({
   wallet,
   targetWallet,
@@ -1105,6 +1140,17 @@ export function useStoredFollowedTraders(wallet?: string) {
     queryFn: ({ signal }) => fetchFollowedTraders(wallet!, signal),
     enabled: Boolean(wallet && supabase),
     staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+export function useFollowStats(wallet?: string) {
+  return useQuery({
+    queryKey: ["follow-stats", wallet],
+    queryFn: ({ signal }) => fetchFollowStats(wallet!, signal),
+    enabled: Boolean(wallet && supabase),
+    refetchInterval: 15_000,
+    staleTime: 10_000,
     retry: 1,
   });
 }
