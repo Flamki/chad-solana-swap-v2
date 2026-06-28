@@ -74,3 +74,27 @@ export async function getJupiterTrendingTokens(limit = 50) {
   const tokens = await jupiterTokenJson(`/tokens/v2/toptrending/5m?limit=${limit}`);
   return tokens.map(tokenFromJupiter).filter(Boolean) as Token[];
 }
+
+export async function getJupiterVerifiedTokens(limit = 80) {
+  const tokens = await jupiterTokenJson("/tokens/v2/tag?query=verified");
+  const unique = new Map<string, Token>();
+
+  for (const token of tokens.map(tokenFromJupiter).filter(Boolean) as Token[]) {
+    if (
+      token.price > 0 &&
+      token.marketCap > 0 &&
+      token.symbol &&
+      (!unique.has(token.mint) || token.marketCap > unique.get(token.mint)!.marketCap)
+    ) {
+      unique.set(token.mint, token);
+    }
+  }
+
+  return [...unique.values()]
+    .sort((a, b) => {
+      const marketCapDiff = b.marketCap - a.marketCap;
+      if (marketCapDiff !== 0) return marketCapDiff;
+      return (b.liquidity ?? 0) - (a.liquidity ?? 0);
+    })
+    .slice(0, limit);
+}
