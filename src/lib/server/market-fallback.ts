@@ -678,6 +678,8 @@ function tokenFromGeckoPool(pool: GeckoPoolItem, query?: string): Token | null {
     marketCap: numberValue(attributes.market_cap_usd) ?? numberValue(attributes.fdv_usd),
     liquidity: poolLiquidity(pool),
     source: "geckoterminal",
+    poolDex: pool.relationships?.dex?.data?.id,
+    poolCreatedAt: attributes.pool_created_at ?? undefined,
   });
 }
 

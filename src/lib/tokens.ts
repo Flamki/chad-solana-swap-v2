@@ -15,6 +15,8 @@ export interface Token {
   liquidity?: number;
   rank?: number;
   source?: "static" | "birdeye" | "jupiter" | "dexscreener" | "geckoterminal";
+  poolDex?: string;
+  poolCreatedAt?: string;
 }
 
 export const TOKENS: Token[] = [

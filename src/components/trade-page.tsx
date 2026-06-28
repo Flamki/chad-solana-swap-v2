@@ -429,8 +429,12 @@ export function TradePage({ mint }: { mint: string }) {
       }),
     [trendingTokens],
   );
+  const cryptoTokens = useMemo(() => {
+    const liveTokens = trendingTokens.filter(isLiveCryptoToken);
+    return liveTokens.length ? liveTokens : trendingTokens;
+  }, [trendingTokens]);
   const graduatedTokens = useMemo(
-    () => trendingTokens.filter((item) => item.marketCap > 100_000_000),
+    () => trendingTokens.filter(isLikelyGraduatedToken),
     [trendingTokens],
   );
 
@@ -472,7 +476,7 @@ export function TradePage({ mint }: { mint: string }) {
         : pane.tokenListMode === "watchlist"
           ? watchlistTokens
           : pane.tokenListMode === "crypto"
-            ? trendingTokens.filter((t) => t.symbol === "SOL" || t.symbol === "USDC")
+            ? cryptoTokens
             : pane.tokenListMode === "graduates"
               ? graduatedTokens
               : trendingTokens;
@@ -557,6 +561,11 @@ export function TradePage({ mint }: { mint: string }) {
               {pane.tokenListMode === "trending" && trendingLoading && trending.length === 0 && (
                 <div className="px-3 py-3 text-[11px] text-muted-foreground">
                   Loading live tokens...
+                </div>
+              )}
+              {!trendingLoading && paneTokens.length === 0 && (
+                <div className="px-3 py-3 text-[11px] text-muted-foreground">
+                  No live tokens in this section yet.
                 </div>
               )}
               {paneTokens.map((item) => (
@@ -1468,6 +1477,28 @@ function uniqueTokens(tokens: Token[]) {
   }
 
   return [...byMint.values()];
+}
+
+function isLiveCryptoToken(token: Token) {
+  return (
+    token.mint !== SOL_MINT &&
+    Number.isFinite(token.price) &&
+    token.price > 0 &&
+    Number.isFinite(token.liquidity ?? 0) &&
+    (token.liquidity ?? 0) > 0
+  );
+}
+
+function isLikelyGraduatedToken(token: Token) {
+  const liquidity = token.liquidity ?? 0;
+  const marketCap = token.marketCap ?? 0;
+  const volume = token.volume24h ?? 0;
+
+  return (
+    isLiveCryptoToken(token) &&
+    liquidity >= 25_000 &&
+    (marketCap >= 50_000 || volume >= 100_000 || token.poolDex === "raydium")
+  );
 }
 
 async function copyText(value: string) {
