@@ -410,9 +410,29 @@ export function TradePage({ mint }: { mint: string }) {
     return total > 0 ? `${total.toFixed(2)}%` : "13.63%";
   }, [holders.data]);
 
-  const sidebarTokens = useMemo(() => {
-    return uniqueTokens([token, ...(watchlistMarkets.data ?? []), ...trending]);
-  }, [token, watchlistMarkets.data, trending]);
+  const trendingTokens = useMemo(() => uniqueTokens(trending), [trending]);
+  const watchlistTokens = useMemo(() => {
+    const watchedCurrentToken = watchlist.includes(token.mint) ? [token] : [];
+    const watchedTrendingTokens = trendingTokens.filter((item) => watchlist.includes(item.mint));
+    return uniqueTokens([
+      ...(watchlistMarkets.data ?? []),
+      ...watchedTrendingTokens,
+      ...watchedCurrentToken,
+    ]);
+  }, [token, trendingTokens, watchlist, watchlistMarkets.data]);
+  const mostHeldTokens = useMemo(
+    () =>
+      [...trendingTokens].sort((a, b) => {
+        const holderDiff = (b.holders || 0) - (a.holders || 0);
+        if (holderDiff !== 0) return holderDiff;
+        return b.marketCap - a.marketCap;
+      }),
+    [trendingTokens],
+  );
+  const graduatedTokens = useMemo(
+    () => trendingTokens.filter((item) => item.marketCap > 100_000_000),
+    [trendingTokens],
+  );
 
   const tokenListSubtitle = trendingError ? "Live feed reconnecting" : "Live GeckoTerminal pools";
 
@@ -446,21 +466,16 @@ export function TradePage({ mint }: { mint: string }) {
     onSplitBottom: () => void,
     onSplitRight: () => void,
   ) => {
-    const allTokens = [...sidebarTokens];
     const paneTokens =
       pane.tokenListMode === "most-held"
-        ? [...allTokens].sort((a, b) => {
-            const holderDiff = (b.holders || 0) - (a.holders || 0);
-            if (holderDiff !== 0) return holderDiff;
-            return b.marketCap - a.marketCap;
-          })
+        ? mostHeldTokens
         : pane.tokenListMode === "watchlist"
-          ? [...allTokens].filter((t) => watchlist.includes(t.mint))
+          ? watchlistTokens
           : pane.tokenListMode === "crypto"
-            ? [...allTokens].filter((t) => t.symbol === "SOL" || t.symbol === "USDC")
+            ? trendingTokens.filter((t) => t.symbol === "SOL" || t.symbol === "USDC")
             : pane.tokenListMode === "graduates"
-              ? [...allTokens].filter((t) => t.marketCap > 100_000_000)
-              : allTokens;
+              ? graduatedTokens
+              : trendingTokens;
 
     return (
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
