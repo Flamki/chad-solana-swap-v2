@@ -30,7 +30,7 @@ import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, rawAmountFromUi } from "
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
-const MAX_PRICE_IMPACT_PCT = 25;
+const HIGH_PRICE_IMPACT_PCT = 25;
 
 type TradeReceipt = {
   signature: string;
@@ -208,7 +208,7 @@ function SwapPanelCore({
   const tokenValue = positionQuery.data?.valueUsd ?? 0;
   const quoteReady = Boolean(quoteQuery.data && hasValidAmount);
   const priceImpactTooHigh =
-    quoteReady && (quoteQuery.data?.priceImpactPct ?? 0) > MAX_PRICE_IMPACT_PCT;
+    quoteReady && (quoteQuery.data?.priceImpactPct ?? 0) > HIGH_PRICE_IMPACT_PCT;
   const quoteError = quoteQuery.error instanceof Error ? quoteQuery.error.message : "";
   const quoteUnavailable = hasValidAmount && quoteQuery.isError && !quoteQuery.data;
   const amountTooSmall = amount.length > 0 && amt > 0 && rawAmount <= 0n;
@@ -242,7 +242,6 @@ function SwapPanelCore({
     if (quoteQuery.isFetching) return "Refreshing quote";
     if (quoteUnavailable) return "No Jupiter quote";
     if (!quoteReady) return "Waiting for quote";
-    if (priceImpactTooHigh) return "Price impact too high";
     if (!inputBalanceReady) return "Checking balance";
     if (!hasInputBalance) return `Deposit ${pair.inputSymbol} first`;
     return `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
@@ -257,7 +256,6 @@ function SwapPanelCore({
         !onSignTransaction ||
         !hasValidAmount ||
         !quoteReady ||
-        priceImpactTooHigh ||
         !inputBalanceReady ||
         !hasInputBalance));
 
@@ -326,11 +324,6 @@ function SwapPanelCore({
 
     if (!hasInputBalance) {
       setTradeError(`Insufficient ${pair.inputSymbol} balance.`);
-      return;
-    }
-
-    if (priceImpactTooHigh) {
-      setTradeError(quoteStatus);
       return;
     }
 
