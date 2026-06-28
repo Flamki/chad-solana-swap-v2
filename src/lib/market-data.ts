@@ -701,7 +701,23 @@ export async function recordTokenIntent(intent: {
 }
 
 export async function recordTradeReceipt(receipt: TradeReceiptRecord) {
-  if (!supabase || receipt.mode !== "mainnet") return { stored: false };
+  if (receipt.mode !== "mainnet") return { stored: false };
+
+  try {
+    const response = await fetch("/api/trade/receipt", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(receipt),
+    });
+
+    if (response.ok) {
+      return (await response.json()) as { stored: boolean; reason?: string };
+    }
+  } catch {
+    // Fall back to the direct Supabase client below for older/local environments.
+  }
+
+  if (!supabase) return { stored: false };
 
   const { error } = await supabase.from("trade_receipts").upsert(
     {
@@ -1092,6 +1108,7 @@ export async function fetchAppLeaderboard(
   }
 
   return Array.from(users.values())
+    .filter((user) => user.trades > 0)
     .sort((left, right) => {
       if (right.volumeSol !== left.volumeSol) return right.volumeSol - left.volumeSol;
       if (right.trades !== left.trades) return right.trades - left.trades;

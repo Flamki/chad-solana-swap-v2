@@ -391,6 +391,7 @@ function SwapPanelCore({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["token-position", walletAddress] }),
         queryClient.invalidateQueries({ queryKey: ["trade-receipts", walletAddress] }),
+        queryClient.invalidateQueries({ queryKey: ["app-leaderboard"] }),
         quoteQuery.refetch(),
       ]);
     } catch (swapError) {

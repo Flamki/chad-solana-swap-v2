@@ -37,6 +37,7 @@ import {
   type ChartInterval,
   useAppLeaderboard,
   useCryptoTokens,
+  recordTradeReceipt,
   useTokenHolders,
   useTokenMarket,
   useTokenOhlcv,
@@ -45,6 +46,7 @@ import {
   useTrendingTokens,
   useWatchlistTokenMarkets,
   syncWatchlistToken,
+  type TradeReceiptRecord,
 } from "@/lib/market-data";
 import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
@@ -286,6 +288,7 @@ const leaderboardPeriods: { key: AppLeaderboardPeriod; label: string }[] = [
 ];
 const hiddenSidebarTabs = new Set(["Alerts"]);
 const legacyWatchlistStorageKey = "chadwallet_watchlist";
+const localTradeReceiptStorageKey = "chadwallet-trade-receipts";
 
 function watchlistStorageKey(wallet?: string) {
   return wallet ? `${legacyWatchlistStorageKey}:${wallet}` : legacyWatchlistStorageKey;
@@ -459,6 +462,33 @@ export function TradePage({ mint }: { mint: string }) {
       return merged;
     });
   }, [storedWatchlist.data, walletAddress]);
+
+  useEffect(() => {
+    if (!walletAddress) return;
+
+    try {
+      const receipts = JSON.parse(
+        window.localStorage.getItem(localTradeReceiptStorageKey) || "[]",
+      ) as TradeReceiptRecord[];
+      const mainnetReceipts = receipts.filter(
+        (receipt) =>
+          receipt.mode === "mainnet" &&
+          receipt.wallet?.toLowerCase() === walletAddress.toLowerCase() &&
+          receipt.signature,
+      );
+
+      if (!mainnetReceipts.length) return;
+
+      void Promise.allSettled(mainnetReceipts.map((receipt) => recordTradeReceipt(receipt))).then(
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ["trade-receipts", walletAddress] });
+          void queryClient.invalidateQueries({ queryKey: ["app-leaderboard"] });
+        },
+      );
+    } catch {
+      // Local receipts are best-effort recovery data only.
+    }
+  }, [queryClient, walletAddress]);
 
   const toggleWatchlist = (mint: string) => {
     setWatchlist((prev) => {
