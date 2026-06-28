@@ -26,7 +26,12 @@ import { hasPrivy } from "@/lib/env";
 import {
   type PortfolioHistoryPoint,
   type PortfolioHistoryRange,
+  type TradeReceiptRecord,
+  type UserProfileRecord,
+  recordUserProfile,
   usePortfolioHistory,
+  useStoredTradeReceipts,
+  useStoredUserProfile,
   useTokenPosition,
 } from "@/lib/market-data";
 import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
@@ -35,22 +40,7 @@ const RECEIPT_KEY = "chadwallet-trade-receipts";
 const PROFILE_KEY = "chadwallet-profile";
 const BIO_MAX_LENGTH = 160;
 
-type TradeReceipt = {
-  signature: string;
-  status: "submitted" | "confirmed" | "finalized";
-  slot: number | null;
-  wallet: string;
-  side: "buy" | "sell";
-  inputSymbol: string;
-  outputSymbol: string;
-  inputAmount: string;
-  outputAmount: number;
-  route: string;
-  router: string;
-  tokenMint: string;
-  createdAt: string;
-  explorerUrl: string;
-};
+type TradeReceipt = TradeReceiptRecord;
 
 type StoredProfile = {
   username: string;
@@ -77,13 +67,18 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
   const email = getLoginEmail(user);
   const defaultDisplayName = getDisplayName(user, email);
   const defaultHandle = getProfileHandle(defaultDisplayName, email);
-  const { profile, saveProfile } = useStoredProfile(address, {
-    username: defaultHandle,
-    displayName: defaultDisplayName,
-    bio: "",
-    avatarDataUrl: "",
-    bannerDataUrl: "",
-  });
+  const storedProfile = useStoredUserProfile(address);
+  const { profile, saveProfile } = useStoredProfile(
+    address,
+    {
+      username: defaultHandle,
+      displayName: defaultDisplayName,
+      bio: "",
+      avatarDataUrl: "",
+      bannerDataUrl: "",
+    },
+    storedProfile.data,
+  );
   const displayName = profile.displayName || defaultDisplayName;
   const handle = profile.username || defaultHandle;
   const bio = profile.bio;
@@ -106,7 +101,12 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
   const [range, setRange] = useState<PortfolioHistoryRange>("24H");
   const [swapTab, setSwapTab] = useState<"swaps" | "buys" | "sells">("swaps");
   const [positionTab, setPositionTab] = useState<"open" | "closed">("open");
-  const receipts = useTradeReceipts(address);
+  const storedReceipts = useStoredTradeReceipts(address);
+  const localReceipts = useLocalTradeReceipts(address);
+  const receipts = useMemo(
+    () => mergeTradeReceipts(storedReceipts.data ?? [], localReceipts),
+    [localReceipts, storedReceipts.data],
+  );
   const cashBalance = usdc.data?.balance ?? 0;
   const solBalance = sol.data?.balance ?? 0;
   const solValue = sol.data?.valueUsd ?? 0;
@@ -369,10 +369,11 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
                   </button>
                 ))}
               </div>
-              <div className="grid min-w-0 grid-cols-[minmax(0,1.1fr)_minmax(66px,0.7fr)_minmax(0,1.15fr)_minmax(60px,0.75fr)] border-b border-[#171320] px-4 py-2 text-xs font-semibold text-[#5c5669]">
+              <div className="grid min-w-0 grid-cols-[minmax(58px,0.75fr)_minmax(52px,0.55fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(66px,0.7fr)] border-b border-[#171320] px-4 py-2 text-xs font-semibold text-[#5c5669]">
                 <span className="min-w-0 truncate">Token</span>
                 <span className="min-w-0 truncate">Action</span>
                 <span className="min-w-0 truncate">Amount</span>
+                <span className="min-w-0 truncate">Tx</span>
                 <span className="min-w-0 truncate text-right">Time</span>
               </div>
               {visibleReceipts.length ? (
@@ -383,7 +384,7 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
                       href={receipt.explorerUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="grid min-w-0 grid-cols-[minmax(0,1.1fr)_minmax(66px,0.7fr)_minmax(0,1.15fr)_minmax(60px,0.75fr)] px-4 py-3 text-xs font-semibold transition hover:bg-[#151221]"
+                      className="grid min-w-0 grid-cols-[minmax(58px,0.75fr)_minmax(52px,0.55fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(66px,0.7fr)] px-4 py-3 text-xs font-semibold transition hover:bg-[#151221]"
                     >
                       <span className="min-w-0 truncate text-white">{receipt.outputSymbol}</span>
                       <span
@@ -395,6 +396,11 @@ function ConnectedTradeProfileCenter({ solPrice }: { solPrice: number }) {
                       </span>
                       <span className="min-w-0 truncate font-mono text-[#a9b0d4]">
                         {receipt.inputAmount} {receipt.inputSymbol}
+                      </span>
+                      <span className="min-w-0 truncate font-mono text-[#7da1ff]">
+                        {receipt.signature.startsWith("paper-")
+                          ? "paper"
+                          : `${receipt.signature.slice(0, 4)}...${receipt.signature.slice(-4)}`}
                       </span>
                       <span className="min-w-0 truncate text-right text-[#5c5669]">
                         {new Date(receipt.createdAt).toLocaleDateString()}
@@ -864,7 +870,7 @@ function ProfileTrader({ trader }: { trader: { name: string; handle: string; col
   );
 }
 
-function useTradeReceipts(walletAddress?: string) {
+function useLocalTradeReceipts(walletAddress?: string) {
   const [receipts, setReceipts] = useState<TradeReceipt[]>([]);
 
   useEffect(() => {
@@ -890,7 +896,27 @@ function useTradeReceipts(walletAddress?: string) {
   return receipts;
 }
 
-function useStoredProfile(walletAddress: string | undefined, fallback: StoredProfile) {
+function mergeTradeReceipts(primary: TradeReceipt[], fallback: TradeReceipt[]) {
+  const bySignature = new Map<string, TradeReceipt>();
+
+  for (const receipt of [...primary, ...fallback]) {
+    if (!receipt.signature) continue;
+    bySignature.set(receipt.signature, {
+      ...receipt,
+      explorerUrl: receipt.explorerUrl ?? `https://solscan.io/tx/${receipt.signature}`,
+    });
+  }
+
+  return Array.from(bySignature.values())
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
+    .slice(0, 50);
+}
+
+function useStoredProfile(
+  walletAddress: string | undefined,
+  fallback: StoredProfile,
+  remoteProfile?: UserProfileRecord | null,
+) {
   const [profile, setProfile] = useState<StoredProfile>(fallback);
   const fallbackUsername = fallback.username;
   const fallbackDisplayName = fallback.displayName;
@@ -909,6 +935,21 @@ function useStoredProfile(walletAddress: string | undefined, fallback: StoredPro
 
     if (!walletAddress) {
       setProfile(fallbackProfile);
+      return;
+    }
+
+    if (remoteProfile) {
+      setProfile({
+        username: normalizeHandle(remoteProfile.username || fallbackUsername) || fallbackUsername,
+        displayName: remoteProfile.displayName?.trim() || fallbackDisplayName,
+        bio: (remoteProfile.bio || "").slice(0, BIO_MAX_LENGTH),
+        avatarDataUrl: isDataImage(remoteProfile.avatarDataUrl)
+          ? remoteProfile.avatarDataUrl
+          : fallbackAvatarDataUrl,
+        bannerDataUrl: isDataImage(remoteProfile.bannerDataUrl)
+          ? remoteProfile.bannerDataUrl
+          : fallbackBannerDataUrl,
+      });
       return;
     }
 
@@ -940,6 +981,7 @@ function useStoredProfile(walletAddress: string | undefined, fallback: StoredPro
     fallbackBio,
     fallbackDisplayName,
     fallbackUsername,
+    remoteProfile,
     walletAddress,
   ]);
 
@@ -955,6 +997,14 @@ function useStoredProfile(walletAddress: string | undefined, fallback: StoredPro
 
     if (!walletAddress) return;
     window.localStorage.setItem(`${PROFILE_KEY}:${walletAddress}`, JSON.stringify(normalized));
+    void recordUserProfile({
+      wallet: walletAddress,
+      username: normalized.username,
+      displayName: normalized.displayName,
+      bio: normalized.bio,
+      avatarDataUrl: normalized.avatarDataUrl,
+      bannerDataUrl: normalized.bannerDataUrl,
+    });
   };
 
   return { profile, saveProfile };

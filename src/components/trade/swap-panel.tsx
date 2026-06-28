@@ -20,7 +20,9 @@ import {
   createJupiterSwapOrder,
   executeJupiterSwap,
   fetchJupiterQuote,
+  recordTradeReceipt,
   recordTokenIntent,
+  type TradeReceiptRecord,
   useTokenTrades,
   useTokenPosition,
 } from "@/lib/market-data";
@@ -33,23 +35,7 @@ const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
 const HIGH_PRICE_IMPACT_PCT = 25;
 
-type TradeReceipt = {
-  signature: string;
-  status: "paper" | "submitted" | "confirmed" | "finalized";
-  slot: number | null;
-  wallet: string;
-  mode: "paper" | "mainnet";
-  side: "buy" | "sell";
-  inputSymbol: string;
-  outputSymbol: string;
-  inputAmount: string;
-  outputAmount: number;
-  route: string;
-  router: string;
-  tokenMint: string;
-  createdAt: string;
-  explorerUrl?: string;
-};
+type TradeReceipt = TradeReceiptRecord;
 
 function formatTokenAmount(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "0.00";
@@ -382,7 +368,8 @@ function SwapPanelCore({
         inputSymbol: pair.inputSymbol,
         outputSymbol: pair.outputSymbol,
         inputAmount: amount,
-        outputAmount: order.outUiAmount,
+        outputAmount:
+          rawAmountToUi(result.outputAmountResult, pair.outputDecimals) ?? order.outUiAmount,
         route: order.route,
         router: order.router,
         tokenMint: token.mint,
@@ -391,15 +378,19 @@ function SwapPanelCore({
       };
       setReceipt(nextReceipt);
       saveTradeReceipt(nextReceipt);
-      await recordTokenIntent({
-        wallet: walletAddress,
-        mint: token.mint,
-        symbol: token.symbol,
-        side,
-        amount,
-      });
+      await Promise.allSettled([
+        recordTokenIntent({
+          wallet: walletAddress,
+          mint: token.mint,
+          symbol: token.symbol,
+          side,
+          amount,
+        }),
+        recordTradeReceipt(nextReceipt),
+      ]);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["token-position", walletAddress] }),
+        queryClient.invalidateQueries({ queryKey: ["trade-receipts", walletAddress] }),
         quoteQuery.refetch(),
       ]);
     } catch (swapError) {
@@ -908,6 +899,12 @@ function bytesToBase64(bytes: Uint8Array) {
     binary += String.fromCharCode(bytes[index]);
   }
   return window.btoa(binary);
+}
+
+function rawAmountToUi(rawAmount: string | undefined, decimals: number) {
+  if (!rawAmount) return null;
+  const value = Number(rawAmount) / 10 ** decimals;
+  return Number.isFinite(value) ? value : null;
 }
 
 function normalizeSwapError(error: unknown) {

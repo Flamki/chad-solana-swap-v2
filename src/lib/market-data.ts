@@ -57,6 +57,34 @@ export type SolanaTransactionStatus = {
   checkedAt: string;
 };
 
+export type TradeReceiptRecord = {
+  signature: string;
+  status: "paper" | "submitted" | "confirmed" | "finalized";
+  slot: number | null;
+  wallet: string;
+  mode: "paper" | "mainnet";
+  side: "buy" | "sell";
+  inputSymbol: string;
+  outputSymbol: string;
+  inputAmount: string;
+  outputAmount: number;
+  route: string;
+  router: string;
+  tokenMint: string;
+  createdAt: string;
+  explorerUrl?: string;
+};
+
+export type UserProfileRecord = {
+  wallet: string;
+  username: string;
+  displayName: string;
+  bio: string;
+  avatarDataUrl: string;
+  bannerDataUrl: string;
+  updatedAt?: string;
+};
+
 export type ChartInterval = "1m" | "5m" | "15m" | "1H" | "4H" | "1D";
 
 export type PricePoint = {
@@ -622,6 +650,165 @@ export async function recordTokenIntent(intent: {
   return { stored: true };
 }
 
+export async function recordTradeReceipt(receipt: TradeReceiptRecord) {
+  if (!supabase || receipt.mode !== "mainnet") return { stored: false };
+
+  const { error } = await supabase.from("trade_receipts").upsert(
+    {
+      signature: receipt.signature,
+      wallet: receipt.wallet,
+      status: receipt.status,
+      slot: receipt.slot,
+      mode: receipt.mode,
+      side: receipt.side,
+      input_symbol: receipt.inputSymbol,
+      output_symbol: receipt.outputSymbol,
+      input_amount: receipt.inputAmount,
+      output_amount: receipt.outputAmount,
+      route: receipt.route,
+      router: receipt.router,
+      token_mint: receipt.tokenMint,
+      created_at: receipt.createdAt,
+      explorer_url: receipt.explorerUrl ?? `https://solscan.io/tx/${receipt.signature}`,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "signature" },
+  );
+
+  if (error) throw error;
+  return { stored: true };
+}
+
+export async function fetchStoredTradeReceipts(wallet: string, signal?: AbortSignal) {
+  if (!supabase) return [];
+
+  const query = supabase
+    .from("trade_receipts")
+    .select(
+      "signature,status,slot,wallet,mode,side,input_symbol,output_symbol,input_amount,output_amount,route,router,token_mint,created_at,explorer_url",
+    )
+    .eq("wallet", wallet)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  return (data ?? []).map(
+    (receipt): TradeReceiptRecord => ({
+      signature: receipt.signature,
+      status: receipt.status,
+      slot: receipt.slot,
+      wallet: receipt.wallet,
+      mode: receipt.mode,
+      side: receipt.side,
+      inputSymbol: receipt.input_symbol,
+      outputSymbol: receipt.output_symbol,
+      inputAmount: receipt.input_amount,
+      outputAmount: Number(receipt.output_amount ?? 0),
+      route: receipt.route,
+      router: receipt.router,
+      tokenMint: receipt.token_mint,
+      createdAt: receipt.created_at,
+      explorerUrl: receipt.explorer_url ?? `https://solscan.io/tx/${receipt.signature}`,
+    }),
+  );
+}
+
+export async function fetchStoredWatchlist(wallet: string, signal?: AbortSignal) {
+  if (!supabase) return [];
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await supabase
+    .from("watchlist_tokens")
+    .select("mint")
+    .eq("wallet", wallet)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []).map((item) => item.mint).filter(Boolean);
+}
+
+export async function syncWatchlistToken({
+  wallet,
+  mint,
+  watched,
+}: {
+  wallet?: string;
+  mint: string;
+  watched: boolean;
+}) {
+  if (!supabase || !wallet) return { stored: false };
+
+  if (watched) {
+    const { error } = await supabase.from("watchlist_tokens").upsert(
+      {
+        wallet,
+        mint,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "wallet,mint" },
+    );
+    if (error) throw error;
+    return { stored: true };
+  }
+
+  const { error } = await supabase
+    .from("watchlist_tokens")
+    .delete()
+    .eq("wallet", wallet)
+    .eq("mint", mint);
+
+  if (error) throw error;
+  return { stored: true };
+}
+
+export async function fetchStoredUserProfile(wallet: string, signal?: AbortSignal) {
+  if (!supabase) return null;
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("wallet,username,display_name,bio,avatar_data_url,banner_data_url,updated_at")
+    .eq("wallet", wallet)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  return {
+    wallet: data.wallet,
+    username: data.username,
+    displayName: data.display_name,
+    bio: data.bio,
+    avatarDataUrl: data.avatar_data_url,
+    bannerDataUrl: data.banner_data_url,
+    updatedAt: data.updated_at,
+  } satisfies UserProfileRecord;
+}
+
+export async function recordUserProfile(profile: UserProfileRecord) {
+  if (!supabase) return { stored: false };
+
+  const { error } = await supabase.from("user_profiles").upsert(
+    {
+      wallet: profile.wallet,
+      username: profile.username,
+      display_name: profile.displayName,
+      bio: profile.bio,
+      avatar_data_url: profile.avatarDataUrl,
+      banner_data_url: profile.bannerDataUrl,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "wallet" },
+  );
+
+  if (error) throw error;
+  return { stored: true };
+}
+
 export function useTrendingTokens() {
   return useQuery({
     queryKey: ["trending-tokens"],
@@ -670,6 +857,37 @@ export function useTokenTrades(mint: string, enabled = true) {
     enabled,
     refetchInterval: 15_000,
     staleTime: 10_000,
+    retry: 1,
+  });
+}
+
+export function useStoredTradeReceipts(wallet?: string) {
+  return useQuery({
+    queryKey: ["trade-receipts", wallet],
+    queryFn: ({ signal }) => fetchStoredTradeReceipts(wallet!, signal),
+    enabled: Boolean(wallet && supabase),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+    retry: 1,
+  });
+}
+
+export function useStoredWatchlist(wallet?: string) {
+  return useQuery({
+    queryKey: ["watchlist", wallet],
+    queryFn: ({ signal }) => fetchStoredWatchlist(wallet!, signal),
+    enabled: Boolean(wallet && supabase),
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+export function useStoredUserProfile(wallet?: string) {
+  return useQuery({
+    queryKey: ["user-profile", wallet],
+    queryFn: ({ signal }) => fetchStoredUserProfile(wallet!, signal),
+    enabled: Boolean(wallet && supabase),
+    staleTime: 30_000,
     retry: 1,
   });
 }

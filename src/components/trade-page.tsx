@@ -1,5 +1,8 @@
 "use client";
 
+import { usePrivy } from "@privy-io/react-auth";
+import { useWallets } from "@privy-io/react-auth/solana";
+import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -30,8 +33,10 @@ import {
   useTokenHolders,
   useTokenMarket,
   useTokenOhlcv,
+  useStoredWatchlist,
   useTokenTrades,
   useTrendingTokens,
+  syncWatchlistToken,
 } from "@/lib/market-data";
 import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
@@ -205,6 +210,10 @@ const sidebarPrimaryTabs = ["Alerts", "Tokens", "Leaderboard", "Feed"];
 const sidebarFilterTabs = ["Watchlist", "Crypto", "Trending", "Most held", "Graduates"];
 
 export function TradePage({ mint }: { mint: string }) {
+  const queryClient = useQueryClient();
+  const { user } = usePrivy();
+  const { wallets } = useWallets();
+  const walletAddress = wallets[0]?.address ?? user?.wallet?.address;
   const initialToken = useMemo(() => createFallbackToken(mint), [mint]);
   const market = useTokenMarket(mint);
   const solMarket = useTokenMarket(SOL_MINT);
@@ -304,6 +313,7 @@ export function TradePage({ mint }: { mint: string }) {
   const up = token.change24h >= 0;
 
   const [watchlist, setWatchlist] = useState<string[]>([]);
+  const storedWatchlist = useStoredWatchlist(walletAddress);
 
   useEffect(() => {
     const saved = localStorage.getItem("chadwallet_watchlist");
@@ -316,10 +326,25 @@ export function TradePage({ mint }: { mint: string }) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!storedWatchlist.data) return;
+    setWatchlist((current) => {
+      const merged = Array.from(new Set([...storedWatchlist.data, ...current]));
+      localStorage.setItem("chadwallet_watchlist", JSON.stringify(merged));
+      return merged;
+    });
+  }, [storedWatchlist.data]);
+
   const toggleWatchlist = (mint: string) => {
     setWatchlist((prev) => {
       const next = prev.includes(mint) ? prev.filter((m) => m !== mint) : [...prev, mint];
+      const watched = next.includes(mint);
       localStorage.setItem("chadwallet_watchlist", JSON.stringify(next));
+      void syncWatchlistToken({ wallet: walletAddress, mint, watched }).finally(() => {
+        if (walletAddress) {
+          void queryClient.invalidateQueries({ queryKey: ["watchlist", walletAddress] });
+        }
+      });
       return next;
     });
   };
