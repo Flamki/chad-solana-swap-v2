@@ -769,15 +769,18 @@ html {
 }
 
 .fomo-terminal .token-live-value {
+  display: inline-block;
   transition: color 120ms ease;
 }
 
 .fomo-terminal .token-live-value-up {
-  animation: token-value-flash-up 850ms ease-out;
+  color: #20d772;
+  animation: token-value-flash-up 950ms ease-out;
 }
 
 .fomo-terminal .token-live-value-down {
-  animation: token-value-flash-down 850ms ease-out;
+  color: #ff653d;
+  animation: token-value-flash-down 950ms ease-out;
 }
 
 .fomo-terminal header button:not(.token-search-trigger),
@@ -819,13 +822,19 @@ html {
 @keyframes token-value-flash-up {
   0% {
     color: #ffffff;
-    text-shadow: 0 0 14px rgba(32, 215, 114, 0.82);
+    transform: translateY(-1px);
+    text-shadow:
+      0 0 10px rgba(32, 215, 114, 0.96),
+      0 0 22px rgba(32, 215, 114, 0.55);
   }
-  26% {
+  34% {
     color: #20d772;
+    transform: translateY(0);
+    text-shadow: 0 0 14px rgba(32, 215, 114, 0.55);
   }
   100% {
-    color: inherit;
+    color: #20d772;
+    transform: translateY(0);
     text-shadow: none;
   }
 }
@@ -833,13 +842,19 @@ html {
 @keyframes token-value-flash-down {
   0% {
     color: #ffffff;
-    text-shadow: 0 0 14px rgba(255, 101, 61, 0.82);
+    transform: translateY(1px);
+    text-shadow:
+      0 0 10px rgba(255, 101, 61, 0.96),
+      0 0 22px rgba(255, 101, 61, 0.55);
   }
-  26% {
+  34% {
     color: #ff653d;
+    transform: translateY(0);
+    text-shadow: 0 0 14px rgba(255, 101, 61, 0.55);
   }
   100% {
-    color: inherit;
+    color: #ff653d;
+    transform: translateY(0);
     text-shadow: none;
   }
 }

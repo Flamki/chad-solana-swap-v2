@@ -1157,7 +1157,9 @@ function TrendingToken({
                 ? "token-live-value-up"
                 : marketCapFlash === "down"
                   ? "token-live-value-down"
-                  : "text-[#e8e4f0]"
+                  : up
+                    ? "text-[#20d772]"
+                    : "text-[#ff653d]"
             }`}
           >
             ${formatCompact(token.marketCap)} MC
@@ -1170,7 +1172,9 @@ function TrendingToken({
                 ? "token-live-value-up"
                 : priceFlash === "down"
                   ? "token-live-value-down"
-                  : "text-[#7a7488]"
+                  : up
+                    ? "text-[#928ba0]"
+                    : "text-[#a17f73]"
             }`}
           >
             {formatUsd(token.price)}
