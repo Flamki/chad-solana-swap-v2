@@ -39,6 +39,7 @@ import {
   useStoredWatchlist,
   useTokenTrades,
   useTrendingTokens,
+  useWatchlistTokenMarkets,
   syncWatchlistToken,
 } from "@/lib/market-data";
 import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } from "@/lib/tokens";
@@ -212,6 +213,11 @@ function LeaderboardRow({ item }: { item: LeaderboardItem }) {
 const sidebarPrimaryTabs = ["Tokens", "Leaderboard", "Feed"];
 const sidebarFilterTabs = ["Watchlist", "Crypto", "Trending", "Most held", "Graduates"];
 const hiddenSidebarTabs = new Set(["Alerts"]);
+const legacyWatchlistStorageKey = "chadwallet_watchlist";
+
+function watchlistStorageKey(wallet?: string) {
+  return wallet ? `${legacyWatchlistStorageKey}:${wallet}` : legacyWatchlistStorageKey;
+}
 
 function normalizeSidebarPane(pane: SidebarPaneState): SidebarPaneState {
   return hiddenSidebarTabs.has(pane.activeTab) ? { ...pane, activeTab: "Tokens" } : pane;
@@ -332,32 +338,47 @@ export function TradePage({ mint }: { mint: string }) {
 
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const storedWatchlist = useStoredWatchlist(walletAddress);
+  const watchlistMarkets = useWatchlistTokenMarkets(watchlist);
 
   useEffect(() => {
-    const saved = localStorage.getItem("chadwallet_watchlist");
-    if (saved) {
+    const keys = Array.from(
+      new Set([watchlistStorageKey(walletAddress), legacyWatchlistStorageKey]),
+    );
+    const saved = keys.flatMap((key) => {
       try {
-        setWatchlist(JSON.parse(saved));
-      } catch (e) {
-        // Safe fallback
+        return JSON.parse(localStorage.getItem(key) || "[]") as string[];
+      } catch {
+        return [];
       }
+    });
+
+    if (saved.length) {
+      setWatchlist(Array.from(new Set(saved.filter(Boolean))));
     }
-  }, []);
+  }, [walletAddress]);
 
   useEffect(() => {
     if (!storedWatchlist.data) return;
     setWatchlist((current) => {
       const merged = Array.from(new Set([...storedWatchlist.data, ...current]));
-      localStorage.setItem("chadwallet_watchlist", JSON.stringify(merged));
+      localStorage.setItem(watchlistStorageKey(walletAddress), JSON.stringify(merged));
       return merged;
     });
-  }, [storedWatchlist.data]);
+  }, [storedWatchlist.data, walletAddress]);
+
+  useEffect(() => {
+    if (!walletAddress || !watchlist.length) return;
+
+    for (const mint of watchlist) {
+      void syncWatchlistToken({ wallet: walletAddress, mint, watched: true });
+    }
+  }, [walletAddress, watchlist]);
 
   const toggleWatchlist = (mint: string) => {
     setWatchlist((prev) => {
       const next = prev.includes(mint) ? prev.filter((m) => m !== mint) : [...prev, mint];
       const watched = next.includes(mint);
-      localStorage.setItem("chadwallet_watchlist", JSON.stringify(next));
+      localStorage.setItem(watchlistStorageKey(walletAddress), JSON.stringify(next));
       void syncWatchlistToken({ wallet: walletAddress, mint, watched }).finally(() => {
         if (walletAddress) {
           void queryClient.invalidateQueries({ queryKey: ["watchlist", walletAddress] });
@@ -375,8 +396,8 @@ export function TradePage({ mint }: { mint: string }) {
   }, [holders.data]);
 
   const sidebarTokens = useMemo(() => {
-    return uniqueTokens([token, ...trending]);
-  }, [token, trending]);
+    return uniqueTokens([token, ...(watchlistMarkets.data ?? []), ...trending]);
+  }, [token, watchlistMarkets.data, trending]);
 
   const tokenListSubtitle = trendingError ? "Live feed reconnecting" : "Live GeckoTerminal pools";
 
@@ -410,7 +431,7 @@ export function TradePage({ mint }: { mint: string }) {
     onSplitBottom: () => void,
     onSplitRight: () => void,
   ) => {
-    const allTokens = [...uniqueTokens([...trending, token])];
+    const allTokens = [...sidebarTokens];
     const paneTokens =
       pane.tokenListMode === "most-held"
         ? [...allTokens].sort((a, b) => {

@@ -1,9 +1,10 @@
 import { createClient } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 
 import { env, hasJupiterKey, hasRpcEndpoint, hasSupabase } from "@/lib/env";
 import { fetchMarketJson } from "@/lib/market-api";
-import { SOL_MINT, USDC_MINT, type Token, mergeToken } from "@/lib/tokens";
+import { SOL_MINT, USDC_MINT, createFallbackToken, type Token, mergeToken } from "@/lib/tokens";
 
 type JupiterPriceResponse = Record<
   string,
@@ -274,6 +275,16 @@ export async function fetchTokenMarket(mint: string, signal?: AbortSignal) {
   return fetchMarketJson<Token>(`/api/market/token/${encodeURIComponent(mint)}`, {
     signal,
   });
+}
+
+export async function fetchWatchlistTokenMarkets(mints: string[], signal?: AbortSignal) {
+  const ids = Array.from(new Set(mints)).filter(Boolean).slice(0, 60);
+  if (!ids.length) return [];
+
+  const results = await Promise.allSettled(ids.map((mint) => fetchTokenMarket(mint, signal)));
+  return results.map((result, index) =>
+    result.status === "fulfilled" ? result.value : createFallbackToken(ids[index]),
+  );
 }
 
 export async function fetchTokenOhlcv(
@@ -1130,6 +1141,19 @@ export function useStoredWatchlist(wallet?: string) {
     queryFn: ({ signal }) => fetchStoredWatchlist(wallet!, signal),
     enabled: Boolean(wallet && supabase),
     staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+export function useWatchlistTokenMarkets(mints: string[]) {
+  const key = useMemo(() => Array.from(new Set(mints)).filter(Boolean).sort(), [mints]);
+
+  return useQuery({
+    queryKey: ["watchlist-token-markets", key],
+    queryFn: ({ signal }) => fetchWatchlistTokenMarkets(key, signal),
+    enabled: key.length > 0,
+    refetchInterval: 60_000,
+    staleTime: 30_000,
     retry: 1,
   });
 }
