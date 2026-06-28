@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { apiError, birdeyeJson, tokenFromOverview } from "@/lib/server/birdeye";
+import { searchJupiterTokens } from "@/lib/server/jupiter-tokens";
 import { tokenFromFallbackProviders } from "@/lib/server/market-fallback";
 import { CRYPTO_TOKEN_MINTS, createFallbackToken, type Token } from "@/lib/tokens";
 
@@ -8,6 +9,14 @@ export const dynamic = "force-dynamic";
 export const revalidate = 30;
 
 async function fetchLiveCryptoToken(mint: string): Promise<Token> {
+  try {
+    const jupiterTokens = await searchJupiterTokens(mint, 5);
+    const exactToken = jupiterTokens.find((token) => token.mint === mint);
+    if (exactToken && exactToken.price > 0) return exactToken;
+  } catch {
+    // Continue through the remaining providers.
+  }
+
   try {
     const overview = await birdeyeJson<Parameters<typeof tokenFromOverview>[1]>(
       `/defi/token_overview?address=${encodeURIComponent(mint)}`,
