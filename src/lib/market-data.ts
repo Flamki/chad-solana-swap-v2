@@ -1,29 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
 import { useQuery } from "@tanstack/react-query";
 
-import { env, hasBirdeye, hasJupiterKey, hasRpcEndpoint, hasSupabase } from "@/lib/env";
+import { env, hasJupiterKey, hasRpcEndpoint, hasSupabase } from "@/lib/env";
 import { fetchMarketJson } from "@/lib/market-api";
-import { SOL_MINT, TOKENS, type Token, createFallbackToken, mergeToken } from "@/lib/tokens";
-
-const BIRDEYE_TRENDING_URL =
-  "https://public-api.birdeye.so/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=50";
-
-type BirdeyeTrendingResponse = {
-  success: boolean;
-  data?: {
-    updateUnixTime?: number;
-    tokens?: Array<{
-      address: string;
-      decimals?: number;
-      liquidity?: number;
-      logoURI?: string;
-      name?: string;
-      rank?: number;
-      symbol?: string;
-      volume24hUSD?: number;
-    }>;
-  };
-};
+import { SOL_MINT, type Token, mergeToken } from "@/lib/tokens";
 
 type JupiterPriceResponse = Record<
   string,
@@ -96,13 +76,22 @@ export type MarketDataset<T> = {
   status: MarketDataStatus;
   updatedAt: string;
   provider: "birdeye" | "geckoterminal" | "solana-rpc";
+  geckoPoolAddress?: string;
+  geckoTokenSide?: "base" | "quote";
+  geckoPoolName?: string;
+  geckoPoolDex?: string;
 };
 
 export type MarketTicker = {
   tokens: Token[];
   status: "live" | "cached" | "unavailable";
   updatedAt: string;
-  provider: "BirdEye + Jupiter" | "BirdEye" | "Jupiter";
+  provider:
+    | "BirdEye + Jupiter"
+    | "BirdEye"
+    | "GeckoTerminal + Jupiter"
+    | "GeckoTerminal"
+    | "Jupiter";
 };
 
 export type LiveTrade = {
@@ -149,47 +138,7 @@ export async function fetchJupiterPrices(mints: string[], signal?: AbortSignal) 
 }
 
 export async function fetchTrendingTokens(signal?: AbortSignal): Promise<Token[]> {
-  try {
-    return await fetchMarketJson<Token[]>("/api/market/trending", { signal });
-  } catch {
-    // Fall through to the direct public endpoint/fallback path for local demos.
-  }
-
-  if (!hasBirdeye) {
-    return enrichTokensWithJupiter(TOKENS, signal);
-  }
-
-  const response = await fetch(BIRDEYE_TRENDING_URL, {
-    signal,
-    headers: {
-      accept: "application/json",
-      "x-chain": "solana",
-      "X-API-KEY": env.birdeyeApiKey!,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Birdeye trending request failed (${response.status})`);
-  }
-
-  const payload = (await response.json()) as BirdeyeTrendingResponse;
-  const birdeyeTokens =
-    payload.data?.tokens?.map((token) =>
-      mergeToken(createFallbackToken(token.address), {
-        decimals: token.decimals,
-        holders: 0,
-        liquidity: token.liquidity ?? 0,
-        logo: token.logoURI,
-        marketCap: token.liquidity ? token.liquidity * 12 : 0,
-        name: token.name,
-        rank: token.rank,
-        source: "birdeye",
-        symbol: token.symbol,
-        volume24h: token.volume24hUSD ?? 0,
-      }),
-    ) ?? [];
-
-  return enrichTokensWithJupiter(birdeyeTokens.length ? birdeyeTokens : TOKENS, signal);
+  return fetchMarketJson<Token[]>("/api/market/trending", { signal });
 }
 
 export async function fetchMarketTicker(signal?: AbortSignal): Promise<MarketTicker> {
@@ -222,17 +171,9 @@ export async function enrichTokensWithJupiter(tokens: Token[], signal?: AbortSig
 }
 
 export async function fetchTokenMarket(mint: string, signal?: AbortSignal) {
-  try {
-    return await fetchMarketJson<Token>(`/api/market/token/${encodeURIComponent(mint)}`, {
-      signal,
-    });
-  } catch {
-    // Fall through to Jupiter/static fallback.
-  }
-
-  const base = TOKENS.find((token) => token.mint === mint) ?? createFallbackToken(mint);
-  const [token] = await enrichTokensWithJupiter([base], signal);
-  return token;
+  return fetchMarketJson<Token>(`/api/market/token/${encodeURIComponent(mint)}`, {
+    signal,
+  });
 }
 
 export async function fetchTokenOhlcv(

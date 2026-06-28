@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 
 import { birdeyeJson, tokenFromOverview } from "@/lib/server/birdeye";
-import { searchJupiterTokens } from "@/lib/server/jupiter-tokens";
-import { tokenFromFallbackProviders } from "@/lib/server/market-fallback";
-import { TOKENS, createFallbackToken, mergeToken, type Token } from "@/lib/tokens";
+import {
+  searchDexScreenerTokens,
+  searchGeckoTerminalTokens,
+  tokenFromFallbackProviders,
+} from "@/lib/server/market-fallback";
+import { createFallbackToken, mergeToken, type Token } from "@/lib/tokens";
 
 export const revalidate = 0;
 
@@ -76,13 +79,6 @@ function searchItems(data: BirdeyeSearchResponse, query: string) {
   return exactMatches.length ? exactMatches : normalized;
 }
 
-function fallbackSearch(query: string) {
-  const needle = query.toLowerCase();
-  return TOKENS.filter((token) =>
-    [token.mint, token.symbol, token.name].some((value) => value.toLowerCase().includes(needle)),
-  );
-}
-
 function looksLikeMint(query: string) {
   return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(query);
 }
@@ -96,11 +92,50 @@ function uniqueTokens(tokens: Token[]) {
   });
 }
 
+function normalizedSearchText(value: string | undefined) {
+  return (value ?? "").toLowerCase().replace(/^\$+/, "").trim();
+}
+
+function searchScore(token: Token, query: string) {
+  const rawNeedle = query.toLowerCase().trim();
+  const rawSymbol = (token.symbol ?? "").toLowerCase().trim();
+  const rawName = (token.name ?? "").toLowerCase().trim();
+  const needle = normalizedSearchText(query);
+  const symbol = normalizedSearchText(token.symbol);
+  const name = normalizedSearchText(token.name);
+  const mint = token.mint.toLowerCase();
+  const liquidity = token.liquidity ?? 0;
+  const volume = token.volume24h ?? 0;
+  let score = Math.log10(Math.max(liquidity, volume, 1));
+
+  if (rawSymbol === rawNeedle) score += 1_500;
+  if (rawName === rawNeedle) score += 750;
+
+  if (symbol === needle) score += 1_000;
+  else if (symbol.startsWith(needle)) score += 500;
+  else if (symbol.includes(needle)) score += 250;
+
+  if (name === needle) score += 350;
+  else if (name.startsWith(needle)) score += 180;
+  else if (name.includes(needle)) score += 80;
+
+  if (mint === query.toLowerCase()) score += 2_000;
+
+  return score;
+}
+
+function rankedTokens(tokens: Token[], query: string) {
+  return uniqueTokens(tokens).sort((a, b) => searchScore(b, query) - searchScore(a, query));
+}
+
 async function directMintSearch(query: string) {
   if (!looksLikeMint(query)) return null;
 
-  const known = TOKENS.find((token) => token.mint === query);
-  if (known) return known;
+  try {
+    return await tokenFromFallbackProviders(query);
+  } catch {
+    // Fall through to BirdEye below.
+  }
 
   try {
     const overview = await birdeyeJson<Parameters<typeof tokenFromOverview>[1]>(
@@ -108,11 +143,7 @@ async function directMintSearch(query: string) {
     );
     return tokenFromOverview(query, overview);
   } catch {
-    try {
-      return await tokenFromFallbackProviders(query);
-    } catch {
-      return createFallbackToken(query);
-    }
+    return null;
   }
 }
 
@@ -131,7 +162,7 @@ async function birdeyeSearch(query: string) {
 
       return searchItems(data, query).map(tokenFromSearch);
     } catch {
-      return searchJupiterTokens(query, SEARCH_LIMIT);
+      return [];
     }
   }
 }
@@ -144,20 +175,26 @@ export async function GET(request: Request) {
     return NextResponse.json([]);
   }
 
-  const curated = fallbackSearch(query);
   const directToken = await directMintSearch(query);
+  const [geckoTokens, dexTokens] = await Promise.all([
+    searchGeckoTerminalTokens(query, SEARCH_LIMIT).catch(() => []),
+    searchDexScreenerTokens(query, SEARCH_LIMIT).catch(() => []),
+  ]);
 
   try {
     const live = await birdeyeSearch(query);
     return NextResponse.json(
-      uniqueTokens([directToken, ...live, ...curated].filter(Boolean) as Token[]).slice(
-        0,
-        SEARCH_LIMIT,
-      ),
+      rankedTokens(
+        [directToken, ...geckoTokens, ...dexTokens, ...live].filter(Boolean) as Token[],
+        query,
+      ).slice(0, SEARCH_LIMIT),
     );
   } catch {
     return NextResponse.json(
-      uniqueTokens([directToken, ...curated].filter(Boolean) as Token[]).slice(0, SEARCH_LIMIT),
+      rankedTokens(
+        [directToken, ...geckoTokens, ...dexTokens].filter(Boolean) as Token[],
+        query,
+      ).slice(0, SEARCH_LIMIT),
     );
   }
 }

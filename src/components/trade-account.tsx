@@ -113,9 +113,11 @@ function ConnectedTradeAccount({
     return <SignInButton />;
   }
 
-  const cashBalance = usdc.data?.balance ?? 0;
+  const usdcBalance = usdc.data?.balance ?? 0;
   const solBalance = sol.data?.balance ?? 0;
-  const portfolioValue = cashBalance + (sol.data?.valueUsd ?? 0);
+  const solValue = sol.data?.valueUsd ?? 0;
+  const cashValue = usdcBalance + solValue;
+  const portfolioValue = cashValue;
   const loadingBalances = sol.isFetching || usdc.isFetching;
   const displayMoney = (value: number) =>
     blurBalances ? "****" : loadingBalances ? "..." : formatUsd(value);
@@ -153,7 +155,7 @@ function ConnectedTradeAccount({
           onClick={() => setDialog("deposit")}
           className="min-w-[108px] rounded-lg border border-[#201b2e] bg-[#100d18] px-3 py-1.5 text-left transition hover:bg-[#171320]"
         >
-          <div className="font-mono text-xs font-semibold">{displayMoney(cashBalance)} cash</div>
+          <div className="font-mono text-xs font-semibold">{displayMoney(cashValue)} cash</div>
           <div className="text-[10px] font-semibold text-[#5f73ff]">Deposit more</div>
         </button>
         <div className="min-w-[90px] rounded-lg border border-[#201b2e] bg-[#100d18] px-3 py-1.5">

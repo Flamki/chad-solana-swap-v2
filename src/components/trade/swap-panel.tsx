@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { hasPrivy } from "@/lib/env";
+import { hasPrivy, isTradeTestMode } from "@/lib/env";
 import {
   confirmSolanaTransaction,
   createJupiterSwapOrder,
@@ -33,9 +33,10 @@ const RECEIPT_KEY = "chadwallet-trade-receipts";
 
 type TradeReceipt = {
   signature: string;
-  status: "submitted" | "confirmed" | "finalized";
+  status: "paper" | "submitted" | "confirmed" | "finalized";
   slot: number | null;
   wallet: string;
+  mode: "paper" | "mainnet";
   side: "buy" | "sell";
   inputSymbol: string;
   outputSymbol: string;
@@ -45,7 +46,7 @@ type TradeReceipt = {
   router: string;
   tokenMint: string;
   createdAt: string;
-  explorerUrl: string;
+  explorerUrl?: string;
 };
 
 function formatTokenAmount(value: number) {
@@ -187,26 +188,74 @@ function SwapPanelCore({
       : inputUsd / (pair.outputSymbol === "USDC" ? 1 : Math.max(solPrice, 0.00000001)));
   const networkFeeUsd = ((quoteQuery.data?.feeLamports ?? 5_000) / 1_000_000_000) * solPrice;
   const inputBalance = inputPositionQuery.data?.balance ?? 0;
-  const inputBalanceReady = !authenticated || !walletAddress || Boolean(inputPositionQuery.data);
-  const hasInputBalance = !authenticated || !walletAddress || inputBalance + 1e-9 >= amt;
+  const inputBalanceReady =
+    isTradeTestMode || !authenticated || !walletAddress || Boolean(inputPositionQuery.data);
+  const hasInputBalance =
+    isTradeTestMode || !authenticated || !walletAddress || inputBalance + 1e-9 >= amt;
   const tokenBalance = positionQuery.data?.balance ?? 0;
   const tokenValue = positionQuery.data?.valueUsd ?? 0;
 
-  const buttonLabel = !hasPrivy
-    ? "Add Privy app id to swap"
-    : !authenticated
-      ? `Connect wallet to ${side}`
-      : !wallet || !onSignTransaction
-        ? "Wallet unavailable"
-        : quoteQuery.isFetching
-          ? "Refreshing quote"
-          : !inputBalanceReady
-            ? "Checking balance"
-            : !hasInputBalance
-              ? `Deposit ${pair.inputSymbol} first`
-              : `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
+  const buttonLabel = isTradeTestMode
+    ? quoteQuery.isFetching
+      ? "Refreshing quote"
+      : `Paper ${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`
+    : !hasPrivy
+      ? "Add Privy app id to swap"
+      : !authenticated
+        ? `Connect wallet to ${side}`
+        : !wallet || !onSignTransaction
+          ? "Wallet unavailable"
+          : quoteQuery.isFetching
+            ? "Refreshing quote"
+            : !inputBalanceReady
+              ? "Checking balance"
+              : !hasInputBalance
+                ? `Deposit ${pair.inputSymbol} first`
+                : `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
 
   const handlePrimary = async () => {
+    if (isTradeTestMode) {
+      if (!quoteQuery.data || rawAmount <= 0n) {
+        setTradeError("Live Jupiter quote is not ready.");
+        return;
+      }
+
+      setIsExecuting(true);
+      setTradeError("");
+      setSignature("");
+      setReceipt(null);
+
+      try {
+        await new Promise((resolve) => window.setTimeout(resolve, 450));
+        const paperSignature = `paper-${Date.now().toString(36)}-${Math.random()
+          .toString(36)
+          .slice(2, 10)}`;
+        const nextReceipt: TradeReceipt = {
+          signature: paperSignature,
+          status: "paper",
+          slot: null,
+          wallet: walletAddress ?? "paper-wallet",
+          mode: "paper",
+          side,
+          inputSymbol: pair.inputSymbol,
+          outputSymbol: pair.outputSymbol,
+          inputAmount: amount,
+          outputAmount: quoteQuery.data.outUiAmount,
+          route: quoteQuery.data.route,
+          router: quoteQuery.data.router,
+          tokenMint: token.mint,
+          createdAt: new Date().toISOString(),
+        };
+
+        setSignature(paperSignature);
+        setReceipt(nextReceipt);
+        saveTradeReceipt(nextReceipt);
+      } finally {
+        setIsExecuting(false);
+      }
+      return;
+    }
+
     if (!hasPrivy || !authenticated) {
       onLogin?.();
       return;
@@ -276,6 +325,7 @@ function SwapPanelCore({
               : "submitted",
         slot: status?.slot ?? (Number(result.slot) || null),
         wallet: walletAddress,
+        mode: "mainnet",
         side,
         inputSymbol: pair.inputSymbol,
         outputSymbol: pair.outputSymbol,
@@ -437,9 +487,11 @@ function SwapPanelCore({
 
         {/* Balance Status text */}
         <div className="text-[10px] text-[#7a7488] text-center px-1 font-mono leading-none">
-          {walletAddress
-            ? `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
-            : "Connect wallet to view balance"}
+          {isTradeTestMode
+            ? "Paper mode - no wallet signature or on-chain transaction"
+            : walletAddress
+              ? `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
+              : "Connect wallet to view balance"}
         </div>
 
         {/* Main Action Button */}
@@ -448,7 +500,8 @@ function SwapPanelCore({
           disabled={
             isExecuting ||
             quoteQuery.isFetching ||
-            (!!authenticated &&
+            (!isTradeTestMode &&
+              !!authenticated &&
               (!wallet || !onSignTransaction || !inputBalanceReady || !hasInputBalance))
           }
           className="flex w-full items-center justify-center gap-1.5 rounded-xl bg-transparent hover:bg-[#1b1726]/55 border border-[#252137] h-[38px] text-[13px] font-bold text-[#e8e4f0] transition disabled:opacity-60"
@@ -471,7 +524,7 @@ function SwapPanelCore({
             <div className="flex items-center justify-between gap-3 font-semibold">
               <span className="inline-flex items-center gap-1.5">
                 <CheckCircle2 className="h-3.5 w-3.5 text-[#20d772]" />
-                Swap {receipt.status}
+                {receipt.mode === "paper" ? "Paper swap" : `Swap ${receipt.status}`}
               </span>
               <span className="font-mono">
                 {signature.slice(0, 6)}...{signature.slice(-6)}
@@ -486,19 +539,29 @@ function SwapPanelCore({
               </span>
               <span className="truncate">{receipt.route}</span>
               <span className="text-right font-mono">
-                {receipt.slot ? `slot ${receipt.slot.toLocaleString()}` : "processing"}
+                {receipt.mode === "paper"
+                  ? "not submitted"
+                  : receipt.slot
+                    ? `slot ${receipt.slot.toLocaleString()}`
+                    : "processing"}
               </span>
             </div>
             <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-              <a
-                href={receipt.explorerUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex h-7 items-center justify-center gap-1 rounded-md border border-primary/30 bg-background/40 font-semibold"
-              >
-                Solscan
-                <ExternalLink className="h-3 w-3" />
-              </a>
+              {receipt.explorerUrl ? (
+                <a
+                  href={receipt.explorerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex h-7 items-center justify-center gap-1 rounded-md border border-primary/30 bg-background/40 font-semibold"
+                >
+                  Solscan
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : (
+                <div className="flex h-7 items-center justify-center rounded-md border border-primary/30 bg-background/40 font-semibold">
+                  Paper only
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => downloadTradeReceipt(receipt)}

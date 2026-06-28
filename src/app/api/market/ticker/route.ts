@@ -1,119 +1,31 @@
 import { NextResponse } from "next/server";
 
-import { birdeyeJsonWithMeta, tokenFromTrending } from "@/lib/server/birdeye";
-import { getJupiterTrendingTokens } from "@/lib/server/jupiter-tokens";
-import { TOKENS, type Token } from "@/lib/tokens";
+import { getGeckoTrendingTokens } from "@/lib/server/market-fallback";
 
 export const dynamic = "force-dynamic";
 
-type TrendingToken = Parameters<typeof tokenFromTrending>[0];
-
-type JupiterPrice = {
-  usdPrice?: number;
-  priceChange24h?: number;
-};
-
-type JupiterPrices = Record<string, JupiterPrice>;
-
-let birdeyeRetryAfter = 0;
-const TRENDING_LIMIT = 50;
 const TICKER_LIMIT = 36;
-
-function getJupiterKey() {
-  return process.env.JUPITER_API_KEY || process.env.NEXT_PUBLIC_JUPITER_API_KEY || "";
-}
-
-async function getJupiterPrices(mints: string[]) {
-  const key = getJupiterKey();
-  const base = key ? "https://api.jup.ag" : "https://lite-api.jup.ag";
-  const response = await fetch(`${base}/price/v3?ids=${mints.join(",")}`, {
-    cache: "no-store",
-    headers: key ? { "x-api-key": key } : undefined,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Jupiter ticker prices failed (${response.status})`);
-  }
-
-  return (await response.json()) as JupiterPrices;
-}
 
 export async function GET() {
   try {
-    let ranked = TOKENS;
-    let birdeyeStatus: "live" | "cached" | null = null;
-
-    if (Date.now() >= birdeyeRetryAfter) {
-      try {
-        const trending = await birdeyeJsonWithMeta<{ tokens?: TrendingToken[] }>(
-          `/defi/token_trending?sort_by=rank&sort_type=asc&offset=0&limit=${TRENDING_LIMIT}`,
-          { cacheKey: "landing-ticker", next: { revalidate: 15 } },
-        );
-        const birdeyeTokens = (trending.data.tokens ?? []).map(tokenFromTrending);
-
-        if (birdeyeTokens.length) {
-          ranked = birdeyeTokens;
-          birdeyeStatus = trending.status;
-        }
-      } catch (error) {
-        birdeyeRetryAfter = Date.now() + 5 * 60 * 1000;
-        console.error("BirdEye ticker ranking unavailable", error);
-      }
-    }
-
-    if (ranked === TOKENS) {
-      try {
-        ranked = await getJupiterTrendingTokens(TRENDING_LIMIT);
-      } catch (error) {
-        console.error("Jupiter token ranking unavailable", error);
-      }
-    }
-
-    let prices: JupiterPrices = {};
-    let jupiterAvailable = false;
-
-    try {
-      prices = await getJupiterPrices(ranked.map((token) => token.mint));
-      jupiterAvailable = true;
-    } catch (error) {
-      console.error("Jupiter ticker enrichment unavailable", error);
-    }
-
-    const tokens = ranked
-      .map((token): Token => {
-        const live = prices[token.mint];
-        return {
-          ...token,
-          price: live?.usdPrice ?? token.price,
-          change24h: live?.priceChange24h ?? token.change24h,
-          source: live ? "jupiter" : token.source,
-        };
-      })
-      .filter(
-        (token) =>
-          Number.isFinite(token.price) &&
-          token.price > 0 &&
-          Number.isFinite(token.change24h) &&
-          token.symbol.length > 0,
-      )
-      .slice(0, TICKER_LIMIT);
+    const tokens = (await getGeckoTrendingTokens(TICKER_LIMIT)).filter(
+      (token) =>
+        Number.isFinite(token.price) &&
+        token.price > 0 &&
+        Number.isFinite(token.change24h) &&
+        token.symbol.length > 0,
+    );
 
     if (!tokens.length) {
-      throw new Error("Live providers returned no priced tokens");
+      throw new Error("GeckoTerminal returned no priced ticker pools");
     }
-
-    const provider = birdeyeStatus
-      ? jupiterAvailable
-        ? "BirdEye + Jupiter"
-        : "BirdEye"
-      : "Jupiter";
 
     return NextResponse.json(
       {
         tokens,
-        status: birdeyeStatus === "cached" && !jupiterAvailable ? "cached" : "live",
+        status: "live",
         updatedAt: new Date().toISOString(),
-        provider,
+        provider: "GeckoTerminal",
       },
       {
         headers: {
@@ -122,13 +34,13 @@ export async function GET() {
       },
     );
   } catch (error) {
-    console.error("Landing ticker unavailable", error);
+    console.error("GeckoTerminal ticker unavailable", error);
     return NextResponse.json(
       {
         tokens: [],
         status: "unavailable",
         updatedAt: new Date().toISOString(),
-        provider: "Jupiter",
+        provider: "GeckoTerminal",
       },
       {
         status: 503,

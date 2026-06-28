@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { birdeyeJsonWithMeta, ohlcvToPoints, tradesFromBirdeye } from "@/lib/server/birdeye";
-import { ohlcvFromFallbackProviders, type FallbackInterval } from "@/lib/server/market-fallback";
+import {
+  getBestGeckoPool,
+  ohlcvFromFallbackProviders,
+  type FallbackInterval,
+} from "@/lib/server/market-fallback";
 
 export const revalidate = 15;
 
@@ -33,6 +37,18 @@ export async function GET(request: Request, context: { params: Promise<{ mint: s
   const interval = getInterval(request);
 
   try {
+    const fallback = await ohlcvFromFallbackProviders(mint, interval as FallbackInterval);
+    if (fallback.data.length) {
+      return NextResponse.json({
+        ...fallback,
+        status: "live",
+      });
+    }
+  } catch {
+    // BirdEye can still cover tokens before GeckoTerminal indexes their pool candles.
+  }
+
+  try {
     const now = Math.floor(Date.now() / 1000);
     const from = now - intervalWindows[interval];
     const result = await birdeyeJsonWithMeta<{
@@ -45,7 +61,7 @@ export async function GET(request: Request, context: { params: Promise<{ mint: s
       },
     );
 
-    const data = ohlcvToPoints(result.data.items ?? []);
+    const data = cleanCandles(ohlcvToPoints(result.data.items ?? []));
     if (data.length) {
       return NextResponse.json({
         data,
@@ -63,28 +79,38 @@ export async function GET(request: Request, context: { params: Promise<{ mint: s
     if (tradeCandles.data.length) {
       return NextResponse.json({
         ...tradeCandles,
+        data: cleanCandles(tradeCandles.data),
         provider: "birdeye",
       });
     }
   } catch {
-    // GeckoTerminal still has broader historical pool coverage for many tokens.
+    // No final trade-derived backup available.
   }
 
-  try {
-    const fallback = await ohlcvFromFallbackProviders(mint, interval as FallbackInterval);
-    return NextResponse.json({
-      ...fallback,
-      status: "live",
-    });
-  } catch (error) {
-    console.error("Fallback OHLCV unavailable", { mint, interval, error });
-    return NextResponse.json({
-      data: [],
-      status: "unavailable",
-      updatedAt: new Date().toISOString(),
-      provider: "geckoterminal",
-    });
-  }
+  const geckoPool = await getBestGeckoPool(mint).catch(() => undefined);
+
+  return NextResponse.json({
+    data: [],
+    status: "unavailable",
+    updatedAt: new Date().toISOString(),
+    provider: "geckoterminal",
+    geckoPoolAddress: geckoPool?.address,
+    geckoTokenSide: geckoPool?.tokenSide,
+    geckoPoolName: geckoPool?.meta?.name,
+    geckoPoolDex: geckoPool?.meta?.dex,
+  });
+}
+
+function cleanCandles<T extends { open: number; high: number; low: number; close: number }>(
+  candles: T[],
+) {
+  return candles.filter((point) => {
+    const values = [point.open, point.high, point.low, point.close];
+    if (values.some((value) => !Number.isFinite(value) || value <= 0)) return false;
+    if (point.high < Math.max(point.open, point.close)) return false;
+    if (point.low > Math.min(point.open, point.close)) return false;
+    return Math.max(...values) / Math.min(...values) < 100;
+  });
 }
 
 async function ohlcvFromBirdeyeTrades(mint: string, interval: string) {

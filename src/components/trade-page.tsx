@@ -33,15 +33,7 @@ import {
   useTokenTrades,
   useTrendingTokens,
 } from "@/lib/market-data";
-import {
-  SOL_MINT,
-  TOKENS,
-  createFallbackToken,
-  formatCompact,
-  formatUsd,
-  getToken,
-  type Token,
-} from "@/lib/tokens";
+import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 type TokenListMode = "watchlist" | "crypto" | "trending" | "most-held" | "graduates";
 
@@ -213,12 +205,9 @@ const sidebarPrimaryTabs = ["Alerts", "Tokens", "Leaderboard", "Feed"];
 const sidebarFilterTabs = ["Watchlist", "Crypto", "Trending", "Most held", "Graduates"];
 
 export function TradePage({ mint }: { mint: string }) {
-  const initialToken = getToken(mint) ?? createFallbackToken(mint);
-  const market = useTokenMarket(initialToken.mint, initialToken);
-  const solMarket = useTokenMarket(
-    SOL_MINT,
-    initialToken.mint === SOL_MINT ? initialToken : undefined,
-  );
+  const initialToken = useMemo(() => createFallbackToken(mint), [mint]);
+  const market = useTokenMarket(mint);
+  const solMarket = useTokenMarket(SOL_MINT);
   const {
     data: trending = [],
     isLoading: trendingLoading,
@@ -239,8 +228,8 @@ export function TradePage({ mint }: { mint: string }) {
   const [leftCol, setLeftCol] = useState<SidebarColumnState>({
     isActive: true,
     isSplitBottom: false,
-    topPane: defaultPane("Alerts"),
-    bottomPane: defaultPane("Tokens"),
+    topPane: defaultPane("Tokens"),
+    bottomPane: defaultPane("Alerts"),
   });
 
   const [rightCol, setRightCol] = useState<SidebarColumnState>({
@@ -296,9 +285,22 @@ export function TradePage({ mint }: { mint: string }) {
     };
   }, []);
 
+  useEffect(() => {
+    setCenterView("trade");
+    setLeftCol((current) => ({
+      ...current,
+      isActive: true,
+      topPane: {
+        ...current.topPane,
+        activeTab: "Tokens",
+      },
+    }));
+  }, [mint]);
+
   const token = market.data ?? initialToken;
   const solPrice = solMarket.data?.price || (token.mint === SOL_MINT ? token.price : 0);
   const history = useTokenOhlcv(token.mint, chartInterval);
+  const hasGeckoTerminal = Boolean(history.data?.geckoPoolAddress);
   const up = token.change24h >= 0;
 
   const [watchlist, setWatchlist] = useState<string[]>([]);
@@ -330,12 +332,10 @@ export function TradePage({ mint }: { mint: string }) {
   }, [holders.data]);
 
   const sidebarTokens = useMemo(() => {
-    return trending.length ? trending : [token];
+    return uniqueTokens([token, ...trending]);
   }, [token, trending]);
 
-  const tokenListSubtitle = trendingError
-    ? "Live feed reconnecting"
-    : "Live Jupiter + BirdEye feed";
+  const tokenListSubtitle = trendingError ? "Live feed reconnecting" : "Live GeckoTerminal pools";
 
   const handleCloseLeftColumn = () => {
     if (rightCol.isActive) {
@@ -367,7 +367,7 @@ export function TradePage({ mint }: { mint: string }) {
     onSplitBottom: () => void,
     onSplitRight: () => void,
   ) => {
-    const allTokens = [...uniqueTokens([...trending, ...TOKENS, token])];
+    const allTokens = [...uniqueTokens([...trending, token])];
     const paneTokens =
       pane.tokenListMode === "most-held"
         ? [...allTokens].sort((a, b) => {
@@ -381,9 +381,7 @@ export function TradePage({ mint }: { mint: string }) {
             ? [...allTokens].filter((t) => t.symbol === "SOL" || t.symbol === "USDC")
             : pane.tokenListMode === "graduates"
               ? [...allTokens].filter((t) => t.marketCap > 100_000_000)
-              : trending.length
-                ? trending
-                : [token];
+              : allTokens;
 
     return (
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -803,10 +801,14 @@ export function TradePage({ mint }: { mint: string }) {
           )}
 
           <section
-            className={`flex-1 flex min-w-0 flex-col min-h-0 overflow-hidden ${
+            className={`flex-1 flex min-w-0 flex-col min-h-0 ${
               centerView === "profile"
-                ? "bg-[#08060f]"
-                : "rounded-lg border border-[#1b1726]/70 bg-transparent"
+                ? "overflow-hidden bg-[#08060f]"
+                : `rounded-lg border border-[#1b1726]/70 bg-transparent ${
+                    hasGeckoTerminal
+                      ? "terminal-scroll overflow-y-auto overflow-x-hidden overscroll-contain"
+                      : "overflow-hidden"
+                  }`
             }`}
           >
             {centerView === "profile" ? (
@@ -967,12 +969,20 @@ export function TradePage({ mint }: { mint: string }) {
                 </div>
 
                 {/* Chart Area */}
-                <div className="flex-1 min-h-[300px] relative bg-transparent">
-                  {history.data?.data.length ? (
+                <div
+                  className={`relative flex-1 bg-transparent ${
+                    hasGeckoTerminal ? "min-h-[620px]" : "min-h-[300px]"
+                  }`}
+                >
+                  {history.data?.data.length || history.data?.geckoPoolAddress ? (
                     <PriceChart
-                      data={history.data.data}
+                      data={history.data.data ?? []}
                       dataStatus={history.data.status}
                       provider={history.data.provider}
+                      geckoPoolAddress={history.data.geckoPoolAddress}
+                      geckoTokenSide={history.data.geckoTokenSide}
+                      geckoPoolName={history.data.geckoPoolName}
+                      geckoPoolDex={history.data.geckoPoolDex}
                       updatedAt={history.data.updatedAt}
                       token={token}
                       solPrice={solPrice}
@@ -997,44 +1007,48 @@ export function TradePage({ mint }: { mint: string }) {
                   )}
                 </div>
 
-                {/* Chart Overlays Bar */}
-                <div className="flex items-center gap-4 border-t border-[#1b1726]/40 bg-transparent px-4 py-1.5 shrink-0 text-[11px] text-[#7a7488] select-none no-scrollbar overflow-x-auto">
-                  <span className="font-semibold text-[#5c5669] shrink-0">Chart overlays</span>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>My swaps</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>Thesis</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>Friends only</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>Min size (&gt;$1K)</span>
-                  </label>
-                </div>
+                {!hasGeckoTerminal && (
+                  <>
+                    {/* Chart Overlays Bar */}
+                    <div className="flex items-center gap-4 border-t border-[#1b1726]/40 bg-transparent px-4 py-1.5 shrink-0 text-[11px] text-[#7a7488] select-none no-scrollbar overflow-x-auto">
+                      <span className="font-semibold text-[#5c5669] shrink-0">Chart overlays</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>My swaps</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>Thesis</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>Friends only</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>Min size (&gt;$1K)</span>
+                      </label>
+                    </div>
 
-                {/* Bottom Activity Section */}
-                <MarketActivity token={token} />
+                    {/* Bottom Activity Section */}
+                    <MarketActivity token={token} />
+                  </>
+                )}
               </>
             )}
           </section>
@@ -1699,11 +1713,18 @@ function DataFreshness({
       }`}
     >
       <span className={status === "live" ? "text-[#20d772]" : ""}>
-        {provider === "solana-rpc" ? "Solana RPC" : "ChadFeed"} {status.toUpperCase()}
+        {dataProviderLabel(provider)} {status.toUpperCase()}
       </span>
       {updatedAt && <span>Updated {new Date(updatedAt).toLocaleTimeString()}</span>}
     </div>
   );
+}
+
+function dataProviderLabel(provider?: "birdeye" | "geckoterminal" | "solana-rpc") {
+  if (provider === "solana-rpc") return "Solana RPC";
+  if (provider === "geckoterminal") return "GeckoTerminal";
+  if (provider === "birdeye") return "BirdEye";
+  return "ChadFeed";
 }
 
 function LiveState({ title, detail }: { title: string; detail: string }) {

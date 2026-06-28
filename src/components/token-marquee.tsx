@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { useTrendingTokens } from "@/lib/market-data";
-import { TOKENS, formatUsd } from "@/lib/tokens";
+import { formatUsd } from "@/lib/tokens";
 
 export function TokenMarquee({ reverse = false }: { reverse?: boolean }) {
-  const { data = TOKENS } = useTrendingTokens();
-  const tokens = data.length ? data : TOKENS;
+  const { data = [] } = useTrendingTokens();
+  const tokens = data;
+
+  if (!tokens.length) return null;
+
   const items = [...tokens, ...tokens];
 
   return (
