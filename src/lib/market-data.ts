@@ -108,9 +108,13 @@ export type AppLeaderboardUser = {
   trades: number;
   buys: number;
   sells: number;
+  volumeSol: number;
+  latestTokens: string[];
   lastTradeAt: string | null;
   updatedAt: string | null;
 };
+
+export type AppLeaderboardPeriod = "24h" | "7d" | "30d" | "all";
 
 export type FollowStats = {
   following: number;
@@ -1000,9 +1004,26 @@ export async function fetchWalletTransfers(wallet: string, signal?: AbortSignal)
   );
 }
 
-export async function fetchAppLeaderboard(signal?: AbortSignal) {
+export async function fetchAppLeaderboard(
+  period: AppLeaderboardPeriod = "all",
+  signal?: AbortSignal,
+) {
   if (!supabase) return [];
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const since = leaderboardPeriodStart(period);
+  let receiptQuery = supabase
+    .from("trade_receipts")
+    .select(
+      "wallet,side,input_symbol,output_symbol,input_amount,output_amount,created_at,mode,status",
+    )
+    .eq("mode", "mainnet")
+    .order("created_at", { ascending: false })
+    .limit(1000);
+
+  if (since) {
+    receiptQuery = receiptQuery.gte("created_at", since);
+  }
 
   const [{ data: profiles, error: profileError }, { data: receipts, error: receiptError }] =
     await Promise.all([
@@ -1011,12 +1032,7 @@ export async function fetchAppLeaderboard(signal?: AbortSignal) {
         .select("wallet,username,display_name,avatar_data_url,updated_at")
         .order("updated_at", { ascending: false })
         .limit(100),
-      supabase
-        .from("trade_receipts")
-        .select("wallet,side,created_at,mode,status")
-        .eq("mode", "mainnet")
-        .order("created_at", { ascending: false })
-        .limit(500),
+      receiptQuery,
     ]);
 
   if (profileError) throw profileError;
@@ -1033,6 +1049,8 @@ export async function fetchAppLeaderboard(signal?: AbortSignal) {
       trades: 0,
       buys: 0,
       sells: 0,
+      volumeSol: 0,
+      latestTokens: [] as string[],
       lastTradeAt: null,
       updatedAt: profile.updated_at,
     });
@@ -1050,6 +1068,8 @@ export async function fetchAppLeaderboard(signal?: AbortSignal) {
         trades: 0,
         buys: 0,
         sells: 0,
+        volumeSol: 0,
+        latestTokens: [] as string[],
         lastTradeAt: null,
         updatedAt: null,
       } satisfies AppLeaderboardUser);
@@ -1060,6 +1080,11 @@ export async function fetchAppLeaderboard(signal?: AbortSignal) {
     } else {
       current.sells += 1;
     }
+    current.volumeSol += receiptVolumeSol(receipt);
+    const tokenSymbol = receipt.side === "buy" ? receipt.output_symbol : receipt.input_symbol;
+    if (tokenSymbol && !current.latestTokens.includes(tokenSymbol)) {
+      current.latestTokens = [tokenSymbol, ...current.latestTokens].slice(0, 3);
+    }
     if (!current.lastTradeAt || receipt.created_at > current.lastTradeAt) {
       current.lastTradeAt = receipt.created_at;
     }
@@ -1068,12 +1093,38 @@ export async function fetchAppLeaderboard(signal?: AbortSignal) {
 
   return Array.from(users.values())
     .sort((left, right) => {
+      if (right.volumeSol !== left.volumeSol) return right.volumeSol - left.volumeSol;
       if (right.trades !== left.trades) return right.trades - left.trades;
       const rightTime = new Date(right.lastTradeAt ?? right.updatedAt ?? 0).getTime();
       const leftTime = new Date(left.lastTradeAt ?? left.updatedAt ?? 0).getTime();
       return rightTime - leftTime;
     })
-    .slice(0, 10);
+    .slice(0, 50);
+}
+
+function receiptVolumeSol(receipt: {
+  input_symbol?: string;
+  output_symbol?: string;
+  input_amount?: string;
+  output_amount?: number;
+}) {
+  const inputSymbol = receipt.input_symbol?.toUpperCase();
+  const outputSymbol = receipt.output_symbol?.toUpperCase();
+  if (inputSymbol === "SOL") return Number(receipt.input_amount ?? 0) || 0;
+  if (outputSymbol === "SOL") return Number(receipt.output_amount ?? 0) || 0;
+  return 0;
+}
+
+function leaderboardPeriodStart(period: AppLeaderboardPeriod) {
+  if (period === "all") return null;
+  const now = Date.now();
+  const durationMs =
+    period === "24h"
+      ? 24 * 60 * 60 * 1000
+      : period === "7d"
+        ? 7 * 24 * 60 * 60 * 1000
+        : 30 * 24 * 60 * 60 * 1000;
+  return new Date(now - durationMs).toISOString();
 }
 
 export function useTrendingTokens() {
@@ -1214,10 +1265,10 @@ export function useWalletTransfers(wallet?: string) {
   });
 }
 
-export function useAppLeaderboard() {
+export function useAppLeaderboard(period: AppLeaderboardPeriod = "all") {
   return useQuery({
-    queryKey: ["app-leaderboard"],
-    queryFn: ({ signal }) => fetchAppLeaderboard(signal),
+    queryKey: ["app-leaderboard", period],
+    queryFn: ({ signal }) => fetchAppLeaderboard(period, signal),
     enabled: Boolean(supabase),
     refetchInterval: 15_000,
     staleTime: 10_000,
