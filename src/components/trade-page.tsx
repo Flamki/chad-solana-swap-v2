@@ -33,6 +33,7 @@ import {
 import { SwapPanel } from "@/components/trade/swap-panel";
 import {
   type ChartInterval,
+  useCryptoTokens,
   useTokenHolders,
   useTokenMarket,
   useTokenOhlcv,
@@ -256,6 +257,7 @@ export function TradePage({ mint }: { mint: string }) {
     isLoading: trendingLoading,
     isError: trendingError,
   } = useTrendingTokens();
+  const { data: crypto = [], isLoading: cryptoLoading } = useCryptoTokens();
   const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
   const [copiedMint, setCopiedMint] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -429,10 +431,7 @@ export function TradePage({ mint }: { mint: string }) {
       }),
     [trendingTokens],
   );
-  const cryptoTokens = useMemo(() => {
-    const liveTokens = trendingTokens.filter(isLiveCryptoToken);
-    return liveTokens.length ? liveTokens : trendingTokens;
-  }, [trendingTokens]);
+  const cryptoTokens = useMemo(() => uniqueTokens(crypto).filter(isLiveCryptoToken), [crypto]);
   const graduatedTokens = useMemo(
     () => trendingTokens.filter(isLikelyGraduatedToken),
     [trendingTokens],
@@ -480,6 +479,7 @@ export function TradePage({ mint }: { mint: string }) {
             : pane.tokenListMode === "graduates"
               ? graduatedTokens
               : trendingTokens;
+    const paneLoading = pane.tokenListMode === "crypto" ? cryptoLoading : trendingLoading;
 
     return (
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -558,12 +558,12 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
             {/* Tokens list */}
             <div className="terminal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#08060f] no-scrollbar">
-              {pane.tokenListMode === "trending" && trendingLoading && trending.length === 0 && (
+              {paneLoading && paneTokens.length === 0 && (
                 <div className="px-3 py-3 text-[11px] text-muted-foreground">
                   Loading live tokens...
                 </div>
               )}
-              {!trendingLoading && paneTokens.length === 0 && (
+              {!paneLoading && paneTokens.length === 0 && (
                 <div className="px-3 py-3 text-[11px] text-muted-foreground">
                   No live tokens in this section yet.
                 </div>
@@ -1481,11 +1481,9 @@ function uniqueTokens(tokens: Token[]) {
 
 function isLiveCryptoToken(token: Token) {
   return (
-    token.mint !== SOL_MINT &&
     Number.isFinite(token.price) &&
     token.price > 0 &&
-    Number.isFinite(token.liquidity ?? 0) &&
-    (token.liquidity ?? 0) > 0
+    (Number.isFinite(token.marketCap) || Number.isFinite(token.liquidity ?? 0))
   );
 }
 
@@ -1495,6 +1493,7 @@ function isLikelyGraduatedToken(token: Token) {
   const volume = token.volume24h ?? 0;
 
   return (
+    token.mint !== SOL_MINT &&
     isLiveCryptoToken(token) &&
     liquidity >= 25_000 &&
     (marketCap >= 50_000 || volume >= 100_000 || token.poolDex === "raydium")

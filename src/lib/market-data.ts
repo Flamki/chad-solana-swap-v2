@@ -242,6 +242,10 @@ export async function fetchTrendingTokens(signal?: AbortSignal): Promise<Token[]
   return fetchMarketJson<Token[]>("/api/market/trending", { signal });
 }
 
+export async function fetchCryptoTokens(signal?: AbortSignal): Promise<Token[]> {
+  return fetchMarketJson<Token[]>("/api/market/crypto", { signal });
+}
+
 export async function fetchMarketTicker(signal?: AbortSignal): Promise<MarketTicker> {
   return fetchMarketJson<MarketTicker>("/api/market/ticker", {
     cache: "no-store",
@@ -1076,6 +1080,16 @@ export function useTrendingTokens() {
   return useQuery({
     queryKey: ["trending-tokens"],
     queryFn: ({ signal }) => fetchTrendingTokens(signal),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+    retry: 2,
+  });
+}
+
+export function useCryptoTokens() {
+  return useQuery({
+    queryKey: ["crypto-tokens"],
+    queryFn: ({ signal }) => fetchCryptoTokens(signal),
     refetchInterval: 60_000,
     staleTime: 30_000,
     retry: 2,

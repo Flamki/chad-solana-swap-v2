@@ -162,6 +162,8 @@ export const TOKENS: Token[] = [
   },
 ];
 
+export const CRYPTO_TOKEN_MINTS = TOKENS.map((token) => token.mint);
+
 export const getToken = (mint: string) => TOKENS.find((token) => token.mint === mint);
 
 export function createFallbackToken(mint: string): Token {
