@@ -791,6 +791,64 @@ export async function syncWatchlistToken({
   return { stored: true };
 }
 
+export async function fetchFollowedTraders(wallet: string, signal?: AbortSignal) {
+  if (!supabase) return [];
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await supabase
+    .from("user_follows")
+    .select("target_wallet")
+    .eq("follower_wallet", wallet)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    if (error.code === "42P01") return [];
+    throw error;
+  }
+
+  return (data ?? []).map((item) => item.target_wallet).filter(Boolean);
+}
+
+export async function syncFollowTrader({
+  wallet,
+  targetWallet,
+  following,
+}: {
+  wallet?: string;
+  targetWallet: string;
+  following: boolean;
+}) {
+  if (!supabase || !wallet || wallet === targetWallet) return { stored: false };
+
+  if (following) {
+    const { error } = await supabase.from("user_follows").upsert(
+      {
+        follower_wallet: wallet,
+        target_wallet: targetWallet,
+        created_at: new Date().toISOString(),
+      },
+      { onConflict: "follower_wallet,target_wallet" },
+    );
+    if (error) {
+      if (error.code === "42P01") return { stored: false };
+      throw error;
+    }
+    return { stored: true };
+  }
+
+  const { error } = await supabase
+    .from("user_follows")
+    .delete()
+    .eq("follower_wallet", wallet)
+    .eq("target_wallet", targetWallet);
+
+  if (error) {
+    if (error.code === "42P01") return { stored: false };
+    throw error;
+  }
+  return { stored: true };
+}
+
 export async function fetchStoredUserProfile(wallet: string, signal?: AbortSignal) {
   if (!supabase) return null;
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
@@ -1035,6 +1093,16 @@ export function useStoredWatchlist(wallet?: string) {
   return useQuery({
     queryKey: ["watchlist", wallet],
     queryFn: ({ signal }) => fetchStoredWatchlist(wallet!, signal),
+    enabled: Boolean(wallet && supabase),
+    staleTime: 15_000,
+    retry: 1,
+  });
+}
+
+export function useStoredFollowedTraders(wallet?: string) {
+  return useQuery({
+    queryKey: ["followed-traders", wallet],
+    queryFn: ({ signal }) => fetchFollowedTraders(wallet!, signal),
     enabled: Boolean(wallet && supabase),
     staleTime: 15_000,
     retry: 1,

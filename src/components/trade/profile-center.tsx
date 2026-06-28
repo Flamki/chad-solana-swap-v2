@@ -56,8 +56,10 @@ import {
   type WalletTransferRecord,
   recordWalletTransfer,
   recordUserProfile,
+  syncFollowTrader,
   useAppLeaderboard,
   usePortfolioHistory,
+  useStoredFollowedTraders,
   useStoredTradeReceipts,
   useStoredUserProfile,
   useTokenPosition,
@@ -933,11 +935,31 @@ export function FollowTopTradersPanel({
 }: {
   onSelectProfile?: (wallet: string) => void;
 }) {
+  const queryClient = useQueryClient();
   const { user } = usePrivy();
   const { wallets } = useWallets();
   const walletAddress = wallets[0]?.address ?? user?.wallet?.address;
   const leaderboard = useAppLeaderboard();
-  const traders = leaderboard.data ?? [];
+  const followedQuery = useStoredFollowedTraders(walletAddress);
+  const [localFollowed, setLocalFollowed] = useLocalFollowedTraders(walletAddress);
+  const followed = useMemo(
+    () => new Set([...(followedQuery.data ?? []), ...localFollowed]),
+    [followedQuery.data, localFollowed],
+  );
+  const traders = useMemo(
+    () => (leaderboard.data ?? []).filter((trader) => trader.wallet !== walletAddress).slice(0, 10),
+    [leaderboard.data, walletAddress],
+  );
+
+  const toggleFollow = (targetWallet: string) => {
+    if (!walletAddress || targetWallet === walletAddress) return;
+
+    const following = !followed.has(targetWallet);
+    setLocalFollowed(targetWallet, following);
+    void syncFollowTrader({ wallet: walletAddress, targetWallet, following }).finally(() => {
+      void queryClient.invalidateQueries({ queryKey: ["followed-traders", walletAddress] });
+    });
+  };
 
   return (
     <aside className="terminal-scroll w-[320px] shrink-0 overflow-y-auto px-3 pt-2 max-xl:hidden 2xl:w-[340px]">
@@ -954,45 +976,57 @@ export function FollowTopTradersPanel({
 
         <div className="space-y-2">
           {traders.map((trader, index) => {
-            const isYou = trader.wallet === walletAddress;
+            const isFollowing = followed.has(trader.wallet);
 
             return (
-              <button
+              <div
                 key={trader.wallet}
-                type="button"
-                onClick={() => onSelectProfile?.(trader.wallet)}
-                className="flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition hover:bg-[#151221]"
+                className="flex w-full items-center gap-3 rounded-lg px-1 py-2 transition hover:bg-[#151221]"
               >
-                <div className="relative">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full border border-[#2a2540] bg-[#201d2c] text-[11px] font-black text-white">
-                    {trader.avatarDataUrl ? (
-                      <img
-                        src={trader.avatarDataUrl}
-                        alt=""
-                        className="h-full w-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      trader.displayName.slice(0, 2).toUpperCase()
-                    )}
+                <button
+                  type="button"
+                  onClick={() => onSelectProfile?.(trader.wallet)}
+                  className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                >
+                  <div className="relative shrink-0">
+                    <div className="grid h-10 w-10 place-items-center overflow-hidden rounded-full border border-[#2a2540] bg-[#201d2c] text-[11px] font-black text-white">
+                      {trader.avatarDataUrl ? (
+                        <img
+                          src={trader.avatarDataUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        trader.displayName.slice(0, 2).toUpperCase()
+                      )}
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full border border-[#0b0912] bg-[#5365ff] px-1 font-mono text-[8px] font-black text-white">
+                      {index + 1}
+                    </span>
                   </div>
-                  <span className="absolute -bottom-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full border border-[#0b0912] bg-[#5365ff] px-1 font-mono text-[8px] font-black text-white">
-                    {index + 1}
-                  </span>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-black text-white">
-                    {trader.displayName}
-                    {isYou ? <span className="ml-1 text-[#7da1ff]">(you)</span> : null}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[13px] font-black text-white">
+                      {trader.displayName}
+                    </div>
+                    <div className="mt-0.5 truncate text-[11px] font-semibold text-[#8f879d]">
+                      @{trader.username || shortWallet(trader.wallet)}
+                    </div>
                   </div>
-                  <div className="mt-0.5 truncate text-[11px] font-semibold text-[#8f879d]">
-                    @{trader.username || shortWallet(trader.wallet)}
-                  </div>
-                </div>
-                <div className="shrink-0 rounded-lg bg-[#5365ff] px-4 py-2 text-[12px] font-black text-white transition">
-                  {isYou ? "You" : "View"}
-                </div>
-              </button>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleFollow(trader.wallet)}
+                  disabled={!walletAddress}
+                  className={`h-9 shrink-0 rounded-lg px-4 text-[12px] font-black text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                    isFollowing
+                      ? "bg-[#242033] hover:bg-[#302a43]"
+                      : "bg-[#5365ff] hover:bg-[#6373ff]"
+                  }`}
+                >
+                  {isFollowing ? "Following" : "Follow"}
+                </button>
+              </div>
             );
           })}
 
@@ -1004,7 +1038,7 @@ export function FollowTopTradersPanel({
 
           {!leaderboard.isFetching && !traders.length ? (
             <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
-              No ChadWallet users recorded yet
+              No other ChadWallet traders yet
             </div>
           ) : null}
         </div>
@@ -1457,6 +1491,40 @@ function useLocalTradeReceipts(walletAddress?: string) {
   }, [walletAddress]);
 
   return receipts;
+}
+
+function useLocalFollowedTraders(walletAddress?: string) {
+  const [followed, setFollowed] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!walletAddress) {
+      setFollowed([]);
+      return;
+    }
+
+    try {
+      const current = JSON.parse(
+        window.localStorage.getItem(`${PROFILE_KEY}:follows:${walletAddress}`) || "[]",
+      ) as string[];
+      setFollowed(current.filter(Boolean));
+    } catch {
+      setFollowed([]);
+    }
+  }, [walletAddress]);
+
+  const updateFollowed = (targetWallet: string, following: boolean) => {
+    if (!walletAddress || targetWallet === walletAddress) return;
+
+    setFollowed((current) => {
+      const next = following
+        ? Array.from(new Set([...current, targetWallet]))
+        : current.filter((wallet) => wallet !== targetWallet);
+      window.localStorage.setItem(`${PROFILE_KEY}:follows:${walletAddress}`, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  return [followed, updateFollowed] as const;
 }
 
 function mergeTradeReceipts(primary: TradeReceipt[], fallback: TradeReceipt[]) {
