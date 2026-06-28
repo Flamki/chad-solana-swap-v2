@@ -1,9 +1,33 @@
 "use client";
 
 import { useLinkWithOAuth, usePrivy } from "@privy-io/react-auth";
-import { useWallets } from "@privy-io/react-auth/solana";
+import { useSignAndSendTransaction, useWallets } from "@privy-io/react-auth/solana";
+import { getTransferSolInstruction } from "@solana-program/system";
+import {
+  address as solanaAddress,
+  appendTransactionMessageInstruction,
+  compileTransaction,
+  createNoopSigner,
+  createSolanaRpc,
+  createTransactionMessage,
+  getBase58Decoder,
+  getTransactionEncoder,
+  pipe,
+  setTransactionMessageFeePayer,
+  setTransactionMessageLifetimeUsingBlockhash,
+} from "@solana/kit";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, Check, Clock3, Copy, Pencil, Repeat2, UserPlus } from "lucide-react";
+import {
+  CalendarDays,
+  Check,
+  Clock3,
+  Copy,
+  ExternalLink,
+  Loader2,
+  Pencil,
+  Repeat2,
+  Send,
+} from "lucide-react";
 import {
   type ChangeEvent,
   type FormEvent,
@@ -22,23 +46,28 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { hasPrivy } from "@/lib/env";
+import { env, hasPrivy, hasRpcEndpoint } from "@/lib/env";
 import {
   type PortfolioHistoryPoint,
   type PortfolioHistoryRange,
   type TradeReceiptRecord,
   type UserProfileRecord,
+  type WalletTransferRecord,
+  recordWalletTransfer,
   recordUserProfile,
   usePortfolioHistory,
   useStoredTradeReceipts,
   useStoredUserProfile,
   useTokenPosition,
+  useWalletTransfers,
 } from "@/lib/market-data";
+import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
 import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
 
 const RECEIPT_KEY = "chadwallet-trade-receipts";
 const PROFILE_KEY = "chadwallet-profile";
 const BIO_MAX_LENGTH = 160;
+const NOTE_MAX_LENGTH = 200;
 
 type TradeReceipt = TradeReceiptRecord;
 
@@ -678,17 +707,255 @@ function ProfileEditField({
   );
 }
 
-export function FollowTopTradersPanel() {
+export function ProfileSendPanel({ solPrice }: { solPrice: number }) {
+  if (!hasPrivy) {
+    return null;
+  }
+
+  return <ConnectedProfileSendPanel solPrice={solPrice} />;
+}
+
+function ConnectedProfileSendPanel({ solPrice }: { solPrice: number }) {
+  const queryClient = useQueryClient();
+  const { ready, authenticated } = usePrivy();
+  const { wallets } = useWallets();
+  const wallet = wallets[0];
+  const address = wallet?.address;
+  const { signAndSendTransaction } = useSignAndSendTransaction();
+  const sol = useTokenPosition({
+    owner: address,
+    mint: SOL_MINT,
+    decimals: 9,
+    price: solPrice,
+  });
+  const transfers = useWalletTransfers(address);
+  const rpc = useMemo(() => (hasRpcEndpoint ? createSolanaRpc(env.solanaRpcUrl) : null), []);
+  const [recipient, setRecipient] = useState("");
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const [submitted, setSubmitted] = useState<WalletTransferRecord | null>(null);
+  const solBalance = sol.data?.balance ?? 0;
+  const amountNumber = Number(amount);
+  const recipientClean = recipient.trim();
+  const canSend =
+    ready &&
+    authenticated &&
+    Boolean(wallet && address && rpc && recipientClean) &&
+    Number.isFinite(amountNumber) &&
+    amountNumber > 0 &&
+    amountNumber <= Math.max(solBalance - 0.001, 0);
+
+  const sendTransfer = async () => {
+    setError("");
+    setSubmitted(null);
+
+    try {
+      if (!wallet || !address || !rpc) throw new Error("Wallet or Solana RPC is unavailable.");
+      const destination = solanaAddress(recipientClean);
+      const source = solanaAddress(address);
+      if (recipientClean === address)
+        throw new Error("Choose a recipient that is not your wallet.");
+      if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
+        throw new Error("Enter a valid SOL amount.");
+      }
+      if (amountNumber > Math.max(solBalance - 0.001, 0)) {
+        throw new Error("Leave at least 0.001 SOL for network fees.");
+      }
+
+      setSending(true);
+      const { value: latestBlockhash } = await rpc
+        .getLatestBlockhash({ commitment: "confirmed" })
+        .send();
+      const transactionMessage = pipe(
+        createTransactionMessage({ version: "legacy" }),
+        (message) => setTransactionMessageFeePayer(source, message),
+        (message) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, message),
+        (message) =>
+          appendTransactionMessageInstruction(
+            getTransferSolInstruction({
+              source: createNoopSigner(source),
+              destination,
+              amount: BigInt(Math.floor(amountNumber * 1_000_000_000)),
+            }),
+            message,
+          ),
+      );
+      const transaction = compileTransaction(transactionMessage);
+      const result = await signAndSendTransaction({
+        wallet,
+        chain: SOLANA_MAINNET_CHAIN,
+        transaction: new Uint8Array(getTransactionEncoder().encode(transaction)),
+      });
+      const signature = getBase58Decoder().decode(result.signature);
+      const nextTransfer: WalletTransferRecord = {
+        signature,
+        senderWallet: address,
+        recipientWallet: recipientClean,
+        assetSymbol: "SOL",
+        assetMint: SOL_MINT,
+        amount,
+        note: note.trim().slice(0, NOTE_MAX_LENGTH),
+        status: "submitted",
+        slot: null,
+        explorerUrl: `https://solscan.io/tx/${signature}`,
+        createdAt: new Date().toISOString(),
+      };
+
+      setSubmitted(nextTransfer);
+      await recordWalletTransfer(nextTransfer);
+      setAmount("");
+      setNote("");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["token-position", address] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet-transfers", address] }),
+      ]);
+    } catch (sendError) {
+      setError(normalizeSendError(sendError));
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
-    <aside className="terminal-scroll w-[300px] shrink-0 overflow-y-auto px-3 pt-2 max-xl:hidden 2xl:w-[320px]">
-      <div className="mb-4 flex h-8 items-center gap-2">
-        <UserPlus className="h-4 w-4 text-[#5c5669]" />
-        <h2 className="text-[15px] font-black leading-none text-white">Follow top traders</h2>
+    <aside className="terminal-scroll w-[320px] shrink-0 overflow-y-auto px-3 pt-2 max-xl:hidden 2xl:w-[340px]">
+      <div className="rounded-xl border border-[#1b1726] bg-[#0b0912] p-3">
+        <div className="mb-3 flex h-9 items-center justify-between rounded-lg bg-[#15121d] px-3">
+          <div className="flex items-center gap-2 text-[15px] font-black text-white">
+            <Send className="h-4 w-4 text-[#7da1ff]" />
+            Send
+          </div>
+          <span className="rounded-md border border-[#252137] bg-[#0d0a13] px-2 py-1 font-mono text-[11px] font-bold text-[#a9b0d4]">
+            SOL only
+          </span>
+        </div>
+
+        <div className="rounded-xl border border-[#1b1726]/70 bg-[#100d18] p-3">
+          <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-[#7a7488]">
+            <span>You send</span>
+            <span className="font-mono">{solBalance.toFixed(6)} SOL</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              value={amount}
+              onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g, ""))}
+              inputMode="decimal"
+              placeholder="0"
+              className="min-w-0 flex-1 bg-transparent font-mono text-[30px] font-black text-white outline-none placeholder:text-[#3a3348]"
+            />
+            <button
+              onClick={() => setAmount(String(Math.max(solBalance - 0.001, 0)))}
+              className="rounded-md border border-[#252137] px-2 py-1 text-[11px] font-black text-[#a9b0d4] hover:text-white"
+            >
+              MAX
+            </button>
+            <span className="font-mono text-sm font-black text-[#a9b0d4]">SOL</span>
+          </div>
+          <div className="mt-1 text-right text-[11px] font-semibold text-[#7a7488]">
+            {Number.isFinite(amountNumber) && amountNumber > 0
+              ? `~ ${formatUsd(amountNumber * solPrice)}`
+              : "$0"}
+          </div>
+        </div>
+
+        <label className="mt-3 block text-[11px] font-semibold text-[#7a7488]">
+          Recipient wallet
+          <input
+            value={recipient}
+            onChange={(event) => setRecipient(event.target.value)}
+            placeholder="Solana wallet address"
+            className="mt-1 h-10 w-full rounded-lg border border-[#1b1726] bg-[#100d18] px-3 font-mono text-[11px] text-white outline-none transition focus:border-[#5365ff]"
+          />
+        </label>
+
+        <label className="mt-3 block text-[11px] font-semibold text-[#7a7488]">
+          Note
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value.slice(0, NOTE_MAX_LENGTH))}
+            placeholder="Add a note"
+            className="mt-1 h-20 w-full resize-none rounded-lg border border-[#1b1726] bg-[#100d18] px-3 py-2 text-xs text-white outline-none transition placeholder:text-[#4b435b] focus:border-[#5365ff]"
+          />
+          <span className="mt-1 block text-right font-mono text-[10px] text-[#5c5669]">
+            {note.length}/{NOTE_MAX_LENGTH}
+          </span>
+        </label>
+
+        <button
+          onClick={sendTransfer}
+          disabled={sending || !canSend}
+          className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-[#252137] bg-[#15121d] text-sm font-black text-white transition hover:bg-[#1f1b2a] disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          Review send
+        </button>
+
+        <p className="mt-2 text-[10.5px] font-semibold leading-relaxed text-[#7a7488]">
+          Real mainnet SOL transfer. Wallet confirmation is required and the receipt is recorded.
+        </p>
+
+        {error ? (
+          <div className="mt-3 rounded-lg border border-[#5a1d24] bg-[#2a0d13] px-3 py-2 text-xs font-semibold text-[#ff6f77]">
+            {error}
+          </div>
+        ) : null}
+
+        {submitted ? (
+          <a
+            href={submitted.explorerUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-[#123a2a] bg-[#071d14] px-3 py-2 text-xs font-bold text-[#20d772]"
+          >
+            Transfer submitted
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        ) : null}
       </div>
-      <div className="space-y-2">
-        {profileSuggestions.map((trader) => (
-          <ProfileTrader key={trader.handle} trader={trader} />
-        ))}
+
+      <div className="mt-4 rounded-xl border border-[#1b1726] bg-[#0b0912]">
+        <div className="border-b border-[#1b1726] px-3 py-3 text-sm font-black text-white">
+          Recent transfers
+        </div>
+        <div className="divide-y divide-[#171320]">
+          {(transfers.data ?? []).slice(0, 6).map((transfer) => (
+            <a
+              key={transfer.signature}
+              href={transfer.explorerUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="block px-3 py-3 text-xs transition hover:bg-[#151221]"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className={
+                    transfer.senderWallet === address ? "text-[#ff653d]" : "text-[#20d772]"
+                  }
+                >
+                  {transfer.senderWallet === address ? "Sent" : "Received"} {transfer.amount}{" "}
+                  {transfer.assetSymbol}
+                </span>
+                <span className="font-mono text-[#5c5669]">
+                  {new Date(transfer.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="mt-1 truncate font-mono text-[#7a7488]">
+                {transfer.senderWallet === address
+                  ? transfer.recipientWallet
+                  : transfer.senderWallet}
+              </div>
+              {transfer.note ? (
+                <div className="mt-1 line-clamp-2 text-[#a9b0d4]">{transfer.note}</div>
+              ) : null}
+            </a>
+          ))}
+          {!transfers.data?.length ? (
+            <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
+              No transfers recorded yet
+            </div>
+          ) : null}
+        </div>
       </div>
     </aside>
   );
@@ -844,32 +1111,6 @@ function PortfolioValueChart({
   );
 }
 
-function ProfileTrader({ trader }: { trader: { name: string; handle: string; color: string } }) {
-  return (
-    <div className="flex min-h-[48px] items-center gap-3 rounded-lg px-1.5 py-2 transition-colors hover:bg-[#151221]/50">
-      <div
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[10px] font-black text-white"
-        style={{
-          background: `radial-gradient(circle at 30% 25%, ${trader.color}, #171421 70%)`,
-        }}
-      >
-        {trader.name.slice(0, 2).toUpperCase()}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13.5px] font-bold leading-none text-[#e8e4f0]">
-          {trader.name}
-        </div>
-        <div className="mt-1 truncate text-[11.5px] font-semibold leading-none text-[#a9b0d4]">
-          {trader.handle}
-        </div>
-      </div>
-      <button className="h-7 shrink-0 rounded-lg bg-[#5365ff] px-3.5 text-[11.5px] font-black text-white transition hover:bg-[#6373ff]">
-        Follow
-      </button>
-    </div>
-  );
-}
-
 function useLocalTradeReceipts(walletAddress?: string) {
   const [receipts, setReceipts] = useState<TradeReceipt[]>([]);
 
@@ -1021,6 +1262,11 @@ function isDataImage(value: unknown): value is string {
   return typeof value === "string" && /^data:image\/(png|jpe?g|webp|gif);base64,/.test(value);
 }
 
+function normalizeSendError(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  return "Unable to send this transfer. Check the recipient wallet, balance, and wallet approval.";
+}
+
 function buildPortfolioShape(points: PortfolioHistoryPoint[], range: PortfolioHistoryRange) {
   const width = 1000;
   const height = 235;
@@ -1139,19 +1385,6 @@ function readImageAsDataUrl(file: File) {
     reader.readAsDataURL(file);
   });
 }
-
-const profileSuggestions = [
-  { name: "leo", handle: "@0xleo", color: "#ef5f46" },
-  { name: "asta", handle: "@astasol", color: "#d8b8c7" },
-  { name: "remus (rtr/acc)", handle: "@remusofmars", color: "#c48d42" },
-  { name: "Dr Gero", handle: "@0xg3ro", color: "#9db4d8" },
-  { name: "GCR Junior", handle: "@gcrJR", color: "#4cf57d" },
-  { name: "White Russian", handle: "@WhiteRusskiye", color: "#918d77" },
-  { name: "A.L. Trenchman", handle: "@Captain_AL_80", color: "#88905d" },
-  { name: "Daumen", handle: "@daumenxyz", color: "#d6ff46" },
-  { name: "inyourwalls", handle: "@inyourwalls", color: "#5a9c6f" },
-  { name: "Dubi", handle: "@Dubi_CH", color: "#d8d8d8" },
-];
 
 function getLoginEmail(user: ReturnType<typeof usePrivy>["user"]) {
   if (!user) return null;

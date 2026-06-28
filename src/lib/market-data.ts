@@ -85,6 +85,20 @@ export type UserProfileRecord = {
   updatedAt?: string;
 };
 
+export type WalletTransferRecord = {
+  signature: string;
+  senderWallet: string;
+  recipientWallet: string;
+  assetSymbol: string;
+  assetMint: string;
+  amount: string;
+  note: string;
+  status: "submitted" | "confirmed" | "finalized";
+  slot: number | null;
+  explorerUrl: string;
+  createdAt: string;
+};
+
 export type ChartInterval = "1m" | "5m" | "15m" | "1H" | "4H" | "1D";
 
 export type PricePoint = {
@@ -809,6 +823,63 @@ export async function recordUserProfile(profile: UserProfileRecord) {
   return { stored: true };
 }
 
+export async function recordWalletTransfer(transfer: WalletTransferRecord) {
+  if (!supabase) return { stored: false };
+
+  const { error } = await supabase.from("wallet_transfers").upsert(
+    {
+      signature: transfer.signature,
+      sender_wallet: transfer.senderWallet,
+      recipient_wallet: transfer.recipientWallet,
+      asset_symbol: transfer.assetSymbol,
+      asset_mint: transfer.assetMint,
+      amount: transfer.amount,
+      note: transfer.note,
+      status: transfer.status,
+      slot: transfer.slot,
+      explorer_url: transfer.explorerUrl,
+      created_at: transfer.createdAt,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "signature" },
+  );
+
+  if (error) throw error;
+  return { stored: true };
+}
+
+export async function fetchWalletTransfers(wallet: string, signal?: AbortSignal) {
+  if (!supabase) return [];
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await supabase
+    .from("wallet_transfers")
+    .select(
+      "signature,sender_wallet,recipient_wallet,asset_symbol,asset_mint,amount,note,status,slot,explorer_url,created_at",
+    )
+    .or(`sender_wallet.eq.${wallet},recipient_wallet.eq.${wallet}`)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) throw error;
+
+  return (data ?? []).map(
+    (transfer): WalletTransferRecord => ({
+      signature: transfer.signature,
+      senderWallet: transfer.sender_wallet,
+      recipientWallet: transfer.recipient_wallet,
+      assetSymbol: transfer.asset_symbol,
+      assetMint: transfer.asset_mint,
+      amount: transfer.amount,
+      note: transfer.note ?? "",
+      status: transfer.status,
+      slot: transfer.slot,
+      explorerUrl: transfer.explorer_url,
+      createdAt: transfer.created_at,
+    }),
+  );
+}
+
 export function useTrendingTokens() {
   return useQuery({
     queryKey: ["trending-tokens"],
@@ -888,6 +959,17 @@ export function useStoredUserProfile(wallet?: string) {
     queryFn: ({ signal }) => fetchStoredUserProfile(wallet!, signal),
     enabled: Boolean(wallet && supabase),
     staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export function useWalletTransfers(wallet?: string) {
+  return useQuery({
+    queryKey: ["wallet-transfers", wallet],
+    queryFn: ({ signal }) => fetchWalletTransfers(wallet!, signal),
+    enabled: Boolean(wallet && supabase),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
     retry: 1,
   });
 }
