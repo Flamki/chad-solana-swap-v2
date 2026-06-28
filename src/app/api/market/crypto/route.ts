@@ -9,15 +9,15 @@ export const revalidate = 30;
 
 async function fetchLiveCryptoToken(mint: string): Promise<Token> {
   try {
-    return await tokenFromFallbackProviders(mint);
+    const overview = await birdeyeJson<Parameters<typeof tokenFromOverview>[1]>(
+      `/defi/token_overview?address=${encodeURIComponent(mint)}`,
+      { next: { revalidate: 30 } },
+    );
+
+    return tokenFromOverview(mint, overview);
   } catch {
     try {
-      const overview = await birdeyeJson<Parameters<typeof tokenFromOverview>[1]>(
-        `/defi/token_overview?address=${encodeURIComponent(mint)}`,
-        { next: { revalidate: 30 } },
-      );
-
-      return tokenFromOverview(mint, overview);
+      return await tokenFromFallbackProviders(mint);
     } catch {
       return createFallbackToken(mint);
     }
