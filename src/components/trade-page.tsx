@@ -25,7 +25,7 @@ import { ChadLogo } from "@/components/chad-logo";
 import { TokenSearch } from "@/components/token-search";
 import { TradeAccount } from "@/components/trade-account";
 import { PriceChart } from "@/components/trade/price-chart";
-import { ProfileSendPanel, TradeProfileCenter } from "@/components/trade/profile-center";
+import { FollowTopTradersPanel, TradeProfileCenter } from "@/components/trade/profile-center";
 import { SwapPanel } from "@/components/trade/swap-panel";
 import {
   type ChartInterval,
@@ -1083,7 +1083,7 @@ export function TradePage({ mint }: { mint: string }) {
           </section>
 
           {centerView === "profile" ? (
-            <ProfileSendPanel solPrice={solPrice} />
+            <FollowTopTradersPanel token={token} />
           ) : (
             <aside className="w-[320px] 2xl:w-[340px] shrink-0 flex flex-col overflow-y-auto pb-2 no-scrollbar">
               <SwapPanel token={token} solPrice={solPrice} />

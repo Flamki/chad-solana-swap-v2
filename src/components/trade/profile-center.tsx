@@ -58,11 +58,12 @@ import {
   usePortfolioHistory,
   useStoredTradeReceipts,
   useStoredUserProfile,
+  useTokenTrades,
   useTokenPosition,
   useWalletTransfers,
 } from "@/lib/market-data";
 import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
-import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
+import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 const RECEIPT_KEY = "chadwallet-trade-receipts";
 const PROFILE_KEY = "chadwallet-profile";
@@ -707,6 +708,126 @@ function ProfileEditField({
   );
 }
 
+export function FollowTopTradersPanel({ token }: { token: Token }) {
+  const trades = useTokenTrades(token.mint, true);
+  const traders = useMemo(() => {
+    const byWallet = new Map<
+      string,
+      {
+        wallet: string;
+        buyUsd: number;
+        sellUsd: number;
+        volumeUsd: number;
+        trades: number;
+        lastAgo: string;
+      }
+    >();
+
+    for (const trade of trades.data?.data ?? []) {
+      if (!trade.wallet || trade.wallet === "Unknown") continue;
+      const current = byWallet.get(trade.wallet) ?? {
+        wallet: trade.wallet,
+        buyUsd: 0,
+        sellUsd: 0,
+        volumeUsd: 0,
+        trades: 0,
+        lastAgo: trade.ago,
+      };
+
+      if (trade.side === "buy") {
+        current.buyUsd += trade.amountUsd;
+      } else {
+        current.sellUsd += trade.amountUsd;
+      }
+
+      current.volumeUsd += trade.amountUsd;
+      current.trades += 1;
+      current.lastAgo = current.lastAgo || trade.ago;
+      byWallet.set(trade.wallet, current);
+    }
+
+    return Array.from(byWallet.values())
+      .sort((left, right) => right.volumeUsd - left.volumeUsd)
+      .slice(0, 10);
+  }, [trades.data]);
+
+  return (
+    <aside className="terminal-scroll w-[320px] shrink-0 overflow-y-auto px-3 pt-2 max-xl:hidden 2xl:w-[340px]">
+      <div className="rounded-xl border border-[#1b1726] bg-[#0b0912]">
+        <div className="border-b border-[#1b1726] px-3 py-3">
+          <div className="text-[15px] font-black leading-none text-white">Top traders</div>
+          <div className="mt-1 text-[11px] font-semibold text-[#7a7488]">
+            Live wallets trading {token.symbol}
+          </div>
+        </div>
+
+        <div className="divide-y divide-[#171320]">
+          {traders.map((trader, index) => {
+            const netUsd = trader.buyUsd - trader.sellUsd;
+            const netPositive = netUsd >= 0;
+
+            return (
+              <a
+                key={trader.wallet}
+                href={`https://solscan.io/account/${trader.wallet}`}
+                target="_blank"
+                rel="noreferrer"
+                className="block px-3 py-3 transition hover:bg-[#151221]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#2a2540] bg-[#171320] font-mono text-[10px] font-black text-white">
+                    #{index + 1}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-mono text-[12px] font-bold text-white">
+                        {shortWallet(trader.wallet)}
+                      </span>
+                      <span className="font-mono text-[12px] font-black text-[#e8e4f0]">
+                        {formatUsd(trader.volumeUsd)}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-2 text-[11px] font-semibold">
+                      <span className="text-[#7a7488]">
+                        {trader.trades} swaps · {trader.lastAgo}
+                      </span>
+                      <span className={netPositive ? "text-[#20d772]" : "text-[#ff653d]"}>
+                        {netPositive ? "+" : "-"}
+                        {formatCompact(Math.abs(netUsd))}
+                      </span>
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[10.5px] font-bold">
+                      <span className="rounded-md bg-[#071d14] px-2 py-1 text-[#20d772]">
+                        Buy {formatUsd(trader.buyUsd)}
+                      </span>
+                      <span className="rounded-md bg-[#24100d] px-2 py-1 text-[#ff653d]">
+                        Sell {formatUsd(trader.sellUsd)}
+                      </span>
+                    </div>
+                  </div>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[#5c5669]" />
+                </div>
+              </a>
+            );
+          })}
+
+          {trades.isFetching && !traders.length ? (
+            <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
+              Loading live traders
+            </div>
+          ) : null}
+
+          {!trades.isFetching && !traders.length ? (
+            <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
+              No live trader wallets available yet
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export function ProfileSendPanel({ solPrice }: { solPrice: number }) {
   if (!hasPrivy) {
     return null;
@@ -1265,6 +1386,10 @@ function isDataImage(value: unknown): value is string {
 function normalizeSendError(error: unknown) {
   if (error instanceof Error && error.message) return error.message;
   return "Unable to send this transfer. Check the recipient wallet, balance, and wallet approval.";
+}
+
+function shortWallet(wallet: string) {
+  return `${wallet.slice(0, 5)}...${wallet.slice(-4)}`;
 }
 
 function buildPortfolioShape(points: PortfolioHistoryPoint[], range: PortfolioHistoryRange) {
