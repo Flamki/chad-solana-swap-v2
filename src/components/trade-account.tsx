@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { env, hasPrivy, hasRpcEndpoint } from "@/lib/env";
 import { useTokenPosition } from "@/lib/market-data";
+import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
 import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
 
 type AccountDialog = "deposit" | "withdraw" | "manage" | null;
@@ -307,7 +308,7 @@ export function DepositDialog({
       await fundWallet({
         address,
         options: {
-          chain: "solana:mainnet",
+          chain: SOLANA_MAINNET_CHAIN,
           asset: asset === "SOL" ? "native-currency" : "USDC",
           amount: asset === "SOL" ? "0.25" : "25",
           uiConfig: {
@@ -435,7 +436,7 @@ export function WithdrawDialog({
       const transaction = compileTransaction(transactionMessage);
       const result = await signAndSendTransaction({
         wallet,
-        chain: "solana:mainnet",
+        chain: SOLANA_MAINNET_CHAIN,
         transaction: new Uint8Array(getTransactionEncoder().encode(transaction)),
       });
       const txSignature = getBase58Decoder().decode(result.signature);

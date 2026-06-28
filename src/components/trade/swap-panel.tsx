@@ -24,6 +24,7 @@ import {
   useTokenTrades,
   useTokenPosition,
 } from "@/lib/market-data";
+import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
 import type { Token } from "@/lib/tokens";
 import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, rawAmountFromUi } from "@/lib/tokens";
 
@@ -347,7 +348,7 @@ function SwapPanelCore({
       });
       const { signedTransaction } = await onSignTransaction({
         wallet,
-        chain: "solana:mainnet",
+        chain: SOLANA_MAINNET_CHAIN,
         transaction: base64ToBytes(order.transaction),
       });
       const result = await executeJupiterSwap({
