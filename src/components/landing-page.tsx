@@ -192,7 +192,7 @@ export function Landing() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(73,72,210,0.26),rgba(12,8,32,0.34)_34%,rgba(0,0,0,0)_68%)]" />
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[66%] w-[42rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-700/24 blur-[90px]" />
 
-        <div className="relative w-full max-w-[390px] animate-float sm:max-w-[430px] md:max-w-[460px]">
+        <div className="relative w-full max-w-[330px] animate-float sm:max-w-[370px] md:max-w-[400px]">
           <div className="absolute inset-x-6 -bottom-10 h-16 rounded-full bg-black/80 blur-2xl" />
           <div className="absolute -inset-8 rounded-[4.5rem] bg-gradient-to-b from-indigo-500/22 via-blue-500/10 to-transparent blur-2xl" />
           <div className="relative rounded-[4.15rem] bg-gradient-to-br from-[#3b3d45] via-[#050507] to-[#242832] p-[10px] shadow-[0_42px_120px_rgba(0,0,0,0.78),0_0_90px_rgba(82,92,255,0.28)] ring-1 ring-white/[0.18]">
@@ -210,7 +210,10 @@ export function Landing() {
                   className="absolute inset-0 h-full w-full object-cover"
                 />
                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(112deg,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.06)_18%,rgba(255,255,255,0)_42%)] mix-blend-screen" />
-                <div className="absolute left-1/2 top-3 z-30 h-8 w-28 -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.2),0_1px_8px_rgba(0,0,0,0.55)]" />
+                <div className="absolute left-1/2 top-3 z-30 flex h-8 w-28 -translate-x-1/2 items-center justify-end gap-2 rounded-full bg-black px-3 shadow-[inset_0_1px_2px_rgba(255,255,255,0.2),0_1px_8px_rgba(0,0,0,0.55)]">
+                  <span className="h-3.5 w-3.5 rounded-full bg-[radial-gradient(circle_at_35%_35%,#7f96ff_0%,#16265c_34%,#05070e_70%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18),0_0_8px_rgba(92,118,255,0.42)]" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#1c263c] shadow-[0_0_5px_rgba(120,150,255,0.5)]" />
+                </div>
                 <div className="absolute bottom-3 left-1/2 z-30 h-1.5 w-32 -translate-x-1/2 rounded-full bg-white/55 shadow-[0_1px_8px_rgba(0,0,0,0.45)]" />
               </div>
             </div>
