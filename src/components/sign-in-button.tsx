@@ -9,6 +9,8 @@ import { useCallback, useEffect, useRef } from "react";
 
 import { hasPrivy } from "@/lib/env";
 
+const PENDING_AUTH_REDIRECT_KEY = "chadwallet:pending-auth-redirect";
+
 export function SignInButton({
   variant = "default",
   redirectTo,
@@ -55,6 +57,7 @@ function ConnectedPrivyButton({
     }
 
     redirectStarted.current = true;
+    window.sessionStorage.removeItem(PENDING_AUTH_REDIRECT_KEY);
     router.replace(redirectTo as Route);
 
     window.setTimeout(() => {

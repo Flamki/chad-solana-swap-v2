@@ -1,9 +1,10 @@
 "use client";
 
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useMemo, useState } from "react";
 
 const loadPrivySignIn = () => import("@/components/landing/privy-sign-in");
 const PrivySignIn = lazy(loadPrivySignIn);
+const PENDING_AUTH_REDIRECT_KEY = "chadwallet:pending-auth-redirect";
 
 function LoadingButton({ label }: { label: string }) {
   return (
@@ -25,19 +26,26 @@ export function LazySignInButton({
   label?: string;
   className?: string;
 }) {
-  const [active, setActive] = useState(false);
+  const pendingRedirect = useMemo(() => getPendingRedirect(), []);
+  const [active, setActive] = useState(() => Boolean(pendingRedirect || hasPrivyOAuthCallback()));
+  const resolvedRedirectTo = pendingRedirect ?? redirectTo;
 
   if (active) {
     return (
       <Suspense fallback={<LoadingButton label={label} />}>
-        <PrivySignIn redirectTo={redirectTo} label={label} />
+        <PrivySignIn redirectTo={resolvedRedirectTo} label={label} />
       </Suspense>
     );
   }
 
+  const startLogin = () => {
+    setPendingRedirect(redirectTo);
+    setActive(true);
+  };
+
   return (
     <button
-      onClick={() => setActive(true)}
+      onClick={startLogin}
       onPointerEnter={() => void loadPrivySignIn()}
       onFocus={() => void loadPrivySignIn()}
       onTouchStart={() => void loadPrivySignIn()}
@@ -45,5 +53,25 @@ export function LazySignInButton({
     >
       {label}
     </button>
+  );
+}
+
+function getPendingRedirect() {
+  if (typeof window === "undefined") return null;
+
+  return window.sessionStorage.getItem(PENDING_AUTH_REDIRECT_KEY);
+}
+
+function setPendingRedirect(redirectTo: string) {
+  if (typeof window === "undefined") return;
+
+  window.sessionStorage.setItem(PENDING_AUTH_REDIRECT_KEY, redirectTo);
+}
+
+function hasPrivyOAuthCallback() {
+  if (typeof window === "undefined") return false;
+
+  return Array.from(new URLSearchParams(window.location.search).keys()).some((key) =>
+    key.startsWith("privy_"),
   );
 }
