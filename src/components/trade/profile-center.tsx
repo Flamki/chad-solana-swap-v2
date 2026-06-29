@@ -169,6 +169,7 @@ function ConnectedTradeProfileCenter({
   const [positionTab, setPositionTab] = useState<"open" | "closed">("open");
   const storedReceipts = useStoredTradeReceipts(address);
   const localReceipts = useLocalTradeReceipts(address);
+  const transfers = useWalletTransfers(address);
   const followStats = useFollowStats(address);
   const receipts = useMemo(
     () => mergeTradeReceipts(storedReceipts.data ?? [], localReceipts),
@@ -324,6 +325,10 @@ function ConnectedTradeProfileCenter({
             <span className="inline-flex items-center gap-1.5">
               <Repeat2 className="h-4 w-4 text-[#5c5669]" />
               {receipts.length} trades
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Send className="h-4 w-4 text-[#5c5669]" />
+              {(transfers.data?.length ?? 0).toLocaleString()} transfers
             </span>
             <span className="inline-flex items-center gap-1.5">
               <CalendarDays className="h-4 w-4 text-[#5c5669]" />
@@ -514,6 +519,13 @@ function ConnectedTradeProfileCenter({
                 </div>
               )}
             </section>
+
+            <ProfileTransfersSection
+              wallet={address}
+              transfers={transfers.data ?? []}
+              loading={transfers.isFetching}
+              className="min-[1181px]:col-span-2 max-[1180px]:order-last"
+            />
           </div>
         </section>
       </div>
@@ -560,6 +572,7 @@ function ViewedTradeProfile({
 }) {
   const storedProfile = useStoredUserProfile(walletAddress);
   const receipts = useStoredTradeReceipts(walletAddress);
+  const transfers = useWalletTransfers(walletAddress);
   const followStats = useFollowStats(walletAddress);
   const [copied, setCopied] = useState(false);
   const fallbackProfile = useMemo<StoredProfile>(
@@ -656,6 +669,10 @@ function ViewedTradeProfile({
               <Repeat2 className="h-4 w-4 text-[#5c5669]" />
               {tradeCount} trades
             </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Send className="h-4 w-4 text-[#5c5669]" />
+              {(transfers.data?.length ?? 0).toLocaleString()} transfers
+            </span>
             <span className="text-[#20d772]">{buyCount} buys</span>
             <span className="text-[#ff653d]">{sellCount} sells</span>
             <button
@@ -715,9 +732,86 @@ function ViewedTradeProfile({
               </div>
             )}
           </section>
+
+          <ProfileTransfersSection
+            wallet={walletAddress}
+            transfers={transfers.data ?? []}
+            loading={transfers.isFetching}
+            className="mt-5"
+          />
         </section>
       </div>
     </div>
+  );
+}
+
+function ProfileTransfersSection({
+  wallet,
+  transfers,
+  loading,
+  className = "",
+}: {
+  wallet: string;
+  transfers: WalletTransferRecord[];
+  loading: boolean;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`min-w-0 overflow-hidden rounded-lg border border-[#1b1726] bg-[#0b0912] ${className}`}
+    >
+      <div className="flex h-12 items-center gap-4 border-b border-[#1b1726] bg-[#15121d] px-4 text-sm font-black">
+        <span className="text-white">SOL transfers</span>
+        <span className="text-[#5c5669]">Mainnet sends, receives, and notes</span>
+      </div>
+      <div className="grid min-w-0 grid-cols-[minmax(70px,0.7fr)_minmax(76px,0.7fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(66px,0.7fr)] border-b border-[#171320] px-4 py-2 text-xs font-semibold text-[#5c5669]">
+        <span className="min-w-0 truncate">Type</span>
+        <span className="min-w-0 truncate">Amount</span>
+        <span className="min-w-0 truncate">User</span>
+        <span className="min-w-0 truncate">Note</span>
+        <span className="min-w-0 truncate text-right">Tx</span>
+      </div>
+      {transfers.length ? (
+        <div className="divide-y divide-[#171320]">
+          {transfers.map((transfer) => {
+            const outgoing = transfer.senderWallet === wallet;
+            const counterparty = outgoing ? transfer.recipientWallet : transfer.senderWallet;
+
+            return (
+              <a
+                key={transfer.signature}
+                href={transfer.explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="grid min-w-0 grid-cols-[minmax(70px,0.7fr)_minmax(76px,0.7fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(66px,0.7fr)] px-4 py-3 text-xs font-semibold transition hover:bg-[#151221]"
+              >
+                <span
+                  className={`min-w-0 truncate ${outgoing ? "text-[#ff653d]" : "text-[#20d772]"}`}
+                >
+                  {outgoing ? "Sent" : "Received"}
+                </span>
+                <span className="min-w-0 truncate font-mono text-white">
+                  {transfer.amount} {transfer.assetSymbol}
+                </span>
+                <span className="min-w-0 truncate font-mono text-[#a9b0d4]">
+                  {shortWallet(counterparty)}
+                </span>
+                <span className="min-w-0 truncate text-[#a9b0d4]">
+                  {transfer.note || "No note"}
+                </span>
+                <span className="min-w-0 truncate text-right font-mono text-[#7da1ff]">
+                  {transfer.signature.slice(0, 4)}...{transfer.signature.slice(-4)}
+                </span>
+              </a>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="grid h-32 place-items-center text-sm font-semibold text-[#5c5669]">
+          {loading ? "Loading transfers" : "No SOL transfers recorded yet"}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1204,6 +1298,7 @@ function ConnectedProfileSendPanel({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["token-position", address] }),
         queryClient.invalidateQueries({ queryKey: ["wallet-transfers", address] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet-transfers", recipientClean] }),
       ]);
     } catch (sendError) {
       setError(normalizeSendError(sendError));
@@ -1239,7 +1334,7 @@ function ConnectedProfileSendPanel({
               className="min-w-0 flex-1 bg-transparent font-mono text-[30px] font-black text-white outline-none placeholder:text-[#3a3348]"
             />
             <button
-              onClick={() => setAmount(String(Math.max(solBalance - 0.001, 0)))}
+              onClick={() => setAmount(String(maxTransferableSol(solBalance)))}
               className="rounded-md border border-[#252137] px-2 py-1 text-[11px] font-black text-[#a9b0d4] hover:text-white"
             >
               MAX
