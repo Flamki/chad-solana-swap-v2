@@ -57,8 +57,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { env, hasPrivy, hasRpcEndpoint } from "@/lib/env";
-import { useTokenPosition } from "@/lib/market-data";
+import {
+  recordWalletTransfer,
+  useTokenPosition,
+  type WalletTransferRecord,
+} from "@/lib/market-data";
 import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
+import {
+  formatLamportsAsSol,
+  maxTransferableSol,
+  normalizeSolanaTransactionError,
+  parseSolLamports,
+  SOL_TRANSFER_FEE_RESERVE_SOL,
+} from "@/lib/solana-transfer-utils";
 import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
 
 type AccountDialog = "deposit" | "withdraw" | "manage" | null;
@@ -409,10 +420,14 @@ export function WithdrawDialog({
       if (!wallet || !rpc) throw new Error("Wallet or Solana RPC is unavailable.");
       const destination = solanaAddress(recipient.trim());
       const source = solanaAddress(address);
-      const value = Number(amount);
-      if (!Number.isFinite(value) || value <= 0) throw new Error("Enter a valid SOL amount.");
-      if (value > Math.max(balance - 0.001, 0)) {
-        throw new Error("Leave at least 0.001 SOL for network fees.");
+      const lamports = parseSolLamports(amount);
+      const sourceSol = formatLamportsAsSol(lamports);
+      const value = Number(sourceSol);
+      if (recipient.trim() === address) {
+        throw new Error("Choose a destination that is not your own wallet.");
+      }
+      if (value > maxTransferableSol(balance)) {
+        throw new Error(`Leave at least ${SOL_TRANSFER_FEE_RESERVE_SOL} SOL for network fees.`);
       }
 
       setSending(true);
@@ -428,7 +443,7 @@ export function WithdrawDialog({
             getTransferSolInstruction({
               source: createNoopSigner(source),
               destination,
-              amount: BigInt(Math.floor(value * 1_000_000_000)),
+              amount: lamports,
             }),
             message,
           ),
@@ -438,12 +453,39 @@ export function WithdrawDialog({
         wallet,
         chain: SOLANA_MAINNET_CHAIN,
         transaction: new Uint8Array(getTransactionEncoder().encode(transaction)),
+        options: {
+          commitment: "confirmed",
+          maxRetries: 3,
+          preflightCommitment: "confirmed",
+          skipPreflight: false,
+        },
       });
       const txSignature = getBase58Decoder().decode(result.signature);
+      const transfer: WalletTransferRecord = {
+        signature: txSignature,
+        senderWallet: address,
+        recipientWallet: recipient.trim(),
+        assetSymbol: "SOL",
+        assetMint: SOL_MINT,
+        amount: sourceSol,
+        note: "Withdrawal",
+        status: "submitted",
+        slot: null,
+        explorerUrl: `https://solscan.io/tx/${txSignature}`,
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        await recordWalletTransfer(transfer);
+      } catch (storageError) {
+        console.warn("Withdrawal submitted, but receipt storage failed.", storageError);
+      }
       setSignature(txSignature);
       setAmount("");
       setRecipient("");
-      await queryClient.invalidateQueries({ queryKey: ["token-position", address] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["token-position", address] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet-transfers", address] }),
+      ]);
     } catch (withdrawError) {
       setError(normalizeError(withdrawError, "Unable to send this withdrawal."));
     } finally {
@@ -486,7 +528,7 @@ export function WithdrawDialog({
               className="min-w-0 flex-1 bg-transparent font-mono outline-none"
             />
             <button
-              onClick={() => setAmount(String(Math.max(balance - 0.001, 0)))}
+              onClick={() => setAmount(String(maxTransferableSol(balance)))}
               className="text-xs font-semibold text-primary"
             >
               MAX
@@ -849,6 +891,5 @@ async function copyToClipboard(value: string) {
 }
 
 function normalizeError(error: unknown, fallback: string) {
-  if (error instanceof Error && error.message) return error.message;
-  return fallback;
+  return normalizeSolanaTransactionError(error, fallback);
 }

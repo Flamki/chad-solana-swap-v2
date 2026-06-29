@@ -964,6 +964,20 @@ export async function recordUserProfile(profile: UserProfileRecord) {
 }
 
 export async function recordWalletTransfer(transfer: WalletTransferRecord) {
+  try {
+    const response = await fetch("/api/wallet-transfer", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(transfer),
+    });
+
+    if (response.ok) {
+      return (await response.json()) as { stored: boolean };
+    }
+  } catch {
+    // Fall back to the direct Supabase client below for older/local environments.
+  }
+
   if (!supabase) return { stored: false };
 
   const { error } = await supabase.from("wallet_transfers").upsert(

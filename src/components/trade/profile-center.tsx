@@ -51,10 +51,10 @@ import { env, hasPrivy, hasRpcEndpoint } from "@/lib/env";
 import {
   type PortfolioHistoryPoint,
   type PortfolioHistoryRange,
+  type FollowStats,
   type TradeReceiptRecord,
   type UserProfileRecord,
   type WalletTransferRecord,
-  type FollowStats,
   recordWalletTransfer,
   recordUserProfile,
   syncFollowTrader,
@@ -68,6 +68,13 @@ import {
   useWalletTransfers,
 } from "@/lib/market-data";
 import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
+import {
+  formatLamportsAsSol,
+  maxTransferableSol,
+  normalizeSolanaTransactionError,
+  parseSolLamports,
+  SOL_TRANSFER_FEE_RESERVE_SOL,
+} from "@/lib/solana-transfer-utils";
 import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
 
 const RECEIPT_KEY = "chadwallet-trade-receipts";
@@ -1118,7 +1125,7 @@ function ConnectedProfileSendPanel({
     Boolean(wallet && address && rpc && recipientClean) &&
     Number.isFinite(amountNumber) &&
     amountNumber > 0 &&
-    amountNumber <= Math.max(solBalance - 0.001, 0);
+    amountNumber <= maxTransferableSol(solBalance);
 
   useEffect(() => {
     setRecipient(recipientWallet ?? "");
@@ -1132,13 +1139,13 @@ function ConnectedProfileSendPanel({
       if (!wallet || !address || !rpc) throw new Error("Wallet or Solana RPC is unavailable.");
       const destination = solanaAddress(recipientClean);
       const source = solanaAddress(address);
+      const lamports = parseSolLamports(amount);
+      const sourceSol = formatLamportsAsSol(lamports);
+      const value = Number(sourceSol);
       if (recipientClean === address)
         throw new Error("Choose a recipient that is not your wallet.");
-      if (!Number.isFinite(amountNumber) || amountNumber <= 0) {
-        throw new Error("Enter a valid SOL amount.");
-      }
-      if (amountNumber > Math.max(solBalance - 0.001, 0)) {
-        throw new Error("Leave at least 0.001 SOL for network fees.");
+      if (value > maxTransferableSol(solBalance)) {
+        throw new Error(`Leave at least ${SOL_TRANSFER_FEE_RESERVE_SOL} SOL for network fees.`);
       }
 
       setSending(true);
@@ -1154,7 +1161,7 @@ function ConnectedProfileSendPanel({
             getTransferSolInstruction({
               source: createNoopSigner(source),
               destination,
-              amount: BigInt(Math.floor(amountNumber * 1_000_000_000)),
+              amount: lamports,
             }),
             message,
           ),
@@ -1164,6 +1171,12 @@ function ConnectedProfileSendPanel({
         wallet,
         chain: SOLANA_MAINNET_CHAIN,
         transaction: new Uint8Array(getTransactionEncoder().encode(transaction)),
+        options: {
+          commitment: "confirmed",
+          maxRetries: 3,
+          preflightCommitment: "confirmed",
+          skipPreflight: false,
+        },
       });
       const signature = getBase58Decoder().decode(result.signature);
       const nextTransfer: WalletTransferRecord = {
@@ -1172,7 +1185,7 @@ function ConnectedProfileSendPanel({
         recipientWallet: recipientClean,
         assetSymbol: "SOL",
         assetMint: SOL_MINT,
-        amount,
+        amount: sourceSol,
         note: note.trim().slice(0, NOTE_MAX_LENGTH),
         status: "submitted",
         slot: null,
@@ -1181,7 +1194,11 @@ function ConnectedProfileSendPanel({
       };
 
       setSubmitted(nextTransfer);
-      await recordWalletTransfer(nextTransfer);
+      try {
+        await recordWalletTransfer(nextTransfer);
+      } catch (storageError) {
+        console.warn("Transfer submitted, but receipt storage failed.", storageError);
+      }
       setAmount("");
       setNote("");
       await Promise.all([
@@ -1674,8 +1691,10 @@ function isDataImage(value: unknown): value is string {
 }
 
 function normalizeSendError(error: unknown) {
-  if (error instanceof Error && error.message) return error.message;
-  return "Unable to send this transfer. Check the recipient wallet, balance, and wallet approval.";
+  return normalizeSolanaTransactionError(
+    error,
+    "Unable to send this transfer. Check the recipient wallet, balance, and wallet approval.",
+  );
 }
 
 function shortWallet(wallet: string) {
