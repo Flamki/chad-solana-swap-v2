@@ -151,7 +151,7 @@ export function Landing() {
               height={1347}
               quality={75}
               sizes="(min-width: 768px) 30vw, 42vw"
-              className="pointer-events-none absolute bottom-[-17%] right-[-8%] z-10 w-[42%] max-w-[560px] select-none drop-shadow-[0_35px_70px_rgba(99,102,241,0.34)] animate-float sm:bottom-[-19%] sm:right-[-3%] sm:w-[35%] md:bottom-[-22%] md:right-[2%] md:w-[30%]"
+              className="pointer-events-none absolute bottom-[2%] right-[-8%] z-20 w-[42%] max-w-[560px] select-none drop-shadow-[0_35px_70px_rgba(99,102,241,0.34)] animate-float sm:bottom-[1%] sm:right-[-3%] sm:w-[35%] md:bottom-0 md:right-[2%] md:w-[30%]"
             />
           </div>
         </div>
