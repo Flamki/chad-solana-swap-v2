@@ -3,7 +3,6 @@ import Image, { type StaticImageData } from "next/image";
 import { DownloadAppButton } from "@/components/landing/download-app-button";
 import { LazyVideo } from "@/components/landing/lazy-video";
 import { LazySignInButton } from "@/components/landing/lazy-sign-in-button";
-import { MarketTicker } from "@/components/landing/market-ticker";
 
 import buySell from "@/assets/flow/buy-sell-4.png";
 import kol from "@/assets/flow/kol-4.png";
@@ -120,12 +119,8 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative px-6 pb-8 pt-0 md:pb-12">
-        <div className="relative -mt-8 md:-mt-12">
-          <MarketTicker />
-        </div>
-
-        <div className="mx-auto mt-3 max-w-6xl text-center md:mt-4">
+      <section className="landing-deferred relative -mt-10 select-none px-6 pb-8 pt-0 md:-mt-14 md:pb-10">
+        <div className="mx-auto max-w-6xl text-center">
           <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
             NOW AVAILABLE ON WEB
           </p>
@@ -322,8 +317,6 @@ export function Landing() {
           <StoreBadges />
         </div>
       </section>
-
-      <MarketTicker compact reverse />
 
       <section
         className="landing-deferred relative w-full overflow-hidden bg-black leading-none"
