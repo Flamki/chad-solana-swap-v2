@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { ChadLogo } from "@/components/chad-logo";
+import { SignInButton } from "@/components/sign-in-button";
 import { TokenSearch } from "@/components/token-search";
 import { TradeAccount } from "@/components/trade-account";
 import { PriceChart } from "@/components/trade/price-chart";
@@ -48,6 +49,7 @@ import {
   syncWatchlistToken,
   type TradeReceiptRecord,
 } from "@/lib/market-data";
+import { hasPrivy } from "@/lib/env";
 import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 type TokenListMode = "watchlist" | "crypto" | "trending" | "most-held" | "graduates";
@@ -320,7 +322,7 @@ function normalizeSidebarColumn(column: SidebarColumnState): SidebarColumnState 
 
 export function TradePage({ mint }: { mint: string }) {
   const queryClient = useQueryClient();
-  const { user } = usePrivy();
+  const { ready, authenticated, user } = usePrivy();
   const { wallets } = useWallets();
   const walletAddress = wallets[0]?.address ?? user?.wallet?.address;
   const initialToken = useMemo(() => createFallbackToken(mint), [mint]);
@@ -873,6 +875,12 @@ export function TradePage({ mint }: { mint: string }) {
     window.setTimeout(() => setCopiedMint(false), 1400);
   }
 
+  if (!hasPrivy || !ready || !authenticated) {
+    return (
+      <TradeAuthGate ready={!hasPrivy || ready} redirectTo={`/trade/${encodeURIComponent(mint)}`} />
+    );
+  }
+
   return (
     <>
       {/* Mobile Only Overlay Container */}
@@ -1371,6 +1379,35 @@ export function TradePage({ mint }: { mint: string }) {
         <TradeFooterTicker solPrice={solPrice} />
       </div>
     </>
+  );
+}
+
+function TradeAuthGate({ ready, redirectTo }: { ready: boolean; redirectTo: string }) {
+  return (
+    <div className="grid min-h-screen place-items-center bg-[#08060f] px-6 text-center text-[#f4f1ff]">
+      <div className="w-full max-w-sm rounded-2xl border border-[#1b1726] bg-[#0b0912] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
+        <div className="mx-auto mb-4 flex justify-center">
+          <ChadLogo variant="dark" size="lg" showTagline={false} />
+        </div>
+        <h1 className="text-xl font-black text-white">Sign in to trade</h1>
+        <p className="mt-2 text-sm font-semibold leading-relaxed text-[#a9b0d4]">
+          ChadWallet trading, positions, transfers, and profile data require an authenticated wallet
+          session.
+        </p>
+        <div className="mt-5 flex justify-center">
+          {ready ? (
+            <SignInButton redirectTo={redirectTo} />
+          ) : (
+            <button
+              disabled
+              className="inline-flex min-h-10 items-center rounded-full border border-[#242034] bg-[#14111d] px-4 py-2 text-sm font-semibold text-[#a9b0d4]"
+            >
+              Checking session
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

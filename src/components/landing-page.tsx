@@ -1,5 +1,4 @@
 import Image, { type StaticImageData } from "next/image";
-import Link from "next/link";
 
 import { DownloadAppButton } from "@/components/landing/download-app-button";
 import { FAQSection } from "@/components/landing/faq-section";
@@ -103,12 +102,11 @@ export function Landing() {
           </p>
 
           <div className="relative z-20 mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href={SOL_TRADE}
-              className="rounded-full bg-white/[0.06] px-7 py-2.5 text-sm font-semibold ring-1 ring-white/[0.18] backdrop-blur transition hover:bg-white/[0.10]"
-            >
-              Start trading
-            </Link>
+            <LazySignInButton
+              redirectTo={SOL_TRADE}
+              label="Start trading"
+              className="px-7 py-2.5 font-semibold ring-1 ring-white/[0.18]"
+            />
             <DownloadAppButton />
           </div>
 
