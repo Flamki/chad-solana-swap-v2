@@ -21,8 +21,6 @@ const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
 const HERO_CHARACTER = "/assets/landing/astronaut-hq.png";
 const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
 const PHONE_MOCKUP = "/assets/landing/phone-mockup.png";
-const PHONE_CLEAN = "/assets/video/MAKE_VIDEO_NOT_IMAGE-Picsart-BackgroundRemover.webm";
-const PHONE_CLEAN_FALLBACK = "/assets/video/MAKE_VIDEO_NOT_IMAGE.mp4";
 const PHONE_VIDEO = "/assets/video/chadwallet.mp4";
 const FOOTER_IMAGE = "/assets/landing/chad-footer.png";
 
@@ -189,16 +187,21 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative mt-12 overflow-hidden py-16 md:py-24">
-        <div className="relative mx-auto h-[58vw] min-h-[460px] max-h-[820px] w-full max-w-7xl overflow-visible [perspective:1400px]">
-          <div className="relative h-full w-full overflow-visible [transform-style:preserve-3d] animate-phone-depth">
-            <LazyVideo
-              sources={[
-                { src: PHONE_CLEAN, type: "video/webm" },
-                { src: PHONE_CLEAN_FALLBACK, type: "video/mp4" },
-              ]}
-              className="absolute inset-0 z-10 block h-full w-full scale-[1.15] object-cover object-center"
-            />
+      <section className="landing-deferred relative flex items-center justify-center overflow-hidden px-6 py-16 md:py-24">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black to-transparent" />
+        <div className="relative w-full max-w-[420px] animate-float sm:max-w-[520px] md:max-w-[600px]">
+          <div className="relative rounded-[3.5rem] bg-black p-1.5 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.08]">
+            <div
+              className="relative overflow-hidden rounded-[3rem] bg-black"
+              style={{ aspectRatio: "9 / 19.3" }}
+            >
+              <div className="absolute left-1/2 top-3 z-20 h-6 w-24 -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)]" />
+              <LazyVideo
+                sources={[{ src: PHONE_VIDEO, type: "video/mp4" }]}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+              <div className="absolute bottom-2 left-1/2 z-20 h-1 w-28 -translate-x-1/2 rounded-full bg-white/20" />
+            </div>
           </div>
         </div>
       </section>
@@ -305,25 +308,6 @@ export function Landing() {
         </h2>
         <div className="mt-10 flex items-center justify-center">
           <StoreBadges />
-        </div>
-      </section>
-
-      <section className="landing-deferred relative flex items-center justify-center px-6 pb-20 pt-16 md:pb-32 md:pt-24">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black to-transparent" />
-        <div className="relative w-full max-w-[420px] animate-float sm:max-w-[520px] md:max-w-[600px]">
-          <div className="relative rounded-[3.5rem] bg-black p-1.5 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.08]">
-            <div
-              className="relative overflow-hidden rounded-[3rem] bg-black"
-              style={{ aspectRatio: "9 / 19.3" }}
-            >
-              <div className="absolute left-1/2 top-3 z-20 h-6 w-24 -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)]" />
-              <LazyVideo
-                sources={[{ src: PHONE_VIDEO, type: "video/mp4" }]}
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-              <div className="absolute bottom-2 left-1/2 z-20 h-1 w-28 -translate-x-1/2 rounded-full bg-white/20" />
-            </div>
-          </div>
         </div>
       </section>
 
