@@ -378,7 +378,7 @@ function SwapPanelCore({
       };
       setReceipt(nextReceipt);
       saveTradeReceipt(nextReceipt);
-      await Promise.allSettled([
+      const [, receiptStorage] = await Promise.allSettled([
         recordTokenIntent({
           wallet: walletAddress,
           mint: token.mint,
@@ -388,8 +388,17 @@ function SwapPanelCore({
         }),
         recordTradeReceipt(nextReceipt),
       ]);
+      if (
+        receiptStorage.status === "rejected" ||
+        (receiptStorage.status === "fulfilled" && !receiptStorage.value.stored)
+      ) {
+        setTradeError(
+          "Swap succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+        );
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["token-position", walletAddress] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet-token-positions", walletAddress] }),
         queryClient.invalidateQueries({ queryKey: ["trade-receipts", walletAddress] }),
         queryClient.invalidateQueries({ queryKey: ["app-leaderboard"] }),
         quoteQuery.refetch(),

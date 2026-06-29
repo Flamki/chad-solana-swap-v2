@@ -4,7 +4,14 @@ import { useMemo } from "react";
 
 import { env, hasJupiterKey, hasRpcEndpoint, hasSupabase } from "@/lib/env";
 import { fetchMarketJson } from "@/lib/market-api";
-import { SOL_MINT, USDC_MINT, createFallbackToken, type Token, mergeToken } from "@/lib/tokens";
+import {
+  SOL_MINT,
+  USDC_MINT,
+  createFallbackToken,
+  getToken,
+  type Token,
+  mergeToken,
+} from "@/lib/tokens";
 
 type JupiterPriceResponse = Record<
   string,
@@ -184,6 +191,18 @@ export type TokenPosition = {
   source: string;
 };
 
+export type WalletTokenPosition = {
+  mint: string;
+  symbol: string;
+  name: string;
+  logo: string;
+  balance: number;
+  valueUsd: number;
+  price: number;
+  decimals: number;
+  source: string;
+};
+
 export type PortfolioHistoryRange = "24H" | "7D" | "30D" | "ALL";
 
 export type PortfolioHistoryPoint = {
@@ -208,6 +227,28 @@ type RpcTokenBalance = {
     uiAmountString?: string;
   };
 };
+
+type ParsedTokenAccount = {
+  account?: {
+    data?: {
+      parsed?: {
+        info?: {
+          mint?: string;
+          tokenAmount?: {
+            decimals?: number;
+            uiAmount?: number | null;
+            uiAmountString?: string;
+          };
+        };
+      };
+    };
+  };
+};
+
+const SPL_TOKEN_PROGRAM_IDS = [
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  "TokenzQdBNbLqP5VEhdkAS6EPF4SFAj4WuAQkHoefF41c",
+] as const;
 
 type RpcParsedTransaction = {
   blockTime?: number | null;
@@ -569,6 +610,93 @@ export async function fetchTokenPosition({
     valueUsd: balance * price,
     source: env.solanaRpcUrl.includes("alchemy.com") ? "Alchemy RPC" : "Solana RPC",
   };
+}
+
+export async function fetchWalletTokenPositions(
+  owner: string,
+  solPrice: number,
+  signal?: AbortSignal,
+): Promise<WalletTokenPosition[]> {
+  if (!hasRpcEndpoint) {
+    throw new Error("Missing Solana RPC endpoint");
+  }
+
+  const [solBalanceResult, tokenAccountResults] = await Promise.all([
+    solanaRpc<{ value: number }>("getBalance", [owner, { commitment: "confirmed" }], signal),
+    Promise.allSettled(
+      SPL_TOKEN_PROGRAM_IDS.map((programId) =>
+        solanaRpc<{ value?: ParsedTokenAccount[] }>(
+          "getTokenAccountsByOwner",
+          [owner, { programId }, { encoding: "jsonParsed", commitment: "confirmed" }],
+          signal,
+        ),
+      ),
+    ),
+  ]);
+
+  const byMint = new Map<string, { balance: number; decimals: number }>();
+  const solBalance = solBalanceResult.value / 10 ** 9;
+  if (solBalance > 0) {
+    byMint.set(SOL_MINT, { balance: solBalance, decimals: 9 });
+  }
+
+  for (const result of tokenAccountResults) {
+    if (result.status !== "fulfilled") continue;
+
+    for (const item of result.value.value ?? []) {
+      const info = item.account?.data?.parsed?.info;
+      const mint = info?.mint;
+      const amount = info?.tokenAmount;
+      if (!mint || !amount) continue;
+
+      const balance = Number(amount.uiAmountString ?? amount.uiAmount ?? 0);
+      if (!Number.isFinite(balance) || balance <= 0) continue;
+
+      const current = byMint.get(mint);
+      byMint.set(mint, {
+        balance: (current?.balance ?? 0) + balance,
+        decimals: amount.decimals ?? current?.decimals ?? 0,
+      });
+    }
+  }
+
+  const mints = Array.from(byMint.keys());
+  const markets = await Promise.allSettled(
+    mints.map((mint) =>
+      mint === SOL_MINT
+        ? Promise.resolve(
+            mergeToken(getToken(SOL_MINT) ?? createFallbackToken(SOL_MINT), { price: solPrice }),
+          )
+        : fetchTokenMarket(mint, signal),
+    ),
+  );
+
+  return mints
+    .map((mint, index) => {
+      const position = byMint.get(mint);
+      if (!position) return null;
+
+      const market =
+        markets[index]?.status === "fulfilled"
+          ? markets[index].value
+          : (getToken(mint) ?? createFallbackToken(mint));
+      const price = mint === SOL_MINT ? solPrice : market.price;
+      const valueUsd = position.balance * price;
+
+      return {
+        mint,
+        symbol: market.symbol,
+        name: market.name,
+        logo: market.logo,
+        balance: position.balance,
+        valueUsd,
+        price,
+        decimals: position.decimals || market.decimals,
+        source: market.source ?? "rpc",
+      } satisfies WalletTokenPosition;
+    })
+    .filter((position): position is WalletTokenPosition => Boolean(position))
+    .sort((left, right) => right.valueUsd - left.valueUsd);
 }
 
 export async function fetchPortfolioHistory({
@@ -1290,6 +1418,17 @@ export function useWalletTransfers(wallet?: string) {
     queryKey: ["wallet-transfers", wallet],
     queryFn: ({ signal }) => fetchWalletTransfers(wallet!, signal),
     enabled: Boolean(wallet && supabase),
+    refetchInterval: 30_000,
+    staleTime: 10_000,
+    retry: 1,
+  });
+}
+
+export function useWalletTokenPositions(wallet?: string, solPrice = 0) {
+  return useQuery({
+    queryKey: ["wallet-token-positions", wallet, solPrice],
+    queryFn: ({ signal }) => fetchWalletTokenPositions(wallet!, solPrice, signal),
+    enabled: Boolean(wallet && hasRpcEndpoint),
     refetchInterval: 30_000,
     staleTime: 10_000,
     retry: 1,

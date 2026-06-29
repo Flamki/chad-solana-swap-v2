@@ -475,15 +475,24 @@ export function WithdrawDialog({
         createdAt: new Date().toISOString(),
       };
       try {
-        await recordWalletTransfer(transfer);
+        const storage = await recordWalletTransfer(transfer);
+        if (!storage.stored) {
+          setError(
+            "Withdrawal succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+          );
+        }
       } catch (storageError) {
         console.warn("Withdrawal submitted, but receipt storage failed.", storageError);
+        setError(
+          "Withdrawal succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+        );
       }
       setSignature(txSignature);
       setAmount("");
       setRecipient("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["token-position", address] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet-token-positions", address] }),
         queryClient.invalidateQueries({ queryKey: ["wallet-transfers", address] }),
       ]);
     } catch (withdrawError) {

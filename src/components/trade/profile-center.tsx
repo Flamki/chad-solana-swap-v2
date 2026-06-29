@@ -64,6 +64,7 @@ import {
   useStoredTradeReceipts,
   useStoredUserProfile,
   useTokenPosition,
+  useWalletTokenPositions,
   useWalletTransfers,
 } from "@/lib/market-data";
 import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
@@ -170,6 +171,7 @@ function ConnectedTradeProfileCenter({
   const storedReceipts = useStoredTradeReceipts(address);
   const localReceipts = useLocalTradeReceipts(address);
   const transfers = useWalletTransfers(address);
+  const walletPositions = useWalletTokenPositions(address, solPrice);
   const followStats = useFollowStats(address);
   const receipts = useMemo(
     () => mergeTradeReceipts(storedReceipts.data ?? [], localReceipts),
@@ -178,10 +180,13 @@ function ConnectedTradeProfileCenter({
   const cashBalance = usdc.data?.balance ?? 0;
   const solBalance = sol.data?.balance ?? 0;
   const solValue = sol.data?.valueUsd ?? 0;
+  const positions = walletPositions.data ?? [];
   const followingCount = followStats.data?.following ?? 0;
   const followersCount = followStats.data?.followers ?? 0;
-  const portfolioValue = cashBalance + solValue;
-  const loadingBalances = sol.isFetching || usdc.isFetching;
+  const portfolioValue = positions.length
+    ? positions.reduce((total, position) => total + position.valueUsd, 0)
+    : cashBalance + solValue;
+  const loadingBalances = sol.isFetching || usdc.isFetching || walletPositions.isFetching;
   const portfolioHistory = usePortfolioHistory({
     owner: address,
     range,
@@ -195,6 +200,16 @@ function ConnectedTradeProfileCenter({
     if (swapTab === "sells") return receipts.filter((receipt) => receipt.side === "sell");
     return receipts;
   }, [receipts, swapTab]);
+  const activityRows = useMemo(
+    () =>
+      buildProfileActivityRows({
+        wallet: address,
+        receipts: visibleReceipts,
+        transfers: transfers.data ?? [],
+        includeTransfers: swapTab === "swaps",
+      }),
+    [address, swapTab, transfers.data, visibleReceipts],
+  );
 
   useEffect(() => {
     if (!ready || !authenticated || !address || storedProfile.isFetching || storedProfile.data) {
@@ -222,27 +237,6 @@ function ConnectedTradeProfileCenter({
     storedProfile.data,
     storedProfile.isFetching,
   ]);
-
-  const positions = [
-    ...(cashBalance > 0
-      ? [
-          {
-            token: "USDC",
-            amount: cashBalance.toLocaleString(undefined, { maximumFractionDigits: 2 }),
-            value: formatUsd(cashBalance),
-          },
-        ]
-      : []),
-    ...(solBalance > 0
-      ? [
-          {
-            token: "SOL",
-            amount: solBalance.toLocaleString(undefined, { maximumFractionDigits: 4 }),
-            value: formatUsd(solValue),
-          },
-        ]
-      : []),
-  ];
 
   const copyAddress = async () => {
     if (!address) return;
@@ -437,22 +431,24 @@ function ConnectedTradeProfileCenter({
                   <div className="divide-y divide-[#171320]">
                     {positions.map((position) => (
                       <div
-                        key={position.token}
+                        key={position.mint}
                         className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(70px,0.8fr)] px-4 py-3 text-xs font-semibold"
                       >
-                        <span className="min-w-0 truncate text-white">{position.token}</span>
+                        <span className="min-w-0 truncate text-white">{position.symbol}</span>
                         <span className="min-w-0 truncate font-mono text-[#a9b0d4]">
-                          {position.amount}
+                          {formatTokenAmount(position.balance)}
                         </span>
                         <span className="min-w-0 truncate text-right font-mono text-white">
-                          {position.value}
+                          {formatUsd(position.valueUsd)}
                         </span>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="grid h-20 place-items-center text-sm font-semibold text-[#5c5669]">
-                    No {positionTab} positions
+                    {walletPositions.isFetching
+                      ? "Loading live positions"
+                      : `No ${positionTab} positions`}
                   </div>
                 )}
               </section>
@@ -461,7 +457,7 @@ function ConnectedTradeProfileCenter({
             <section className="min-w-0 overflow-hidden rounded-lg border border-[#1b1726] bg-[#0b0912]">
               <div className="flex h-12 items-center gap-4 border-b border-[#1b1726] bg-[#15121d] px-4 text-sm font-black">
                 {[
-                  ["swaps", "All swaps"],
+                  ["swaps", "All activity"],
                   ["buys", "Buys"],
                   ["sells", "Sells"],
                 ].map(([key, label]) => (
@@ -481,41 +477,46 @@ function ConnectedTradeProfileCenter({
                 <span className="min-w-0 truncate">Tx</span>
                 <span className="min-w-0 truncate text-right">Time</span>
               </div>
-              {visibleReceipts.length ? (
+              {activityRows.length ? (
                 <div className="divide-y divide-[#171320]">
-                  {visibleReceipts.map((receipt) => (
+                  {activityRows.map((row) => (
                     <a
-                      key={receipt.signature}
-                      href={receipt.explorerUrl}
+                      key={`${row.kind}:${row.signature}`}
+                      href={row.explorerUrl}
                       target="_blank"
                       rel="noreferrer"
                       className="grid min-w-0 grid-cols-[minmax(58px,0.75fr)_minmax(52px,0.55fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(66px,0.7fr)] px-4 py-3 text-xs font-semibold transition hover:bg-[#151221]"
                     >
-                      <span className="min-w-0 truncate text-white">{receipt.outputSymbol}</span>
+                      <span className="min-w-0 truncate text-white">{row.token}</span>
                       <span
                         className={`min-w-0 truncate ${
-                          receipt.side === "buy" ? "text-[#20d772]" : "text-[#ff653d]"
+                          row.tone === "green" ? "text-[#20d772]" : "text-[#ff653d]"
                         }`}
                       >
-                        {receipt.side.toUpperCase()}
+                        {row.action}
                       </span>
                       <span className="min-w-0 truncate font-mono text-[#a9b0d4]">
-                        {receipt.inputAmount} {receipt.inputSymbol}
+                        {row.amount}
                       </span>
                       <span className="min-w-0 truncate font-mono text-[#7da1ff]">
-                        {receipt.signature.startsWith("paper-")
+                        {row.signature.startsWith("paper-")
                           ? "paper"
-                          : `${receipt.signature.slice(0, 4)}...${receipt.signature.slice(-4)}`}
+                          : `${row.signature.slice(0, 4)}...${row.signature.slice(-4)}`}
                       </span>
                       <span className="min-w-0 truncate text-right text-[#5c5669]">
-                        {new Date(receipt.createdAt).toLocaleDateString()}
+                        {new Date(row.createdAt).toLocaleDateString()}
                       </span>
+                      {row.note ? (
+                        <span className="col-span-5 mt-1 min-w-0 truncate text-[#a9b0d4]">
+                          {row.note}
+                        </span>
+                      ) : null}
                     </a>
                   ))}
                 </div>
               ) : (
                 <div className="grid h-[380px] place-items-center text-sm font-semibold text-[#5c5669] max-xl:h-[280px]">
-                  No trades yet
+                  {swapTab === "swaps" ? "No activity yet" : "No trades yet"}
                 </div>
               )}
             </section>
@@ -812,6 +813,67 @@ function ProfileTransfersSection({
         </div>
       )}
     </section>
+  );
+}
+
+type ProfileActivityRow = {
+  kind: "swap" | "transfer";
+  signature: string;
+  explorerUrl: string;
+  token: string;
+  action: string;
+  amount: string;
+  tone: "green" | "red";
+  createdAt: string;
+  note: string;
+};
+
+function buildProfileActivityRows({
+  wallet,
+  receipts,
+  transfers,
+  includeTransfers,
+}: {
+  wallet: string;
+  receipts: TradeReceiptRecord[];
+  transfers: WalletTransferRecord[];
+  includeTransfers: boolean;
+}) {
+  const swapRows: ProfileActivityRow[] = receipts.map((receipt) => ({
+    kind: "swap",
+    signature: receipt.signature,
+    explorerUrl: receipt.explorerUrl ?? `https://solscan.io/tx/${receipt.signature}`,
+    token: receipt.outputSymbol,
+    action: receipt.side.toUpperCase(),
+    amount: `${receipt.inputAmount} ${receipt.inputSymbol}`,
+    tone: receipt.side === "buy" ? "green" : "red",
+    createdAt: receipt.createdAt,
+    note: receipt.route ? receipt.route : "",
+  }));
+
+  const transferRows: ProfileActivityRow[] = includeTransfers
+    ? transfers.map((transfer) => {
+        const outgoing = transfer.senderWallet === wallet;
+        const counterparty = outgoing ? transfer.recipientWallet : transfer.senderWallet;
+
+        return {
+          kind: "transfer",
+          signature: transfer.signature,
+          explorerUrl: transfer.explorerUrl,
+          token: transfer.assetSymbol,
+          action: outgoing ? "SEND" : "RECEIVE",
+          amount: `${transfer.amount} ${transfer.assetSymbol}`,
+          tone: outgoing ? "red" : "green",
+          createdAt: transfer.createdAt,
+          note: `${outgoing ? "To" : "From"} ${shortWallet(counterparty)}${
+            transfer.note ? ` - ${transfer.note}` : ""
+          }`,
+        };
+      })
+    : [];
+
+  return [...swapRows, ...transferRows].sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
   );
 }
 
@@ -1289,14 +1351,24 @@ function ConnectedProfileSendPanel({
 
       setSubmitted(nextTransfer);
       try {
-        await recordWalletTransfer(nextTransfer);
+        const storage = await recordWalletTransfer(nextTransfer);
+        if (!storage.stored) {
+          setError(
+            "Transfer succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+          );
+        }
       } catch (storageError) {
         console.warn("Transfer submitted, but receipt storage failed.", storageError);
+        setError(
+          "Transfer succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+        );
       }
       setAmount("");
       setNote("");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["token-position", address] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet-token-positions", address] }),
+        queryClient.invalidateQueries({ queryKey: ["wallet-token-positions", recipientClean] }),
         queryClient.invalidateQueries({ queryKey: ["wallet-transfers", address] }),
         queryClient.invalidateQueries({ queryKey: ["wallet-transfers", recipientClean] }),
       ]);
@@ -1794,6 +1866,18 @@ function normalizeSendError(error: unknown) {
 
 function shortWallet(wallet: string) {
   return `${wallet.slice(0, 5)}...${wallet.slice(-4)}`;
+}
+
+function formatTokenAmount(value: number) {
+  if (value >= 1_000_000) {
+    return value.toLocaleString(undefined, { maximumFractionDigits: 1, notation: "compact" });
+  }
+
+  if (value >= 1) {
+    return value.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  }
+
+  return value.toLocaleString(undefined, { maximumSignificantDigits: 4 });
 }
 
 function buildPortfolioShape(points: PortfolioHistoryPoint[], range: PortfolioHistoryRange) {
