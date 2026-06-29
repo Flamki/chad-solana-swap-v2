@@ -56,7 +56,7 @@ function StoreBadges({ className = "" }: { className?: string }) {
 export function Landing() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-white">
-      <section className="relative min-h-[85vh] w-full overflow-hidden">
+      <section className="relative min-h-[72vh] w-full overflow-hidden md:min-h-[76vh]">
         <Image
           src={HERO_BACKGROUND}
           alt=""
@@ -87,7 +87,7 @@ export function Landing() {
           </div>
         </nav>
 
-        <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-6 pb-12 pt-16 text-center md:pb-16 md:pt-24">
+        <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-6 pb-4 pt-12 text-center md:pb-6 md:pt-16">
           <h1 className="text-[12vw] font-black leading-none tracking-tight text-white/90 drop-shadow-[0_0_60px_rgba(120,140,255,0.25)] sm:text-[9rem] md:text-[11rem]">
             ChadWallet
           </h1>
@@ -114,18 +114,18 @@ export function Landing() {
             height={1254}
             priority
             quality={80}
-            sizes="(min-width: 768px) 840px, (min-width: 640px) 760px, 108vw"
-            className="pointer-events-none mt-[-4.15rem] w-[min(680px,108vw)] max-w-none select-none animate-float sm:mt-[-6.65rem] sm:w-[min(760px,105%)] md:mt-[-8.15rem] md:w-[min(840px,100%)]"
+            sizes="(min-width: 768px) 700px, (min-width: 640px) 640px, 96vw"
+            className="pointer-events-none mt-[-3rem] w-[min(560px,96vw)] max-w-none select-none animate-float sm:mt-[-4.75rem] sm:w-[min(640px,88%)] md:mt-[-6rem] md:w-[min(700px,82%)]"
           />
         </div>
       </section>
 
       <section className="landing-deferred relative px-6 pb-8 pt-0 md:pb-12">
-        <div className="relative -mt-28 md:-mt-44">
+        <div className="relative -mt-8 md:-mt-12">
           <MarketTicker />
         </div>
 
-        <div className="mx-auto mt-2 max-w-6xl text-center md:mt-0">
+        <div className="mx-auto mt-3 max-w-6xl text-center md:mt-4">
           <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
             NOW AVAILABLE ON WEB
           </p>
