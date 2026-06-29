@@ -119,7 +119,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative -mt-20 select-none px-6 pb-8 pt-0 md:-mt-28 md:pb-10">
+      <section className="landing-deferred relative -mt-20 select-none px-6 pb-2 pt-0 md:-mt-28 md:pb-4">
         <div className="mx-auto max-w-6xl text-center">
           <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
             NOW AVAILABLE ON WEB
@@ -133,7 +133,7 @@ export function Landing() {
             Open a trade on your phone, close it on your desktop - all in one app.
           </p>
 
-          <div className="relative mt-12 md:mt-14">
+          <div className="relative mt-8 md:mt-10">
             <div className="absolute inset-x-[8%] bottom-[4%] top-[8%] rounded-full bg-indigo-600/18 blur-3xl" />
             <Image
               src={TRADING_DASHBOARD}
@@ -157,15 +157,15 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred border-t border-white/5 px-6 pb-8 pt-24">
+      <section className="landing-deferred px-6 pb-3 pt-8 md:pt-10">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-6 flex items-center gap-2">
+          <div className="mb-4 flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
             <p className="font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
               INSIDE THE APP
             </p>
           </div>
-          <div className="grid items-end gap-8 md:grid-cols-2">
+          <div className="grid items-end gap-5 md:grid-cols-2">
             <h2 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
               Built for the
               <br />
@@ -182,7 +182,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative flex items-center justify-center overflow-hidden bg-black px-6 py-12 md:py-16">
+      <section className="landing-deferred relative flex items-center justify-center overflow-hidden bg-black px-6 py-6 md:py-8">
         <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black to-transparent" />
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(73,72,210,0.26),rgba(12,8,32,0.34)_34%,rgba(0,0,0,0)_68%)]" />
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[66%] w-[42rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-700/24 blur-[90px]" />
@@ -213,13 +213,13 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative border-t border-white/5 px-6 pb-24 pt-8">
+      <section className="landing-deferred relative px-6 pb-12 pt-4 md:pb-14">
         <div className="mx-auto max-w-7xl">
-          <div className="mb-8 flex items-center gap-2">
+          <div className="mb-5 flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
             <p className="font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">THE FLOW</p>
           </div>
-          <div className="mb-14 grid items-end gap-8 md:grid-cols-2">
+          <div className="mb-8 grid items-end gap-5 md:grid-cols-2">
             <h2 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
               One wallet.
               <br />
@@ -231,7 +231,7 @@ export function Landing() {
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2">
             {[
               {
                 src: memecoin,
@@ -304,8 +304,8 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative border-t border-white/5 px-6 pb-12 pt-28 text-center">
-        <p className="mb-5 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
+      <section className="landing-deferred relative px-6 pb-8 pt-8 text-center md:pt-10">
+        <p className="mb-4 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
           NOW AVAILABLE ON WEB & MOBILE
         </p>
         <h2 className="text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
@@ -313,7 +313,7 @@ export function Landing() {
           <br />
           never lose a beat.
         </h2>
-        <div className="mt-10 flex items-center justify-center">
+        <div className="mt-7 flex items-center justify-center">
           <StoreBadges />
         </div>
       </section>
