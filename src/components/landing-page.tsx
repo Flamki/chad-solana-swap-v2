@@ -101,7 +101,7 @@ export function Landing() {
             <LazySignInButton
               redirectTo={SOL_TRADE}
               label="Start trading"
-              className="px-7 py-2.5 font-semibold ring-1 ring-white/[0.18]"
+              className="bg-white/[0.03] px-7 py-2.5 font-semibold ring-white/[0.12] hover:bg-white/[0.07]"
             />
             <DownloadAppButton />
           </div>
