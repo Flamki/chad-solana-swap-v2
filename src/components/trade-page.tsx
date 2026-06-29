@@ -1,10 +1,12 @@
 "use client";
 
-import { usePrivy } from "@privy-io/react-auth";
+import { useLogin, usePrivy } from "@privy-io/react-auth";
 import { useWallets } from "@privy-io/react-auth/solana";
 import { useQueryClient } from "@tanstack/react-query";
+import type { Route } from "next";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -22,7 +24,6 @@ import {
 } from "lucide-react";
 
 import { ChadLogo } from "@/components/chad-logo";
-import { SignInButton } from "@/components/sign-in-button";
 import { TokenSearch } from "@/components/token-search";
 import { TradeAccount } from "@/components/trade-account";
 import { PriceChart } from "@/components/trade/price-chart";
@@ -875,10 +876,12 @@ export function TradePage({ mint }: { mint: string }) {
     window.setTimeout(() => setCopiedMint(false), 1400);
   }
 
-  if (!hasPrivy || !ready || !authenticated) {
-    return (
-      <TradeAuthGate ready={!hasPrivy || ready} redirectTo={`/trade/${encodeURIComponent(mint)}`} />
-    );
+  if (!hasPrivy) {
+    return <div className="min-h-screen bg-[#08060f]" />;
+  }
+
+  if (!ready || !authenticated) {
+    return <TradeAuthGate ready={ready} redirectTo={`/trade/${encodeURIComponent(mint)}`} />;
   }
 
   return (
@@ -1383,32 +1386,58 @@ export function TradePage({ mint }: { mint: string }) {
 }
 
 function TradeAuthGate({ ready, redirectTo }: { ready: boolean; redirectTo: string }) {
+  const router = useRouter();
+  const loginStarted = useRef(false);
+  const redirectStarted = useRef(false);
+  const redirectAfterLogin = useCallback(() => {
+    if (redirectStarted.current) return;
+
+    redirectStarted.current = true;
+    router.replace(redirectTo as Route);
+
+    window.setTimeout(() => {
+      const target = new URL(redirectTo, window.location.origin);
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+      if (current !== `${target.pathname}${target.search}${target.hash}`) {
+        window.location.assign(target.toString());
+      }
+    }, 250);
+  }, [redirectTo, router]);
+  const { login } = useLogin({
+    onComplete: redirectAfterLogin,
+    onError: (error) => {
+      if (!isLoginCancellation(error)) {
+        alert(`Privy login failed: ${String(error)}`);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (ready && !loginStarted.current) {
+      loginStarted.current = true;
+      login();
+    }
+  }, [login, ready]);
+
   return (
-    <div className="grid min-h-screen place-items-center bg-[#08060f] px-6 text-center text-[#f4f1ff]">
-      <div className="w-full max-w-sm rounded-2xl border border-[#1b1726] bg-[#0b0912] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.45)]">
-        <div className="mx-auto mb-4 flex justify-center">
-          <ChadLogo variant="dark" size="lg" showTagline={false} />
-        </div>
-        <h1 className="text-xl font-black text-white">Sign in to trade</h1>
-        <p className="mt-2 text-sm font-semibold leading-relaxed text-[#a9b0d4]">
-          ChadWallet trading, positions, transfers, and profile data require an authenticated wallet
-          session.
-        </p>
-        <div className="mt-5 flex justify-center">
-          {ready ? (
-            <SignInButton redirectTo={redirectTo} />
-          ) : (
-            <button
-              disabled
-              className="inline-flex min-h-10 items-center rounded-full border border-[#242034] bg-[#14111d] px-4 py-2 text-sm font-semibold text-[#a9b0d4]"
-            >
-              Checking session
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    <div
+      aria-label="Opening ChadWallet sign in"
+      className="min-h-screen bg-[#08060f]"
+      role="status"
+    />
   );
+}
+
+function isLoginCancellation(error: unknown) {
+  const message =
+    error instanceof Error
+      ? `${error.name} ${error.message}`
+      : typeof error === "object" && error !== null
+        ? JSON.stringify(error)
+        : String(error);
+
+  return /exited_auth_flow|user_canceled|user_cancelled|login_cancelled/i.test(message);
 }
 
 function TrendingToken({
