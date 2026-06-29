@@ -1,7 +1,7 @@
 "use client";
 
 import { useLinkWithOAuth, usePrivy } from "@privy-io/react-auth";
-import { useSignAndSendTransaction, useWallets } from "@privy-io/react-auth/solana";
+import { useSignTransaction, useWallets } from "@privy-io/react-auth/solana";
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
   address as solanaAddress,
@@ -10,7 +10,6 @@ import {
   createNoopSigner,
   createSolanaRpc,
   createTransactionMessage,
-  getBase58Decoder,
   getTransactionEncoder,
   pipe,
   setTransactionMessageFeePayer,
@@ -69,6 +68,8 @@ import {
 } from "@/lib/market-data";
 import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
 import {
+  broadcastSignedSolanaTransaction,
+  bytesToBase64,
   formatLamportsAsSol,
   maxTransferableSol,
   normalizeSolanaTransactionError,
@@ -1101,7 +1102,7 @@ function ConnectedProfileSendPanel({
   const { wallets } = useWallets();
   const wallet = wallets[0];
   const address = wallet?.address;
-  const { signAndSendTransaction } = useSignAndSendTransaction();
+  const { signTransaction } = useSignTransaction();
   const sol = useTokenPosition({
     owner: address,
     mint: SOL_MINT,
@@ -1167,18 +1168,17 @@ function ConnectedProfileSendPanel({
           ),
       );
       const transaction = compileTransaction(transactionMessage);
-      const result = await signAndSendTransaction({
+      const { signedTransaction } = await signTransaction({
         wallet,
         chain: SOLANA_MAINNET_CHAIN,
         transaction: new Uint8Array(getTransactionEncoder().encode(transaction)),
         options: {
-          commitment: "confirmed",
-          maxRetries: 3,
           preflightCommitment: "confirmed",
-          skipPreflight: false,
         },
       });
-      const signature = getBase58Decoder().decode(result.signature);
+      const { signature } = await broadcastSignedSolanaTransaction(
+        bytesToBase64(signedTransaction),
+      );
       const nextTransfer: WalletTransferRecord = {
         signature,
         senderWallet: address,

@@ -4,7 +4,7 @@ import { useLogout, usePrivy } from "@privy-io/react-auth";
 import {
   useExportWallet,
   useFundWallet,
-  useSignAndSendTransaction,
+  useSignTransaction,
   useWallets,
 } from "@privy-io/react-auth/solana";
 import { getTransferSolInstruction } from "@solana-program/system";
@@ -15,7 +15,6 @@ import {
   createNoopSigner,
   createSolanaRpc,
   createTransactionMessage,
-  getBase58Decoder,
   getTransactionEncoder,
   pipe,
   setTransactionMessageFeePayer,
@@ -64,6 +63,8 @@ import {
 } from "@/lib/market-data";
 import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
 import {
+  broadcastSignedSolanaTransaction,
+  bytesToBase64,
   formatLamportsAsSol,
   maxTransferableSol,
   normalizeSolanaTransactionError,
@@ -404,7 +405,7 @@ export function WithdrawDialog({
   wallet: ReturnType<typeof useWallets>["wallets"][number] | undefined;
 }) {
   const queryClient = useQueryClient();
-  const { signAndSendTransaction } = useSignAndSendTransaction();
+  const { signTransaction } = useSignTransaction();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [sending, setSending] = useState(false);
@@ -449,18 +450,17 @@ export function WithdrawDialog({
           ),
       );
       const transaction = compileTransaction(transactionMessage);
-      const result = await signAndSendTransaction({
+      const { signedTransaction } = await signTransaction({
         wallet,
         chain: SOLANA_MAINNET_CHAIN,
         transaction: new Uint8Array(getTransactionEncoder().encode(transaction)),
         options: {
-          commitment: "confirmed",
-          maxRetries: 3,
           preflightCommitment: "confirmed",
-          skipPreflight: false,
         },
       });
-      const txSignature = getBase58Decoder().decode(result.signature);
+      const { signature: txSignature } = await broadcastSignedSolanaTransaction(
+        bytesToBase64(signedTransaction),
+      );
       const transfer: WalletTransferRecord = {
         signature: txSignature,
         senderWallet: address,

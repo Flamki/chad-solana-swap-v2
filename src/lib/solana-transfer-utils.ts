@@ -35,6 +35,33 @@ export function formatLamportsAsSol(lamports: bigint) {
   return trimmedDecimals ? `${whole}.${trimmedDecimals}` : whole.toString();
 }
 
+export function bytesToBase64(bytes: Uint8Array) {
+  let binary = "";
+  for (let index = 0; index < bytes.length; index += 1) {
+    binary += String.fromCharCode(bytes[index]);
+  }
+  return window.btoa(binary);
+}
+
+export async function broadcastSignedSolanaTransaction(signedTransaction: string) {
+  const response = await fetch("/api/wallet-transfer/execute", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ signedTransaction }),
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    throw new Error(result?.error ?? `Solana transfer failed (${response.status})`);
+  }
+
+  if (!result?.signature) {
+    throw new Error("Solana accepted the transfer request but did not return a signature.");
+  }
+
+  return result as { signature: string };
+}
+
 export function normalizeSolanaTransactionError(error: unknown, fallback: string) {
   const message = collectErrorMessages(error).find(Boolean);
 
