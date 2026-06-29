@@ -182,10 +182,10 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative flex items-center justify-center overflow-hidden bg-black px-6 py-6 md:py-8">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black to-transparent" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(73,72,210,0.26),rgba(12,8,32,0.34)_34%,rgba(0,0,0,0)_68%)]" />
-        <div className="pointer-events-none absolute left-1/2 top-1/2 h-[66%] w-[42rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-700/24 blur-[90px]" />
+      <section className="landing-deferred relative -mt-8 flex items-center justify-center overflow-hidden bg-black px-6 pb-6 pt-14 md:-mt-10 md:pb-8 md:pt-16">
+        <div className="pointer-events-none absolute inset-x-[-20%] -top-28 h-96 bg-[radial-gradient(ellipse_at_center,rgba(73,72,210,0.22)_0%,rgba(25,20,76,0.14)_38%,rgba(0,0,0,0)_72%)] blur-2xl" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(73,72,210,0.24)_0%,rgba(15,12,48,0.22)_35%,rgba(0,0,0,0)_72%)]" />
+        <div className="pointer-events-none absolute left-1/2 top-[48%] h-[76%] w-[46rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-700/22 blur-[110px]" />
 
         <div className="relative w-full max-w-[290px] animate-float sm:max-w-[320px] md:max-w-[350px]">
           <div className="absolute inset-x-6 -bottom-10 h-16 rounded-full bg-black/80 blur-2xl" />
