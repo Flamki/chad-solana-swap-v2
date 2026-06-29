@@ -212,98 +212,100 @@ export function Landing() {
             </div>
           </div>
         </section>
+
+        <section className="relative z-10 px-6 pb-12 pt-4 md:pb-14">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-5 flex items-center gap-2">
+              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
+              <p className="font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
+                THE FLOW
+              </p>
+            </div>
+            <div className="mb-8 grid items-end gap-5 md:grid-cols-2">
+              <h2 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
+                One wallet.
+                <br />
+                Every play.
+              </h2>
+              <p className="max-w-md text-base text-white/50 sm:text-lg md:justify-self-end">
+                From the first deposit to the next launch - the entire trader loop, designed
+                end-to-end.
+              </p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {[
+                {
+                  src: memecoin,
+                  title: "Catch early trends on X",
+                  step: "01 / HUNT",
+                  tagline: "Find the next memecoin.",
+                },
+                {
+                  src: buySell,
+                  title: "Buy & sell trending tokens",
+                  step: "02 / EXECUTE",
+                  tagline: "Buy & sell in one tap.",
+                },
+                {
+                  src: kol,
+                  title: "Follow KOL traders",
+                  step: "03 / COPY",
+                  tagline: "Mirror the winners.",
+                },
+                {
+                  src: portfolio,
+                  title: "Manage your assets",
+                  step: "04 / TRACK",
+                  tagline: "Watch the bags move.",
+                },
+                {
+                  src: launch,
+                  title: "Launch a memecoin from a tweet",
+                  step: "05 / LAUNCH",
+                  tagline: "Be early. Every time.",
+                },
+                {
+                  src: relaunch,
+                  title: "Relaunch a memecoin",
+                  step: "06 / ROTATE",
+                  tagline: "Recycle into the next.",
+                },
+              ].map(
+                (card: { src: StaticImageData; title: string; step: string; tagline: string }) => (
+                  <div
+                    key={card.title}
+                    className="group relative flex aspect-[16/10] flex-col overflow-hidden rounded-3xl bg-gradient-to-b from-sky-400 via-sky-500/80 to-black ring-1 ring-white/10"
+                  >
+                    <p className="relative z-10 pt-5 text-center text-sm font-semibold text-white sm:text-base">
+                      {card.title}
+                    </p>
+                    <div className="relative mt-3 flex flex-1 items-end justify-center px-4 sm:px-6">
+                      <Image
+                        src={card.src}
+                        alt={card.title}
+                        fill
+                        quality={70}
+                        sizes="(min-width: 768px) 50vw, 100vw"
+                        className="pointer-events-none select-none object-contain object-bottom"
+                      />
+                    </div>
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black via-black/80 to-transparent" />
+                    <div className="absolute bottom-6 left-6 z-10 sm:bottom-7 sm:left-8">
+                      <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-indigo-300 sm:text-xs">
+                        {card.step}
+                      </p>
+                      <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
+                        {card.tagline}
+                      </p>
+                    </div>
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+        </section>
       </div>
-
-      <section className="landing-deferred relative px-6 pb-12 pt-4 md:pb-14">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-5 flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-            <p className="font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">THE FLOW</p>
-          </div>
-          <div className="mb-8 grid items-end gap-5 md:grid-cols-2">
-            <h2 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
-              One wallet.
-              <br />
-              Every play.
-            </h2>
-            <p className="max-w-md text-base text-white/50 sm:text-lg md:justify-self-end">
-              From the first deposit to the next launch - the entire trader loop, designed
-              end-to-end.
-            </p>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            {[
-              {
-                src: memecoin,
-                title: "Catch early trends on X",
-                step: "01 / HUNT",
-                tagline: "Find the next memecoin.",
-              },
-              {
-                src: buySell,
-                title: "Buy & sell trending tokens",
-                step: "02 / EXECUTE",
-                tagline: "Buy & sell in one tap.",
-              },
-              {
-                src: kol,
-                title: "Follow KOL traders",
-                step: "03 / COPY",
-                tagline: "Mirror the winners.",
-              },
-              {
-                src: portfolio,
-                title: "Manage your assets",
-                step: "04 / TRACK",
-                tagline: "Watch the bags move.",
-              },
-              {
-                src: launch,
-                title: "Launch a memecoin from a tweet",
-                step: "05 / LAUNCH",
-                tagline: "Be early. Every time.",
-              },
-              {
-                src: relaunch,
-                title: "Relaunch a memecoin",
-                step: "06 / ROTATE",
-                tagline: "Recycle into the next.",
-              },
-            ].map(
-              (card: { src: StaticImageData; title: string; step: string; tagline: string }) => (
-                <div
-                  key={card.title}
-                  className="group relative flex aspect-[16/10] flex-col overflow-hidden rounded-3xl bg-gradient-to-b from-sky-400 via-sky-500/80 to-black ring-1 ring-white/10"
-                >
-                  <p className="relative z-10 pt-5 text-center text-sm font-semibold text-white sm:text-base">
-                    {card.title}
-                  </p>
-                  <div className="relative mt-3 flex flex-1 items-end justify-center px-4 sm:px-6">
-                    <Image
-                      src={card.src}
-                      alt={card.title}
-                      fill
-                      quality={70}
-                      sizes="(min-width: 768px) 50vw, 100vw"
-                      className="pointer-events-none select-none object-contain object-bottom"
-                    />
-                  </div>
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black via-black/80 to-transparent" />
-                  <div className="absolute bottom-6 left-6 z-10 sm:bottom-7 sm:left-8">
-                    <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-indigo-300 sm:text-xs">
-                      {card.step}
-                    </p>
-                    <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-                      {card.tagline}
-                    </p>
-                  </div>
-                </div>
-              ),
-            )}
-          </div>
-        </div>
-      </section>
 
       <section className="landing-deferred relative px-6 pb-8 pt-8 text-center md:pt-10">
         <p className="mb-4 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
