@@ -98,10 +98,12 @@ export function TradeProfileCenter({
   solPrice,
   viewedWallet,
   onBackToOwnProfile,
+  onSelectProfile,
 }: {
   solPrice: number;
   viewedWallet?: string | null;
   onBackToOwnProfile?: () => void;
+  onSelectProfile?: (wallet: string) => void;
 }) {
   if (!hasPrivy) {
     return <SignedOutProfile />;
@@ -112,6 +114,7 @@ export function TradeProfileCenter({
       solPrice={solPrice}
       viewedWallet={viewedWallet}
       onBackToOwnProfile={onBackToOwnProfile}
+      onSelectProfile={onSelectProfile}
     />
   );
 }
@@ -120,10 +123,12 @@ function ConnectedTradeProfileCenter({
   solPrice,
   viewedWallet,
   onBackToOwnProfile,
+  onSelectProfile,
 }: {
   solPrice: number;
   viewedWallet?: string | null;
   onBackToOwnProfile?: () => void;
+  onSelectProfile?: (wallet: string) => void;
 }) {
   const queryClient = useQueryClient();
   const { ready, authenticated, user } = usePrivy();
@@ -251,7 +256,13 @@ function ConnectedTradeProfileCenter({
   }
 
   if (isViewingOtherProfile && viewedWallet) {
-    return <ViewedTradeProfile walletAddress={viewedWallet} onBack={onBackToOwnProfile} />;
+    return (
+      <ViewedTradeProfile
+        walletAddress={viewedWallet}
+        onBack={onBackToOwnProfile}
+        onSelectProfile={onSelectProfile}
+      />
+    );
   }
 
   const linkedAccounts = user?.linkedAccounts ?? [];
@@ -506,9 +517,20 @@ function ConnectedTradeProfileCenter({
                       <span className="min-w-0 truncate text-right text-[#5c5669]">
                         {new Date(row.createdAt).toLocaleDateString()}
                       </span>
-                      {row.note ? (
+                      {row.note || row.counterpartyWallet ? (
                         <span className="col-span-5 mt-1 min-w-0 truncate text-[#a9b0d4]">
-                          {row.note}
+                          {row.counterpartyWallet ? (
+                            <span className="inline-flex max-w-full items-center gap-1.5">
+                              <span>{row.directionLabel}</span>
+                              <TransferCounterpartyInlineButton
+                                wallet={row.counterpartyWallet}
+                                onSelectProfile={onSelectProfile}
+                              />
+                              {row.note ? <span className="truncate">- {row.note}</span> : null}
+                            </span>
+                          ) : (
+                            row.note
+                          )}
                         </span>
                       ) : null}
                     </a>
@@ -526,6 +548,7 @@ function ConnectedTradeProfileCenter({
               transfers={transfers.data ?? []}
               loading={transfers.isFetching}
               className="min-[1181px]:col-span-2 max-[1180px]:order-last"
+              onSelectProfile={onSelectProfile}
             />
           </div>
         </section>
@@ -567,9 +590,11 @@ function ConnectedTradeProfileCenter({
 function ViewedTradeProfile({
   walletAddress,
   onBack,
+  onSelectProfile,
 }: {
   walletAddress: string;
   onBack?: () => void;
+  onSelectProfile?: (wallet: string) => void;
 }) {
   const storedProfile = useStoredUserProfile(walletAddress);
   const receipts = useStoredTradeReceipts(walletAddress);
@@ -739,6 +764,7 @@ function ViewedTradeProfile({
             transfers={transfers.data ?? []}
             loading={transfers.isFetching}
             className="mt-5"
+            onSelectProfile={onSelectProfile}
           />
         </section>
       </div>
@@ -751,11 +777,13 @@ function ProfileTransfersSection({
   transfers,
   loading,
   className = "",
+  onSelectProfile,
 }: {
   wallet: string;
   transfers: WalletTransferRecord[];
   loading: boolean;
   className?: string;
+  onSelectProfile?: (wallet: string) => void;
 }) {
   return (
     <section
@@ -779,11 +807,8 @@ function ProfileTransfersSection({
             const counterparty = outgoing ? transfer.recipientWallet : transfer.senderWallet;
 
             return (
-              <a
+              <div
                 key={transfer.signature}
-                href={transfer.explorerUrl}
-                target="_blank"
-                rel="noreferrer"
                 className="grid min-w-0 grid-cols-[minmax(70px,0.7fr)_minmax(76px,0.7fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(66px,0.7fr)] px-4 py-3 text-xs font-semibold transition hover:bg-[#151221]"
               >
                 <span
@@ -794,16 +819,22 @@ function ProfileTransfersSection({
                 <span className="min-w-0 truncate font-mono text-white">
                   {transfer.amount} {transfer.assetSymbol}
                 </span>
-                <span className="min-w-0 truncate font-mono text-[#a9b0d4]">
-                  {shortWallet(counterparty)}
-                </span>
+                <TransferCounterpartyButton
+                  wallet={counterparty}
+                  onSelectProfile={onSelectProfile}
+                />
                 <span className="min-w-0 truncate text-[#a9b0d4]">
                   {transfer.note || "No note"}
                 </span>
-                <span className="min-w-0 truncate text-right font-mono text-[#7da1ff]">
+                <a
+                  href={transfer.explorerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 truncate text-right font-mono text-[#7da1ff] hover:text-white"
+                >
                   {transfer.signature.slice(0, 4)}...{transfer.signature.slice(-4)}
-                </span>
-              </a>
+                </a>
+              </div>
             );
           })}
         </div>
@@ -813,6 +844,62 @@ function ProfileTransfersSection({
         </div>
       )}
     </section>
+  );
+}
+
+function TransferCounterpartyButton({
+  wallet,
+  onSelectProfile,
+}: {
+  wallet: string;
+  onSelectProfile?: (wallet: string) => void;
+}) {
+  const profile = useStoredUserProfile(wallet);
+  const displayName = profile.data?.displayName || profile.data?.username || shortWallet(wallet);
+  const avatar = profile.data?.avatarDataUrl;
+  const initial = displayName.slice(0, 2).toUpperCase();
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelectProfile?.(wallet)}
+      className="flex min-w-0 items-center gap-2 text-left text-[#a9b0d4] transition hover:text-white disabled:cursor-default"
+      disabled={!onSelectProfile}
+      title={`Open ${displayName}`}
+    >
+      <span className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full bg-[#201d2c] text-[9px] font-black text-white">
+        {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" /> : initial}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-xs font-black text-white">{displayName}</span>
+        <span className="block truncate font-mono text-[10px] text-[#7a7488]">
+          {shortWallet(wallet)}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function TransferCounterpartyInlineButton({
+  wallet,
+  onSelectProfile,
+}: {
+  wallet: string;
+  onSelectProfile?: (wallet: string) => void;
+}) {
+  const profile = useStoredUserProfile(wallet);
+  const displayName = profile.data?.displayName || profile.data?.username || shortWallet(wallet);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelectProfile?.(wallet)}
+      disabled={!onSelectProfile}
+      className="min-w-0 truncate font-mono text-[#7da1ff] hover:text-white disabled:cursor-default"
+      title={`Open ${displayName}`}
+    >
+      {displayName}
+    </button>
   );
 }
 
@@ -826,6 +913,8 @@ type ProfileActivityRow = {
   tone: "green" | "red";
   createdAt: string;
   note: string;
+  counterpartyWallet?: string;
+  directionLabel?: string;
 };
 
 function buildProfileActivityRows({
@@ -865,9 +954,9 @@ function buildProfileActivityRows({
           amount: `${transfer.amount} ${transfer.assetSymbol}`,
           tone: outgoing ? "red" : "green",
           createdAt: transfer.createdAt,
-          note: `${outgoing ? "To" : "From"} ${shortWallet(counterparty)}${
-            transfer.note ? ` - ${transfer.note}` : ""
-          }`,
+          note: transfer.note,
+          counterpartyWallet: counterparty,
+          directionLabel: outgoing ? "To" : "From",
         };
       })
     : [];

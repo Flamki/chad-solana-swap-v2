@@ -1097,6 +1097,10 @@ export function TradePage({ mint }: { mint: string }) {
                 solPrice={solPrice}
                 viewedWallet={selectedProfileWallet}
                 onBackToOwnProfile={() => setSelectedProfileWallet(null)}
+                onSelectProfile={(profileWallet) => {
+                  setSelectedProfileWallet(profileWallet);
+                  setCenterView("profile");
+                }}
               />
             ) : (
               <>
