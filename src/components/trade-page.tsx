@@ -54,6 +54,7 @@ import { hasPrivy } from "@/lib/env";
 import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 type TokenListMode = "watchlist" | "crypto" | "trending" | "most-held" | "graduates";
+const MANUAL_LOGOUT_REDIRECT_KEY = "chadwallet:manual-logout";
 
 interface SidebarPaneState {
   activeTab: string;
@@ -1414,6 +1415,12 @@ function TradeAuthGate({ ready, redirectTo }: { ready: boolean; redirectTo: stri
   });
 
   useEffect(() => {
+    if (window.sessionStorage.getItem(MANUAL_LOGOUT_REDIRECT_KEY)) {
+      window.sessionStorage.removeItem(MANUAL_LOGOUT_REDIRECT_KEY);
+      window.location.replace("/");
+      return;
+    }
+
     if (ready && !loginStarted.current) {
       loginStarted.current = true;
       login();

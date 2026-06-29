@@ -74,6 +74,8 @@ import {
 import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
 
 type AccountDialog = "deposit" | "withdraw" | "manage" | null;
+const PENDING_AUTH_REDIRECT_KEY = "chadwallet:pending-auth-redirect";
+const MANUAL_LOGOUT_REDIRECT_KEY = "chadwallet:manual-logout";
 
 export function TradeAccount({
   solPrice,
@@ -159,6 +161,16 @@ function ConnectedTradeAccount({
     }
 
     setDialog("manage");
+  };
+  const handleLogout = async () => {
+    window.sessionStorage.removeItem(PENDING_AUTH_REDIRECT_KEY);
+    window.sessionStorage.setItem(MANUAL_LOGOUT_REDIRECT_KEY, "true");
+
+    try {
+      await logout();
+    } finally {
+      window.location.assign("/");
+    }
   };
 
   return (
@@ -249,7 +261,7 @@ function ConnectedTradeAccount({
           </DropdownMenuItem> */}
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onSelect={() => logout()}
+            onSelect={() => void handleLogout()}
             className="cursor-pointer py-2 text-destructive focus:text-destructive"
           >
             <LogOut />

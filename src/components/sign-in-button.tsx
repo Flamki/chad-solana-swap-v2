@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { hasPrivy } from "@/lib/env";
 
 const PENDING_AUTH_REDIRECT_KEY = "chadwallet:pending-auth-redirect";
+const MANUAL_LOGOUT_REDIRECT_KEY = "chadwallet:manual-logout";
 
 export function SignInButton({
   variant = "default",
@@ -83,6 +84,16 @@ function ConnectedPrivyButton({
   });
   const { logout } = useLogout();
   const { wallets } = useWallets();
+  const handleLogout = async () => {
+    window.sessionStorage.removeItem(PENDING_AUTH_REDIRECT_KEY);
+    window.sessionStorage.setItem(MANUAL_LOGOUT_REDIRECT_KEY, "true");
+
+    try {
+      await logout();
+    } finally {
+      window.location.assign("/");
+    }
+  };
 
   useEffect(() => {
     if (ready && authenticated) {
@@ -117,7 +128,10 @@ function ConnectedPrivyButton({
   }
 
   return (
-    <button onClick={() => logout()} className={`${base} inline-flex items-center gap-2`}>
+    <button
+      onClick={() => void handleLogout()}
+      className={`${base} inline-flex items-center gap-2`}
+    >
       <Wallet className="h-4 w-4" />
       <span className="max-w-28 truncate">
         {address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "Signed in"}
