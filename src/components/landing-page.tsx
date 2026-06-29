@@ -157,7 +157,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred px-6 pb-3 pt-8 md:pt-10">
+      <section className="landing-deferred relative z-10 px-6 pb-3 pt-8 md:pt-10">
         <div className="mx-auto max-w-7xl">
           <div className="mb-4 flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
@@ -182,9 +182,9 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative -mt-8 flex items-center justify-center overflow-hidden bg-black px-6 pb-6 pt-14 md:-mt-10 md:pb-8 md:pt-16">
-        <div className="pointer-events-none absolute inset-x-[-20%] -top-28 h-96 bg-[radial-gradient(ellipse_at_center,rgba(73,72,210,0.22)_0%,rgba(25,20,76,0.14)_38%,rgba(0,0,0,0)_72%)] blur-2xl" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(73,72,210,0.24)_0%,rgba(15,12,48,0.22)_35%,rgba(0,0,0,0)_72%)]" />
+      <section className="landing-deferred relative z-0 -mt-8 flex items-center justify-center overflow-visible bg-transparent px-6 pb-6 pt-14 md:-mt-10 md:pb-8 md:pt-16">
+        <div className="pointer-events-none absolute inset-x-[-24%] -top-44 h-[34rem] bg-[radial-gradient(ellipse_at_center,rgba(73,72,210,0.18)_0%,rgba(25,20,76,0.12)_42%,rgba(0,0,0,0)_76%)] blur-3xl" />
+        <div className="pointer-events-none absolute inset-x-[-18%] -top-28 bottom-[-8%] bg-[radial-gradient(ellipse_at_center,rgba(73,72,210,0.24)_0%,rgba(15,12,48,0.22)_35%,rgba(0,0,0,0)_72%)]" />
         <div className="pointer-events-none absolute left-1/2 top-[48%] h-[76%] w-[46rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-700/22 blur-[110px]" />
 
         <div className="relative w-full max-w-[290px] animate-float sm:max-w-[320px] md:max-w-[350px]">
