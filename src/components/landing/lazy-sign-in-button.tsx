@@ -30,7 +30,7 @@ export function LazySignInButton({
   if (active) {
     return (
       <Suspense fallback={<LoadingButton label={label} />}>
-        <PrivySignIn redirectTo={redirectTo} />
+        <PrivySignIn redirectTo={redirectTo} label={label} />
       </Suspense>
     );
   }

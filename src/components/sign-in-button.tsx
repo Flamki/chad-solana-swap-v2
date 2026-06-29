@@ -13,26 +13,37 @@ export function SignInButton({
   variant = "default",
   redirectTo,
   autoLogin = false,
+  label = "Sign in",
 }: {
   variant?: "default" | "hero";
   redirectTo?: string;
   autoLogin?: boolean;
+  label?: string;
 }) {
   if (!hasPrivy) {
-    return <PrivySetupButton variant={variant} />;
+    return <PrivySetupButton variant={variant} label={label} />;
   }
 
-  return <ConnectedPrivyButton variant={variant} redirectTo={redirectTo} autoLogin={autoLogin} />;
+  return (
+    <ConnectedPrivyButton
+      variant={variant}
+      redirectTo={redirectTo}
+      autoLogin={autoLogin}
+      label={label}
+    />
+  );
 }
 
 function ConnectedPrivyButton({
   variant,
   redirectTo,
   autoLogin,
+  label,
 }: {
   variant: "default" | "hero";
   redirectTo?: string;
   autoLogin: boolean;
+  label: string;
 }) {
   const router = useRouter();
   const loginStarted = useRef(false);
@@ -81,7 +92,7 @@ function ConnectedPrivyButton({
         disabled={!ready}
         className={`${base} inline-flex min-h-10 items-center gap-2 disabled:cursor-default disabled:opacity-80`}
       >
-        Sign in
+        {label}
       </button>
     );
   }
@@ -108,7 +119,7 @@ function isLoginCancellation(error: unknown) {
   return /exited_auth_flow|user_canceled|user_cancelled|login_cancelled/i.test(message);
 }
 
-function PrivySetupButton({ variant }: { variant: "default" | "hero" }) {
+function PrivySetupButton({ variant, label }: { variant: "default" | "hero"; label: string }) {
   const base =
     variant === "hero"
       ? "rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground glow-green px-6 py-3 text-base font-semibold"
@@ -123,7 +134,7 @@ function PrivySetupButton({ variant }: { variant: "default" | "hero" }) {
       }
       className={`${base} inline-flex items-center gap-2`}
     >
-      Sign in
+      {label}
     </button>
   );
 }
