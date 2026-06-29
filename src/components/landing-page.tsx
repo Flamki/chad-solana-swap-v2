@@ -120,12 +120,12 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative px-6 pb-10 pt-0 md:pb-16">
-        <div className="relative -mt-20 md:-mt-32">
+      <section className="landing-deferred relative px-6 pb-8 pt-0 md:pb-12">
+        <div className="relative -mt-28 md:-mt-44">
           <MarketTicker />
         </div>
 
-        <div className="mx-auto mt-5 max-w-6xl text-center md:mt-6">
+        <div className="mx-auto mt-2 max-w-6xl text-center md:mt-0">
           <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
             NOW AVAILABLE ON WEB
           </p>
