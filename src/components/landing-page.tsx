@@ -119,7 +119,7 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative -mt-10 select-none px-6 pb-8 pt-0 md:-mt-14 md:pb-10">
+      <section className="landing-deferred relative -mt-20 select-none px-6 pb-8 pt-0 md:-mt-28 md:pb-10">
         <div className="mx-auto max-w-6xl text-center">
           <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
             NOW AVAILABLE ON WEB
