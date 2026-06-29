@@ -1,7 +1,6 @@
 import Image, { type StaticImageData } from "next/image";
 
 import { DownloadAppButton } from "@/components/landing/download-app-button";
-import { FAQSection } from "@/components/landing/faq-section";
 import { LazyVideo } from "@/components/landing/lazy-video";
 import { LazySignInButton } from "@/components/landing/lazy-sign-in-button";
 import { MarketTicker } from "@/components/landing/market-ticker";
@@ -295,43 +294,6 @@ export function Landing() {
         </div>
       </section>
 
-      <section className="landing-deferred relative border-t border-white/5 px-6 py-28">
-        <div className="mx-auto max-w-6xl text-center">
-          <p className="mb-4 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
-            ON THE TIMELINE
-          </p>
-          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-            what chads are saying.
-          </h2>
-          <div className="mt-14 grid gap-5 text-left md:grid-cols-3">
-            {[
-              {
-                quote: "switched from phantom and never looked back. fills are insane.",
-                handle: "@solwhale",
-              },
-              {
-                quote: "apple pay to SOL in 10 seconds. this should not be legal.",
-                handle: "@degenmom",
-              },
-              {
-                quote: "first wallet that does not make me feel like i am doing taxes.",
-                handle: "@chartfrog",
-              },
-            ].map((item) => (
-              <div
-                key={item.handle}
-                className="rounded-2xl bg-white/[0.02] p-6 ring-1 ring-white/10 transition hover:bg-white/[0.04] hover:ring-indigo-400/30"
-              >
-                <p className="text-sm leading-relaxed text-white/80 sm:text-base">
-                  &quot;{item.quote}&quot;
-                </p>
-                <p className="mt-6 font-mono text-xs text-white/40">{item.handle}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       <section className="landing-deferred relative border-t border-white/5 px-6 pb-12 pt-28 text-center">
         <p className="mb-5 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
           NOW AVAILABLE ON WEB & MOBILE
@@ -365,7 +327,6 @@ export function Landing() {
         </div>
       </section>
 
-      <FAQSection />
       <MarketTicker compact reverse />
 
       <section
