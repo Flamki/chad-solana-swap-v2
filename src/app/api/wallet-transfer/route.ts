@@ -1,5 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+
+import { getSupabaseServerClient } from "@/lib/server/supabase";
+import { upsertTransactionLedger, verifyWalletTransfer } from "@/lib/server/transaction-ledger";
 
 type WalletTransferPayload = {
   signature?: string;
@@ -16,22 +18,6 @@ type WalletTransferPayload = {
 };
 
 const allowedStatuses = new Set(["submitted", "confirmed", "finalized"]);
-
-function getSupabaseServerClient() {
-  const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SECRET_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-  if (!url || !key) return null;
-  return createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
-}
 
 export async function POST(request: Request) {
   try {
@@ -54,6 +40,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Supabase is not configured" }, { status: 500 });
     }
 
+    const verification = await verifyWalletTransfer({
+      signature: transfer.signature,
+      senderWallet: transfer.senderWallet,
+      recipientWallet: transfer.recipientWallet,
+      assetMint: transfer.assetMint,
+      amount: transfer.amount,
+    }).catch(
+      (error): Awaited<ReturnType<typeof verifyWalletTransfer>> => ({
+        status: "unavailable",
+        error: error instanceof Error ? error.message : "Unable to verify transfer on-chain.",
+        chainSlot: null,
+        chainBlockTime: null,
+        chainErr: null,
+        chainRaw: null,
+      }),
+    );
+
+    const storedStatus =
+      verification.status === "verified"
+        ? "confirmed"
+        : verification.status === "failed"
+          ? "submitted"
+          : transfer.status;
+
     const { error } = await supabase.from("wallet_transfers").upsert(
       {
         signature: transfer.signature,
@@ -63,8 +73,8 @@ export async function POST(request: Request) {
         asset_mint: transfer.assetMint,
         amount: transfer.amount,
         note: transfer.note ?? "",
-        status: transfer.status,
-        slot: transfer.slot ?? null,
+        status: storedStatus,
+        slot: verification.chainSlot ?? transfer.slot ?? null,
         explorer_url: transfer.explorerUrl ?? `https://solscan.io/tx/${transfer.signature}`,
         created_at: transfer.createdAt ?? new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -76,7 +86,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ stored: true });
+    await upsertTransactionLedger(
+      supabase,
+      {
+        signature: transfer.signature,
+        eventType: transfer.note === "Withdrawal" ? "withdrawal" : "transfer",
+        wallet: transfer.senderWallet,
+        counterpartyWallet: transfer.recipientWallet,
+        direction: transfer.note === "Withdrawal" ? "withdrawal" : "send",
+        assetSymbol: transfer.assetSymbol,
+        assetMint: transfer.assetMint,
+        amount: transfer.amount,
+        sourceTable: "wallet_transfers",
+        expected: {
+          senderWallet: transfer.senderWallet,
+          recipientWallet: transfer.recipientWallet,
+          assetSymbol: transfer.assetSymbol,
+          assetMint: transfer.assetMint,
+          amount: transfer.amount,
+          note: transfer.note ?? "",
+        },
+      },
+      verification,
+    ).catch((ledgerError) => {
+      console.warn("Wallet transfer stored, but ledger verification storage failed.", ledgerError);
+    });
+
+    return NextResponse.json({ stored: true, verificationStatus: verification.status });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to store wallet transfer" },

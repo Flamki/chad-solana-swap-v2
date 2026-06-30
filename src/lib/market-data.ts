@@ -838,46 +838,18 @@ export async function recordTokenIntent(intent: {
 export async function recordTradeReceipt(receipt: TradeReceiptRecord) {
   if (receipt.mode !== "mainnet") return { stored: false };
 
-  try {
-    const response = await fetch("/api/trade/receipt", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(receipt),
-    });
+  const response = await fetch("/api/trade/receipt", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(receipt),
+  });
 
-    if (response.ok) {
-      return (await response.json()) as { stored: boolean; reason?: string };
-    }
-  } catch {
-    // Fall back to the direct Supabase client below for older/local environments.
+  if (response.ok) {
+    return (await response.json()) as { stored: boolean; reason?: string };
   }
 
-  if (!supabase) return { stored: false };
-
-  const { error } = await supabase.from("trade_receipts").upsert(
-    {
-      signature: receipt.signature,
-      wallet: receipt.wallet,
-      status: receipt.status,
-      slot: receipt.slot,
-      mode: receipt.mode,
-      side: receipt.side,
-      input_symbol: receipt.inputSymbol,
-      output_symbol: receipt.outputSymbol,
-      input_amount: receipt.inputAmount,
-      output_amount: receipt.outputAmount,
-      route: receipt.route,
-      router: receipt.router,
-      token_mint: receipt.tokenMint,
-      created_at: receipt.createdAt,
-      explorer_url: receipt.explorerUrl ?? `https://solscan.io/tx/${receipt.signature}`,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "signature" },
-  );
-
-  if (error) throw error;
-  return { stored: true };
+  const result = (await response.json().catch(() => null)) as { error?: string } | null;
+  throw new Error(result?.error ?? `Unable to store trade receipt (${response.status})`);
 }
 
 export async function fetchStoredTradeReceipts(wallet: string, signal?: AbortSignal) {
@@ -1141,42 +1113,18 @@ export async function recordUserProfile(profile: UserProfileRecord) {
 }
 
 export async function recordWalletTransfer(transfer: WalletTransferRecord) {
-  try {
-    const response = await fetch("/api/wallet-transfer", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(transfer),
-    });
+  const response = await fetch("/api/wallet-transfer", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(transfer),
+  });
 
-    if (response.ok) {
-      return (await response.json()) as { stored: boolean };
-    }
-  } catch {
-    // Fall back to the direct Supabase client below for older/local environments.
+  if (response.ok) {
+    return (await response.json()) as { stored: boolean; verificationStatus?: string };
   }
 
-  if (!supabase) return { stored: false };
-
-  const { error } = await supabase.from("wallet_transfers").upsert(
-    {
-      signature: transfer.signature,
-      sender_wallet: transfer.senderWallet,
-      recipient_wallet: transfer.recipientWallet,
-      asset_symbol: transfer.assetSymbol,
-      asset_mint: transfer.assetMint,
-      amount: transfer.amount,
-      note: transfer.note,
-      status: transfer.status,
-      slot: transfer.slot,
-      explorer_url: transfer.explorerUrl,
-      created_at: transfer.createdAt,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "signature" },
-  );
-
-  if (error) throw error;
-  return { stored: true };
+  const result = (await response.json().catch(() => null)) as { error?: string } | null;
+  throw new Error(result?.error ?? `Unable to store wallet transfer (${response.status})`);
 }
 
 export async function fetchWalletTransfers(wallet: string, signal?: AbortSignal) {
