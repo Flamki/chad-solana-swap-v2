@@ -45,7 +45,7 @@ import { formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 type ChartMetric = "price" | "mcap";
 type QuoteCurrency = "usd" | "sol";
-type ChartEngine = "chadwallet" | "geckoterminal" | "tradingview";
+type ChartEngine = "chadwallet" | "tradingview";
 type ChartStyle = "candles" | "bars" | "line" | "area";
 type ChartMenu = "interval" | "style" | "indicators" | null;
 type PriceSeries =
@@ -167,7 +167,6 @@ export function PriceChart({
   const [showDevBuys, setShowDevBuys] = useState(false);
   const tradingViewSymbol = tradingViewSymbols[token.symbol.toUpperCase()];
   const chartEngineOptions: Array<[ChartEngine, string]> = [["chadwallet", "Live"]];
-  if (geckoPoolAddress) chartEngineOptions.push(["geckoterminal", "Gecko"]);
   if (tradingViewSymbol) chartEngineOptions.push(["tradingview", "TradingView"]);
 
   const tokenSupply = token.price > 0 && token.marketCap > 0 ? token.marketCap / token.price : 0;
@@ -235,22 +234,6 @@ export function PriceChart({
   const up = change >= 0;
   const latestVolume = volumes.at(-1)?.value ?? 0;
   const providerLabel = marketProviderLabel(provider);
-  const geckoEmbedUrl = useMemo(() => {
-    if (!geckoPoolAddress) return "";
-
-    const params = new URLSearchParams({
-      embed: "1",
-      info: "0",
-      swaps: "1",
-      light_chart: "0",
-      chart_type: metric === "mcap" ? "market_cap" : "price",
-      resolution: geckoResolution(interval),
-      token: geckoTokenSide ?? "base",
-      utm_source: "chadwallet",
-    });
-
-    return `https://www.geckoterminal.com/solana/pools/${encodeURIComponent(geckoPoolAddress)}?${params}`;
-  }, [geckoPoolAddress, geckoTokenSide, interval, metric]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -354,25 +337,8 @@ export function PriceChart({
   }, [logScale]);
 
   useEffect(() => {
-    if (chartEngine === "geckoterminal" && !geckoEmbedUrl) setChartEngine("chadwallet");
     if (chartEngine === "tradingview" && !tradingViewSymbol) setChartEngine("chadwallet");
-  }, [chartEngine, geckoEmbedUrl, tradingViewSymbol]);
-
-  if (geckoEmbedUrl) {
-    return (
-      <div className="relative h-full min-h-[300px] w-full overflow-hidden bg-transparent">
-        <iframe
-          key={geckoEmbedUrl}
-          src={geckoEmbedUrl}
-          title={`${token.symbol} GeckoTerminal chart`}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          allow="clipboard-write; fullscreen"
-          className="h-full w-full border-0 bg-transparent"
-        />
-      </div>
-    );
-  }
+  }, [chartEngine, tradingViewSymbol]);
 
   return (
     <div className="relative flex h-full min-h-[300px] w-full flex-col overflow-hidden bg-transparent">
@@ -565,19 +531,7 @@ export function PriceChart({
         </div>
       </div>
 
-      {chartEngine === "geckoterminal" && geckoEmbedUrl ? (
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          <iframe
-            key={geckoEmbedUrl}
-            src={geckoEmbedUrl}
-            title={`${token.symbol} GeckoTerminal chart`}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            allow="clipboard-write; fullscreen"
-            className="h-full w-full border-0 bg-transparent"
-          />
-        </div>
-      ) : chartEngine === "tradingview" && tradingViewSymbol ? (
+      {chartEngine === "tradingview" && tradingViewSymbol ? (
         <TradingViewAdvancedChart symbol={tradingViewSymbol} interval={interval} />
       ) : (
         <div className="relative min-h-0 flex-1">
@@ -668,18 +622,16 @@ export function PriceChart({
               </button>
             </div>
           </div>
-          <a
-            href={
-              geckoPoolAddress
-                ? `https://www.geckoterminal.com/solana/pools/${geckoPoolAddress}`
-                : "https://www.tradingview.com/lightweight-charts/"
-            }
-            target="_blank"
-            rel="noreferrer"
-            className="absolute bottom-10 left-14 rounded bg-background/70 px-2 py-1 text-[10px] font-mono text-muted-foreground backdrop-blur hover:text-foreground"
-          >
-            {geckoPoolAddress ? "Powered by GeckoTerminal" : "TradingView Lightweight Charts"}
-          </a>
+          {!geckoPoolAddress && (
+            <a
+              href="https://www.tradingview.com/lightweight-charts/"
+              target="_blank"
+              rel="noreferrer"
+              className="absolute bottom-10 left-14 rounded bg-background/70 px-2 py-1 text-[10px] font-mono text-muted-foreground backdrop-blur hover:text-foreground"
+            >
+              TradingView Lightweight Charts
+            </a>
+          )}
         </div>
       )}
     </div>
@@ -816,21 +768,8 @@ function tradingViewInterval(interval: ChartInterval) {
   )[interval];
 }
 
-function geckoResolution(interval: ChartInterval) {
-  return (
-    {
-      "1m": "1m",
-      "5m": "5m",
-      "15m": "15m",
-      "1H": "1h",
-      "4H": "4h",
-      "1D": "1d",
-    } satisfies Record<ChartInterval, string>
-  )[interval];
-}
-
 function marketProviderLabel(provider: "birdeye" | "geckoterminal" | "solana-rpc") {
-  if (provider === "geckoterminal") return "GeckoTerminal";
+  if (provider === "geckoterminal") return "MARKET";
   if (provider === "solana-rpc") return "Solana RPC";
   return "BirdEye";
 }
