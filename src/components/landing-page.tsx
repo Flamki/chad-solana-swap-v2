@@ -3,6 +3,7 @@ import Image, { type StaticImageData } from "next/image";
 import { DownloadAppButton } from "@/components/landing/download-app-button";
 import { LazyVideo } from "@/components/landing/lazy-video";
 import { LazySignInButton } from "@/components/landing/lazy-sign-in-button";
+import { SOL_TOKEN_PATH } from "@/lib/routes";
 
 import buySell from "@/assets/flow/buy-sell-4.png";
 import kol from "@/assets/flow/kol-4.png";
@@ -14,7 +15,6 @@ import chadLogo from "@/assets/logo/dark.png";
 
 const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
 const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
-const SOL_TRADE = "/trade/So11111111111111111111111111111111111111112";
 const STORE_BADGES = "/assets/landing/store-badges-v3-cropped.png";
 const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
 const HERO_CHARACTER = "/assets/landing/astronaut-hq.png";
@@ -82,7 +82,7 @@ export function Landing() {
           </div>
           <div className="flex items-center gap-2 md:gap-3">
             <StoreBadges className="hidden sm:flex" />
-            <LazySignInButton redirectTo={SOL_TRADE} />
+            <LazySignInButton redirectTo={SOL_TOKEN_PATH} preferTrending />
           </div>
         </nav>
 
@@ -99,7 +99,8 @@ export function Landing() {
 
           <div className="relative z-20 mt-6 flex flex-wrap items-center justify-center gap-3">
             <LazySignInButton
-              redirectTo={SOL_TRADE}
+              redirectTo={SOL_TOKEN_PATH}
+              preferTrending
               label="Start trading"
               className="bg-white/[0.03] px-7 py-2.5 font-semibold ring-white/[0.12] hover:bg-white/[0.07]"
             />

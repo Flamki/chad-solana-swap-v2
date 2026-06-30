@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X, TrendingUp, TrendingDown, Clock, Trash2 } from "lucide-react";
 
 import { fetchMarketJson } from "@/lib/market-api";
+import { solanaTokenPath } from "@/lib/routes";
 import { formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 const RECENT_KEY = "chadwallet-recent-searches";
@@ -142,7 +143,7 @@ export function TokenSearch() {
       setQuery("");
       setResults([]);
       setError("");
-      router.push(`/trade/${token.mint}`);
+      router.push(solanaTokenPath(token.mint));
     },
     [router],
   );

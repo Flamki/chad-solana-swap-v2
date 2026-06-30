@@ -51,6 +51,7 @@ import {
   type TradeReceiptRecord,
 } from "@/lib/market-data";
 import { hasPrivy } from "@/lib/env";
+import { solanaTokenPath } from "@/lib/routes";
 import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 type TokenListMode = "watchlist" | "crypto" | "trending" | "most-held" | "graduates";
@@ -882,7 +883,7 @@ export function TradePage({ mint }: { mint: string }) {
   }
 
   if (!ready || !authenticated) {
-    return <TradeAuthGate ready={ready} redirectTo={`/trade/${encodeURIComponent(mint)}`} />;
+    return <TradeAuthGate ready={ready} redirectTo={solanaTokenPath(mint)} />;
   }
 
   return (
@@ -1471,7 +1472,7 @@ function TrendingToken({
 
   return (
     <Link
-      href={`/trade/${token.mint}`}
+      href={solanaTokenPath(token.mint)}
       onPointerEnter={(event) => onPreview(token, event.currentTarget)}
       onFocus={(event) => onPreview(token, event.currentTarget)}
       onPointerLeave={onPreviewEnd}
