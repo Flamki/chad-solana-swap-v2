@@ -56,6 +56,7 @@ import {
   type PortfolioHistoryPoint,
   type PortfolioHistoryRange,
   type FollowStats,
+  type FollowProfileKind,
   type TradeReceiptRecord,
   type UserProfileRecord,
   type WalletTokenPosition,
@@ -64,6 +65,7 @@ import {
   recordUserProfile,
   syncFollowTrader,
   useAppLeaderboard,
+  useFollowProfiles,
   useFollowStats,
   usePortfolioHistory,
   useStoredFollowedTraders,
@@ -180,6 +182,7 @@ function ConnectedTradeProfileCenter({
   });
   const [dialog, setDialog] = useState<"deposit" | "withdraw" | null>(null);
   const [editingProfile, setEditingProfile] = useState(false);
+  const [relationshipDialog, setRelationshipDialog] = useState<FollowProfileKind | null>(null);
   const [copied, setCopied] = useState(false);
   const [range, setRange] = useState<PortfolioHistoryRange>("24H");
   const [swapTab, setSwapTab] = useState<"swaps" | "buys" | "sells">("swaps");
@@ -326,8 +329,16 @@ function ConnectedTradeProfileCenter({
             </div>
 
             <div className="flex min-w-0 shrink-0 items-center gap-2 pt-7 max-[1180px]:ml-[96px] max-[1180px]:pt-0">
-              <ProfileStat value={followingCount.toLocaleString()} label="Following" />
-              <ProfileStat value={followersCount.toLocaleString()} label="Followers" />
+              <ProfileStat
+                value={followingCount.toLocaleString()}
+                label="Following"
+                onClick={() => setRelationshipDialog("following")}
+              />
+              <ProfileStat
+                value={followersCount.toLocaleString()}
+                label="Followers"
+                onClick={() => setRelationshipDialog("followers")}
+              />
               <button
                 onClick={() => setEditingProfile(true)}
                 className="h-10 rounded-lg border border-[#252137] bg-[#15121d] px-4 text-sm font-black text-white transition hover:bg-[#1f1b2a]"
@@ -611,6 +622,16 @@ function ConnectedTradeProfileCenter({
         linkedAccounts={linkedAccounts}
         onSave={saveProfile}
       />
+      <FollowRelationshipsDialog
+        open={relationshipDialog !== null}
+        onOpenChange={(open) => !open && setRelationshipDialog(null)}
+        profileWallet={address}
+        currentWallet={address}
+        initialTab={relationshipDialog ?? "following"}
+        followingCount={followingCount}
+        followersCount={followersCount}
+        onSelectProfile={onSelectProfile}
+      />
     </div>
   );
 }
@@ -624,10 +645,14 @@ function ViewedTradeProfile({
   onBack?: () => void;
   onSelectProfile?: (wallet: string) => void;
 }) {
+  const { user } = usePrivy();
+  const { wallets } = useWallets();
+  const currentWallet = wallets[0]?.address ?? user?.wallet?.address;
   const storedProfile = useStoredUserProfile(walletAddress);
   const receipts = useStoredTradeReceipts(walletAddress);
   const transfers = useWalletTransfers(walletAddress);
   const followStats = useFollowStats(walletAddress);
+  const [relationshipDialog, setRelationshipDialog] = useState<FollowProfileKind | null>(null);
   const [copied, setCopied] = useState(false);
   const fallbackProfile = useMemo<StoredProfile>(
     () => ({
@@ -697,8 +722,16 @@ function ViewedTradeProfile({
             </div>
 
             <div className="flex shrink-0 items-center gap-2 pt-7 max-[1180px]:ml-[96px] max-[1180px]:pt-0">
-              <ProfileStat value={followingCount.toLocaleString()} label="Following" />
-              <ProfileStat value={followersCount.toLocaleString()} label="Followers" />
+              <ProfileStat
+                value={followingCount.toLocaleString()}
+                label="Following"
+                onClick={() => setRelationshipDialog("following")}
+              />
+              <ProfileStat
+                value={followersCount.toLocaleString()}
+                label="Followers"
+                onClick={() => setRelationshipDialog("followers")}
+              />
               {onBack ? (
                 <button
                   type="button"
@@ -796,7 +829,205 @@ function ViewedTradeProfile({
           />
         </section>
       </div>
+      <FollowRelationshipsDialog
+        open={relationshipDialog !== null}
+        onOpenChange={(open) => !open && setRelationshipDialog(null)}
+        profileWallet={walletAddress}
+        currentWallet={currentWallet}
+        initialTab={relationshipDialog ?? "following"}
+        followingCount={followingCount}
+        followersCount={followersCount}
+        onSelectProfile={onSelectProfile}
+      />
     </div>
+  );
+}
+
+function FollowRelationshipsDialog({
+  open,
+  onOpenChange,
+  profileWallet,
+  currentWallet,
+  initialTab,
+  followingCount,
+  followersCount,
+  onSelectProfile,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  profileWallet: string;
+  currentWallet?: string;
+  initialTab: FollowProfileKind;
+  followingCount: number;
+  followersCount: number;
+  onSelectProfile?: (wallet: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const [tab, setTab] = useState<FollowProfileKind>(initialTab);
+  const profiles = useFollowProfiles(profileWallet, tab);
+  const followedQuery = useStoredFollowedTraders(currentWallet);
+  const [localFollowed, setLocalFollowed] = useLocalFollowedTraders(currentWallet);
+  const followed = useMemo(
+    () => new Set([...(followedQuery.data ?? []), ...localFollowed]),
+    [followedQuery.data, localFollowed],
+  );
+  const rows = profiles.data ?? [];
+
+  useEffect(() => {
+    if (open) setTab(initialTab);
+  }, [initialTab, open]);
+
+  const closeAndOpenProfile = (wallet: string) => {
+    onOpenChange(false);
+    onSelectProfile?.(wallet);
+  };
+
+  const toggleFollow = (targetWallet: string) => {
+    if (!currentWallet || targetWallet === currentWallet) return;
+
+    const following = !followed.has(targetWallet);
+    const delta = following ? 1 : -1;
+    setLocalFollowed(targetWallet, following);
+    queryClient.setQueryData<FollowStats>(["follow-stats", currentWallet], (current) => ({
+      following: Math.max(0, (current?.following ?? 0) + delta),
+      followers: current?.followers ?? 0,
+    }));
+    queryClient.setQueryData<FollowStats>(["follow-stats", targetWallet], (current) => ({
+      following: current?.following ?? 0,
+      followers: Math.max(0, (current?.followers ?? 0) + delta),
+    }));
+    void syncFollowTrader({ wallet: currentWallet, targetWallet, following }).finally(() => {
+      void queryClient.invalidateQueries({ queryKey: ["followed-traders", currentWallet] });
+      void queryClient.invalidateQueries({ queryKey: ["follow-stats", currentWallet] });
+      void queryClient.invalidateQueries({ queryKey: ["follow-stats", targetWallet] });
+      void queryClient.invalidateQueries({ queryKey: ["follow-profiles"] });
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(810px,calc(100vw-36px))] max-w-none gap-0 overflow-hidden rounded-[22px] border border-[#1b1726] bg-[#05040a]/94 p-0 text-white shadow-[0_30px_130px_rgba(0,0,0,0.82)] backdrop-blur-2xl [&>button]:-top-14 [&>button]:right-0 [&>button]:grid [&>button]:h-12 [&>button]:w-12 [&>button]:place-items-center [&>button]:rounded-full [&>button]:border [&>button]:border-[#272238] [&>button]:bg-[#0f0d17] [&>button]:text-white [&>button]:opacity-100 [&>button]:ring-offset-0 [&>button:hover]:bg-[#191522]">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Profile relationships</DialogTitle>
+          <DialogDescription>View following and followers for this profile.</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid h-16 grid-cols-2 border-b border-[#1b1726] px-5 text-[15px] font-black">
+          {(["following", "followers"] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setTab(item)}
+              className={`relative flex items-center justify-center transition ${
+                tab === item ? "text-white" : "text-[#5f596a] hover:text-[#a9b0d4]"
+              }`}
+            >
+              {item === "following" ? "Following" : "Followers"} (
+              {item === "following"
+                ? followingCount.toLocaleString()
+                : followersCount.toLocaleString()}
+              )
+              {tab === item ? (
+                <span className="absolute bottom-0 left-0 right-0 h-[2px] rounded-full bg-[#5365ff]" />
+              ) : null}
+            </button>
+          ))}
+        </div>
+
+        <div className="terminal-scroll min-h-[430px] overflow-y-auto px-5 py-4">
+          {profiles.isFetching && !rows.length ? (
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div key={index} className="flex h-[58px] items-center gap-4 rounded-xl px-2">
+                  <div className="h-12 w-12 rounded-full bg-[#15121d]" />
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-4 w-44 rounded bg-[#15121d]" />
+                    <div className="h-3 w-28 rounded bg-[#15121d]" />
+                  </div>
+                  <div className="h-9 w-20 rounded-lg bg-[#15121d]" />
+                  <div className="h-9 w-24 rounded-lg bg-[#15121d]" />
+                </div>
+              ))}
+            </div>
+          ) : rows.length ? (
+            <div className="space-y-1">
+              {rows.map((profile) => {
+                const isSelf = profile.wallet === currentWallet;
+                const isFollowing = followed.has(profile.wallet);
+                const initials = profile.displayName.slice(0, 2).toUpperCase();
+
+                return (
+                  <div
+                    key={profile.wallet}
+                    className="flex items-center gap-3 rounded-xl px-2 py-2 transition hover:bg-[#12101a]"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => closeAndOpenProfile(profile.wallet)}
+                      className="flex min-w-0 flex-1 items-center gap-4 text-left"
+                    >
+                      <span className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full border border-[#272238] bg-[#211d31] text-[12px] font-black text-white">
+                        {profile.avatarDataUrl ? (
+                          <img
+                            src={profile.avatarDataUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          initials
+                        )}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[16px] font-black leading-tight text-white">
+                          {profile.displayName}
+                          {isSelf ? " (you)" : ""}
+                        </span>
+                        <span className="mt-1 block truncate text-[13px] font-semibold leading-tight text-[#8f879d]">
+                          @{profile.username || shortWallet(profile.wallet)}
+                        </span>
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => closeAndOpenProfile(profile.wallet)}
+                      className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg bg-[#191621] px-4 text-[13px] font-black text-white transition hover:bg-[#252033]"
+                    >
+                      <Send className="h-4 w-4" />
+                      Send
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleFollow(profile.wallet)}
+                      disabled={!currentWallet || isSelf}
+                      className={`h-9 min-w-[92px] shrink-0 rounded-lg px-4 text-[13px] font-black text-white transition disabled:cursor-not-allowed disabled:opacity-45 ${
+                        isFollowing
+                          ? "bg-[#242033] hover:bg-[#302a43]"
+                          : "bg-[#5365ff] hover:bg-[#6373ff]"
+                      }`}
+                    >
+                      {isSelf ? "You" : isFollowing ? "Following" : "Follow"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid min-h-[360px] place-items-center text-center">
+              <div>
+                <div className="text-[15px] font-black text-[#7a7488]">
+                  No {tab === "following" ? "following" : "followers"}
+                </div>
+                <div className="mt-2 text-xs font-semibold text-[#4f4859]">
+                  ChadWallet relationships will appear here as users follow each other.
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1845,11 +2076,35 @@ function SignedOutProfile() {
   );
 }
 
-function ProfileStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="min-w-[76px] border-r border-[#1b1726] pr-4 text-center last:border-r-0">
+function ProfileStat({
+  value,
+  label,
+  onClick,
+}: {
+  value: string;
+  label: string;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
       <div className="font-mono text-[18px] font-black text-white">{value}</div>
       <div className="text-xs font-semibold text-[#a9b0d4]">{label}</div>
+    </>
+  );
+
+  return (
+    <div className="min-w-[76px] border-r border-[#1b1726] pr-4 text-center last:border-r-0">
+      {onClick ? (
+        <button
+          type="button"
+          onClick={onClick}
+          className="-mx-2 rounded-lg px-2 py-1 transition hover:bg-[#151221] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#5365ff]"
+        >
+          {content}
+        </button>
+      ) : (
+        content
+      )}
     </div>
   );
 }

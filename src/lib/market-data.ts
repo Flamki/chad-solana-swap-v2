@@ -128,6 +128,12 @@ export type FollowStats = {
   followers: number;
 };
 
+export type FollowProfileKind = "following" | "followers";
+
+export type FollowProfileRecord = UserProfileRecord & {
+  followedAt: string | null;
+};
+
 export type ChartInterval = "1m" | "5m" | "15m" | "1H" | "4H" | "1D";
 
 export type PricePoint = {
@@ -986,6 +992,76 @@ export async function fetchFollowStats(wallet: string, signal?: AbortSignal): Pr
   };
 }
 
+export async function fetchFollowProfiles(
+  wallet: string,
+  kind: FollowProfileKind,
+  signal?: AbortSignal,
+): Promise<FollowProfileRecord[]> {
+  if (!supabase) return [];
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const walletColumn = kind === "following" ? "target_wallet" : "follower_wallet";
+  const filterColumn = kind === "following" ? "follower_wallet" : "target_wallet";
+
+  const { data: followRows, error: followError } = await supabase
+    .from("user_follows")
+    .select(`${walletColumn},created_at`)
+    .eq(filterColumn, wallet)
+    .order("created_at", { ascending: false });
+
+  if (followError) {
+    if (followError.code === "42P01") return [];
+    throw followError;
+  }
+
+  const relationships = (followRows ?? [])
+    .map((item) => ({
+      wallet: String(item[walletColumn as keyof typeof item] ?? ""),
+      followedAt: typeof item.created_at === "string" ? item.created_at : null,
+    }))
+    .filter((item) => item.wallet);
+
+  if (!relationships.length) return [];
+
+  const wallets = Array.from(new Set(relationships.map((item) => item.wallet)));
+  const { data: profiles, error: profilesError } = await supabase
+    .from("user_profiles")
+    .select("wallet,username,display_name,bio,avatar_data_url,banner_data_url,updated_at")
+    .in("wallet", wallets);
+
+  if (profilesError) throw profilesError;
+
+  const profilesByWallet = new Map(
+    (profiles ?? []).map((profile) => [
+      profile.wallet,
+      {
+        wallet: profile.wallet,
+        username: profile.username,
+        displayName: profile.display_name,
+        bio: profile.bio,
+        avatarDataUrl: profile.avatar_data_url,
+        bannerDataUrl: profile.banner_data_url,
+        updatedAt: profile.updated_at,
+      } satisfies UserProfileRecord,
+    ]),
+  );
+
+  return relationships.map((relationship) => {
+    const profile = profilesByWallet.get(relationship.wallet);
+
+    return {
+      wallet: relationship.wallet,
+      username: profile?.username || shortWalletAddress(relationship.wallet),
+      displayName: profile?.displayName || shortWalletAddress(relationship.wallet),
+      bio: profile?.bio || "",
+      avatarDataUrl: profile?.avatarDataUrl || "",
+      bannerDataUrl: profile?.bannerDataUrl || "",
+      updatedAt: profile?.updatedAt,
+      followedAt: relationship.followedAt,
+    };
+  });
+}
+
 export async function syncFollowTrader({
   wallet,
   targetWallet,
@@ -1393,6 +1469,17 @@ export function useFollowStats(wallet?: string) {
   return useQuery({
     queryKey: ["follow-stats", wallet],
     queryFn: ({ signal }) => fetchFollowStats(wallet!, signal),
+    enabled: Boolean(wallet && supabase),
+    refetchInterval: 15_000,
+    staleTime: 10_000,
+    retry: 1,
+  });
+}
+
+export function useFollowProfiles(wallet?: string, kind: FollowProfileKind = "following") {
+  return useQuery({
+    queryKey: ["follow-profiles", wallet, kind],
+    queryFn: ({ signal }) => fetchFollowProfiles(wallet!, kind, signal),
     enabled: Boolean(wallet && supabase),
     refetchInterval: 15_000,
     staleTime: 10_000,
