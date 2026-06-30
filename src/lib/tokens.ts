@@ -17,6 +17,13 @@ export interface Token {
   source?: "static" | "birdeye" | "jupiter" | "dexscreener" | "geckoterminal";
   poolDex?: string;
   poolCreatedAt?: string;
+  description?: string;
+  websites?: string[];
+  twitter?: string;
+  telegram?: string;
+  discord?: string;
+  geckoTerminalUrl?: string;
+  dexScreenerUrl?: string;
 }
 
 export const TOKENS: Token[] = [

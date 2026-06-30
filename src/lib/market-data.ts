@@ -188,6 +188,7 @@ export type LiveTrade = {
   price: number;
   wallet: string;
   ago: string;
+  timestamp?: number;
   source?: string;
 };
 

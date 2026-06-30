@@ -15,6 +15,8 @@ const poolAddressCache = new Map<
 
 type DexPair = {
   chainId?: string;
+  dexId?: string;
+  url?: string;
   pairAddress?: string;
   baseToken?: { address?: string; name?: string; symbol?: string };
   quoteToken?: { address?: string; name?: string; symbol?: string };
@@ -24,7 +26,13 @@ type DexPair = {
   liquidity?: { usd?: number };
   fdv?: number | null;
   marketCap?: number | null;
-  info?: { imageUrl?: string };
+  pairCreatedAt?: number;
+  info?: {
+    imageUrl?: string;
+    header?: string;
+    websites?: Array<{ url?: string; label?: string }>;
+    socials?: Array<{ url?: string; type?: string }>;
+  };
 };
 
 type GeckoPoolAttributes = {
@@ -72,12 +80,30 @@ type GeckoTokenResponse = {
       market_cap_usd?: string | null;
       total_reserve_in_usd?: string | null;
       volume_usd?: { h24?: string | null };
+      holders?: { count?: number };
     };
     relationships?: {
       top_pools?: { data?: Array<{ id?: string; type?: string }> };
     };
   };
   included?: GeckoPoolItem[];
+};
+
+type GeckoTokenInfoResponse = {
+  data?: {
+    attributes?: {
+      name?: string;
+      symbol?: string;
+      decimals?: number;
+      image_url?: string | null;
+      websites?: string[];
+      twitter_handle?: string | null;
+      telegram_handle?: string | null;
+      discord_url?: string | null;
+      description?: string | null;
+      holders?: { count?: number };
+    };
+  };
 };
 
 type GeckoOhlcvResponse = {
@@ -283,30 +309,42 @@ export async function getBestGeckoPool(
 }
 
 export async function tokenFromFallbackProviders(mint: string): Promise<Token> {
-  const [geckoResult, dexResult] = await Promise.allSettled([
+  const [geckoResult, geckoInfoResult, dexResult] = await Promise.allSettled([
     fetchJson<GeckoTokenResponse>(
       `${GECKO_TERMINAL_BASE}/networks/solana/tokens/${encodeURIComponent(mint)}?include=top_pools`,
       20,
+    ),
+    fetchJson<GeckoTokenInfoResponse>(
+      `${GECKO_TERMINAL_BASE}/networks/solana/tokens/${encodeURIComponent(mint)}/info`,
+      300,
     ),
     getDexPairs(mint),
   ]);
   const attributes =
     geckoResult.status === "fulfilled" ? geckoResult.value.data?.attributes : undefined;
+  const infoAttributes =
+    geckoInfoResult.status === "fulfilled" ? geckoInfoResult.value.data?.attributes : undefined;
   const topPool =
     geckoResult.status === "fulfilled"
       ? bestGeckoPoolForMint(geckoResult.value.included ?? [], mint)?.item
       : undefined;
   const pair = dexResult.status === "fulfilled" ? bestDexPair(dexResult.value, mint) : undefined;
 
-  if (!attributes && !pair) {
+  if (!attributes && !infoAttributes && !pair) {
     throw new Error("No fallback market data available");
   }
 
+  const dexSocials = pair?.info?.socials ?? [];
+  const dexTwitter = dexSocials.find((social) => social.type === "twitter")?.url;
+  const dexTelegram = dexSocials.find((social) => social.type === "telegram")?.url;
+  const dexDiscord = dexSocials.find((social) => social.type === "discord")?.url;
+  const geckoPoolAddress = geckoRelationPoolAddress(topPool?.id);
+
   return mergeToken(createFallbackToken(mint), {
-    symbol: attributes?.symbol ?? pair?.baseToken?.symbol,
-    name: attributes?.name ?? pair?.baseToken?.name,
-    logo: attributes?.image_url ?? pair?.info?.imageUrl,
-    decimals: attributes?.decimals,
+    symbol: attributes?.symbol ?? infoAttributes?.symbol ?? pair?.baseToken?.symbol,
+    name: attributes?.name ?? infoAttributes?.name ?? pair?.baseToken?.name,
+    logo: attributes?.image_url ?? infoAttributes?.image_url ?? pair?.info?.imageUrl,
+    decimals: attributes?.decimals ?? infoAttributes?.decimals,
     price:
       numberValue(attributes?.price_usd) ??
       geckoPoolTokenPrice(topPool, mint) ??
@@ -327,7 +365,26 @@ export async function tokenFromFallbackProviders(mint: string): Promise<Token> {
       numberValue(attributes?.total_reserve_in_usd) ??
       poolLiquidity(topPool) ??
       pair?.liquidity?.usd,
+    holders: attributes?.holders?.count ?? infoAttributes?.holders?.count,
     source: geckoResult.status === "fulfilled" ? "geckoterminal" : "dexscreener",
+    poolDex: topPool?.relationships?.dex?.data?.id ?? pair?.dexId,
+    poolCreatedAt:
+      topPool?.attributes?.pool_created_at ??
+      (pair?.pairCreatedAt ? new Date(pair.pairCreatedAt).toISOString() : undefined),
+    description: cleanText(infoAttributes?.description),
+    websites: uniqueUrls([
+      ...(infoAttributes?.websites ?? []),
+      ...(pair?.info?.websites ?? []).map((website) => website.url),
+    ]),
+    twitter:
+      normalizeSocialUrl(infoAttributes?.twitter_handle, "twitter") ?? normalizeUrl(dexTwitter),
+    telegram:
+      normalizeSocialUrl(infoAttributes?.telegram_handle, "telegram") ?? normalizeUrl(dexTelegram),
+    discord: normalizeUrl(infoAttributes?.discord_url) ?? normalizeUrl(dexDiscord),
+    geckoTerminalUrl: geckoPoolAddress
+      ? `https://www.geckoterminal.com/solana/pools/${geckoPoolAddress}`
+      : `https://www.geckoterminal.com/solana/tokens/${mint}`,
+    dexScreenerUrl: normalizeUrl(pair?.url),
   });
 }
 
@@ -478,6 +535,7 @@ export async function tradesFromFallbackProviders(mint: string) {
       price: trade.price,
       wallet: trade.wallet,
       ago: formatAge(ageSeconds),
+      timestamp: trade.timestamp,
       source: "GeckoTerminal",
     };
   });
@@ -711,6 +769,13 @@ function tokenFromDexPair(pair: DexPair, query?: string): Token | null {
     marketCap: pair.marketCap ?? pair.fdv ?? undefined,
     liquidity: pair.liquidity?.usd,
     source: "dexscreener",
+    poolDex: pair.dexId,
+    poolCreatedAt: pair.pairCreatedAt ? new Date(pair.pairCreatedAt).toISOString() : undefined,
+    websites: uniqueUrls((pair.info?.websites ?? []).map((website) => website.url)),
+    twitter: normalizeUrl(pair.info?.socials?.find((social) => social.type === "twitter")?.url),
+    telegram: normalizeUrl(pair.info?.socials?.find((social) => social.type === "telegram")?.url),
+    discord: normalizeUrl(pair.info?.socials?.find((social) => social.type === "discord")?.url),
+    dexScreenerUrl: normalizeUrl(pair.url),
   });
 }
 
@@ -744,12 +809,47 @@ function geckoRelationMint(id: string | undefined) {
   return id?.startsWith(SOLANA_TOKEN_PREFIX) ? id.slice(SOLANA_TOKEN_PREFIX.length) : undefined;
 }
 
+function geckoRelationPoolAddress(id: string | undefined) {
+  const prefix = "solana_";
+  return id?.startsWith(prefix) ? id.slice(prefix.length) : undefined;
+}
+
 function poolVolume24h(pool: GeckoPoolItem | undefined) {
   return numberValue(pool?.attributes?.volume_usd?.h24) ?? 0;
 }
 
 function poolLiquidity(pool: GeckoPoolItem | undefined) {
   return numberValue(pool?.attributes?.reserve_in_usd) ?? 0;
+}
+
+function cleanText(value: string | null | undefined) {
+  const text = value?.replace(/\s+/g, " ").trim();
+  return text || undefined;
+}
+
+function normalizeUrl(value: string | null | undefined) {
+  const raw = value?.trim();
+  if (!raw) return undefined;
+  if (raw.startsWith("https://") || raw.startsWith("http://")) return raw;
+  if (raw.startsWith("www.")) return `https://${raw}`;
+  return undefined;
+}
+
+function normalizeSocialUrl(value: string | null | undefined, type: "twitter" | "telegram") {
+  const raw = value?.trim().replace(/^@/, "");
+  if (!raw) return undefined;
+  const url = normalizeUrl(raw);
+  if (url) return url;
+  if (type === "twitter") return `https://x.com/${encodeURIComponent(raw)}`;
+  return `https://t.me/${encodeURIComponent(raw)}`;
+}
+
+function uniqueUrls(values: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(
+      values.map((value) => normalizeUrl(value)).filter((value): value is string => Boolean(value)),
+    ),
+  );
 }
 
 function uniqueTokens(tokens: Token[]) {
