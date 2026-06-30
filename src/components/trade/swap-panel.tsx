@@ -13,7 +13,7 @@ import {
   Twitter,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { hasPrivy, isTradeTestMode } from "@/lib/env";
 import {
@@ -62,6 +62,12 @@ function formatAmountForInput(value: number, decimals: number) {
   if (!Number.isFinite(value) || value <= 0) return "0";
   const rounded = value.toFixed(Math.min(decimals, value < 1 ? 8 : 6));
   return rounded.replace(/\.?0+$/, "");
+}
+
+function formatQuoteUsd(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return "$0.00";
+  if (value < 0.01) return `$${value.toFixed(6)}`;
+  return formatUsd(value);
 }
 
 export function SwapPanel({ token, solPrice }: { token: Token; solPrice: number }) {
@@ -119,6 +125,7 @@ function SwapPanelCore({
   const [signature, setSignature] = useState("");
   const [receipt, setReceipt] = useState<TradeReceipt | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [selectedPercent, setSelectedPercent] = useState<number | null>(null);
   const [positionsFilter, setPositionsFilter] = useState<"open" | "closed">("open");
 
   const pair = useMemo(() => {
@@ -207,6 +214,11 @@ function SwapPanelCore({
   const quoteUnavailable = hasValidAmount && quoteQuery.isError && !quoteQuery.data;
   const amountTooSmall = amount.length > 0 && amt > 0 && rawAmount <= 0n;
   const inputIsUsd = pair.inputSymbol === "USDC";
+  const isDustQuoteAmount = hasValidAmount && inputUsd > 0 && inputUsd < 0.01;
+  const routeUnavailableMessage = isDustQuoteAmount
+    ? `Amount is only ${formatQuoteUsd(inputUsd)}. Use a larger ${pair.inputSymbol} amount.`
+    : quoteError ||
+      `${token.symbol} is live, but Jupiter has no route for this token or amount yet.`;
   const quoteStatus = !hasValidAmount
     ? amountTooSmall
       ? `Minimum precision is ${pair.inputDecimals} decimals`
@@ -218,7 +230,7 @@ function SwapPanelCore({
         : quoteReady
           ? `${formatTokenAmount(quoteQuery.data!.outUiAmount)} ${pair.outputSymbol} via ${quoteQuery.data!.route}`
           : quoteUnavailable
-            ? quoteError || "No live Jupiter route for this amount"
+            ? routeUnavailableMessage
             : "Waiting for live Jupiter quote";
 
   const buttonLabel = (() => {
@@ -234,7 +246,7 @@ function SwapPanelCore({
     if (!wallet || !onSignTransaction) return "Wallet unavailable";
     if (!hasValidAmount) return `Enter ${pair.inputSymbol} amount`;
     if (quoteQuery.isFetching) return "Refreshing quote";
-    if (quoteUnavailable) return "No Jupiter quote";
+    if (quoteUnavailable) return isDustQuoteAmount ? "Amount too small" : "No Jupiter route";
     if (!quoteReady) return "Waiting for quote";
     if (!inputBalanceReady) return "Checking balance";
     if (!hasInputBalance) return `Deposit ${pair.inputSymbol} first`;
@@ -252,6 +264,14 @@ function SwapPanelCore({
         !quoteReady ||
         !inputBalanceReady ||
         !hasInputBalance));
+
+  useEffect(() => {
+    setAmount("0");
+    setSelectedPercent(null);
+    setTradeError("");
+    setSignature("");
+    setReceipt(null);
+  }, [side, token.mint]);
 
   const handlePrimary = async () => {
     if (isTradeTestMode) {
@@ -470,6 +490,7 @@ function SwapPanelCore({
                 value={amount}
                 onChange={(e) => {
                   setAmount(sanitizeDecimalInput(e.target.value, pair.inputDecimals));
+                  setSelectedPercent(null);
                   setTradeError("");
                 }}
                 inputMode="decimal"
@@ -491,7 +512,7 @@ function SwapPanelCore({
                     ? `~ ${estimatedOut.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${pair.outputSymbol}`
                     : `~ ${formatUsd(inputUsd)}`
                   : quoteUnavailable
-                    ? "No Jupiter route for this amount"
+                    ? routeUnavailableMessage
                     : quoteStatus}
           </div>
         </div>
@@ -506,9 +527,14 @@ function SwapPanelCore({
                 const maxSpendable =
                   pair.inputSymbol === "SOL" ? Math.max(inputBalance - 0.002, 0) : inputBalance;
                 setAmount(formatAmountForInput((maxSpendable * percent) / 100, pair.inputDecimals));
+                setSelectedPercent(percent);
                 setTradeError("");
               }}
-              className="flex-1 rounded-lg border border-[#1b1726]/45 bg-transparent h-[26px] flex items-center justify-center font-mono font-bold text-[#9099a3] transition hover:bg-[#1b1726]/45 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+              className={`flex-1 rounded-lg border h-[26px] flex items-center justify-center font-mono font-bold transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                selectedPercent === percent
+                  ? "border-[#7567ff]/70 bg-[#241f38] text-white"
+                  : "border-[#1b1726]/45 bg-transparent text-[#9099a3] hover:bg-[#1b1726]/45 hover:text-white"
+              }`}
             >
               {percent}%
             </button>
