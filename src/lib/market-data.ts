@@ -33,7 +33,7 @@ export type JupiterQuote = {
   route: string;
   router: string;
   responseMs?: number;
-  source: "jupiter-v2" | "jupiter-lite";
+  source: "jupiter-v2" | "jupiter-lite" | "jupiter-legacy";
 };
 
 export type JupiterSwapOrder = JupiterQuote & {
@@ -383,7 +383,6 @@ export async function fetchJupiterQuote({
   amount,
   outputDecimals,
   slippageBps,
-  taker,
   signal,
 }: {
   inputMint: string;
@@ -403,7 +402,6 @@ export async function fetchJupiterQuote({
   });
 
   params.set("outputDecimals", String(outputDecimals));
-  if (taker) params.set("taker", taker);
 
   const response = await fetch(`/api/trade/quote?${params}`, { signal });
   if (!response.ok) {
@@ -468,7 +466,7 @@ export async function createJupiterSwapOrder({
     route,
     router: order.router ?? order.mode ?? "Jupiter",
     responseMs: order.totalTime,
-    source: "jupiter-v2",
+    source: order.source === "jupiter-legacy" ? "jupiter-legacy" : "jupiter-v2",
     transaction: order.transaction,
     requestId: order.requestId,
     lastValidBlockHeight: order.lastValidBlockHeight,

@@ -17,14 +17,11 @@ export async function GET(request: NextRequest) {
       slippageBps: url.searchParams.get("slippageBps") ?? "100",
       swapMode: "ExactIn",
     });
-    const taker = url.searchParams.get("taker");
     const outputDecimals = Number(url.searchParams.get("outputDecimals") ?? 0);
 
     if (!params.get("inputMint") || !params.get("outputMint") || !params.get("amount")) {
       return NextResponse.json({ error: "Missing quote parameters" }, { status: 400 });
     }
-
-    if (taker) params.set("taker", taker);
 
     const apiKey = jupiterApiKey();
     const started = performance.now();
