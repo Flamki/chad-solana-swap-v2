@@ -143,7 +143,6 @@ function ConnectedTradeAccount({
     blurBalances ? "****" : loadingBalances ? "..." : formatUsd(value);
   const email = getLoginEmail(user);
   const displayName = getDisplayName(user, email);
-  const evmAddress = getEvmAddress(user);
   const profileInitial = displayName.charAt(0).toUpperCase();
   const profileHandle = storedProfile.data?.username || getProfileHandle(displayName, email);
   const shortAddress = `${address.slice(0, 4)}...${address.slice(-4)}`;
@@ -292,7 +291,6 @@ function ConnectedTradeAccount({
         onOpenChange={(open) => !open && setDialog(null)}
         email={email}
         address={address}
-        evmAddress={evmAddress}
         copied={copied}
         onCopy={(value, key) => copyText(value, key)}
       />
@@ -592,7 +590,6 @@ function ManageAccountDialog({
   onOpenChange,
   email,
   address,
-  evmAddress,
   copied,
   onCopy,
 }: {
@@ -600,7 +597,6 @@ function ManageAccountDialog({
   onOpenChange: (open: boolean) => void;
   email: string | null;
   address: string;
-  evmAddress: string | null;
   copied: string | null;
   onCopy: (value: string, key: string) => void;
 }) {
@@ -608,7 +604,7 @@ function ManageAccountDialog({
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState("");
   const accountEmail = email ?? "Connected with wallet";
-  const chainAddress = evmAddress ?? "Not connected";
+  const shortSolanaAddress = `${address.slice(0, 6)}...${address.slice(-6)}`;
 
   const exportKeys = async () => {
     setError("");
@@ -624,17 +620,19 @@ function ManageAccountDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(572px,calc(100vw-32px))] max-w-none rounded-[24px] border border-[#1f1b2c] bg-[#08060f]/96 p-5 text-[#f7f7f7] shadow-[0_28px_100px_rgba(0,0,0,0.72)] backdrop-blur-xl [&>button]:-top-14 [&>button]:right-6 [&>button]:grid [&>button]:h-12 [&>button]:w-12 [&>button]:place-items-center [&>button]:rounded-full [&>button]:border [&>button]:border-[#26213a] [&>button]:bg-[#0f0c18] [&>button]:text-white [&>button]:opacity-100 [&>button:hover]:bg-[#181421]">
-        <DialogHeader className="mb-5 text-center">
-          <DialogTitle className="text-[22px] font-medium leading-none text-white">
-            Manage account
-          </DialogTitle>
-          <DialogDescription className="sr-only">
-            Login and linked wallet addresses for this ChadWallet account.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="w-[min(500px,calc(100vw-32px))] max-w-none rounded-[22px] border border-[#211d30] bg-[#090711]/95 p-0 text-[#f7f7f7] shadow-[0_28px_110px_rgba(0,0,0,0.78),0_0_70px_rgba(89,98,255,0.12)] backdrop-blur-xl [&>button]:-top-12 [&>button]:right-5 [&>button]:grid [&>button]:h-10 [&>button]:w-10 [&>button]:place-items-center [&>button]:rounded-full [&>button]:border [&>button]:border-[#29233b] [&>button]:bg-[#11101a] [&>button]:text-white [&>button]:opacity-100 [&>button:hover]:bg-[#1b1726]">
+        <div className="border-b border-[#1c1828] px-6 py-5">
+          <DialogHeader className="text-left">
+            <DialogTitle className="text-[24px] font-semibold leading-none text-white">
+              Manage account
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-sm text-[#8f8a9d]">
+              Your ChadWallet identity and Solana wallet.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="space-y-3">
+        <div className="space-y-3 px-6 py-5">
           <ManageAccountRow
             label="Login email"
             value={accountEmail}
@@ -644,6 +642,7 @@ function ManageAccountDialog({
           <ManageAccountRow
             label="Solana address"
             value={address}
+            eyebrow={shortSolanaAddress}
             trailing={
               <AccountCopyButton
                 copied={copied === "solana"}
@@ -652,58 +651,30 @@ function ManageAccountDialog({
               />
             }
           />
-          <ManageAccountRow
-            label="Base address"
-            value={chainAddress}
-            muted={!evmAddress}
-            trailing={
-              <AccountCopyButton
-                copied={copied === "base"}
-                disabled={!evmAddress}
-                onClick={() => evmAddress && onCopy(evmAddress, "base")}
-              />
-            }
-          />
-          <ManageAccountRow
-            label="Monad address"
-            value={chainAddress}
-            muted={!evmAddress}
-            trailing={
-              <AccountCopyButton
-                copied={copied === "monad"}
-                disabled={!evmAddress}
-                onClick={() => evmAddress && onCopy(evmAddress, "monad")}
-              />
-            }
-          />
-          <ManageAccountRow
-            label="BNB Chain address"
-            value={chainAddress}
-            muted={!evmAddress}
-            trailing={
-              <AccountCopyButton
-                copied={copied === "bnb"}
-                disabled={!evmAddress}
-                onClick={() => evmAddress && onCopy(evmAddress, "bnb")}
-              />
-            }
-          />
+          <button
+            type="button"
+            onClick={exportKeys}
+            disabled={exporting}
+            className="flex min-h-[70px] w-full items-center gap-4 rounded-[16px] border border-[#2a2235] bg-[#120f1a] px-4 py-3 text-left transition hover:border-[#4c3c5f] hover:bg-[#181320] disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#ff672b]/12 text-[#ff7a3d]">
+              {exporting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <KeyRound className="h-5 w-5" />
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[16px] font-semibold text-white">
+                {exporting ? "Opening export..." : "Export private key"}
+              </span>
+              <span className="mt-1 block text-xs leading-snug text-[#8f8a9d]">
+                Use only when moving this wallet to another app.
+              </span>
+            </span>
+          </button>
+          {error && <p className="text-center text-xs font-medium text-[#ff5f46]">{error}</p>}
         </div>
-
-        <button
-          type="button"
-          onClick={exportKeys}
-          disabled={exporting}
-          className="mt-6 flex h-11 w-full items-center justify-center gap-2 rounded-xl text-[17px] font-medium text-[#ff672b] transition hover:bg-[#ff672b]/8 disabled:cursor-not-allowed disabled:opacity-55"
-        >
-          {exporting ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <KeyRound className="h-5 w-5" />
-          )}
-          Export keys
-        </button>
-        {error && <p className="mt-2 text-center text-xs font-medium text-[#ff5f46]">{error}</p>}
       </DialogContent>
     </Dialog>
   );
@@ -712,23 +683,32 @@ function ManageAccountDialog({
 function ManageAccountRow({
   label,
   value,
+  eyebrow,
   leading,
   trailing,
   muted,
 }: {
   label: string;
   value: string;
+  eyebrow?: string;
   leading?: React.ReactNode;
   trailing?: React.ReactNode;
   muted?: boolean;
 }) {
   return (
-    <div className="flex min-h-[82px] items-center gap-3 rounded-[14px] bg-[#17151f] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
+    <div className="flex min-h-[78px] items-center gap-3 rounded-[16px] border border-[#231e30] bg-[#17151f] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
       {leading}
       <div className="min-w-0 flex-1">
-        <div className="text-[17px] font-medium leading-tight text-white">{label}</div>
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="text-[16px] font-semibold leading-tight text-white">{label}</div>
+          {eyebrow && (
+            <div className="rounded-full border border-[#2c2639] bg-[#0d0b15] px-2 py-0.5 font-mono text-[10px] font-semibold text-[#8f8cff]">
+              {eyebrow}
+            </div>
+          )}
+        </div>
         <div
-          className={`mt-1 truncate text-[13px] font-medium leading-tight ${
+          className={`mt-1 truncate font-mono text-[12px] font-medium leading-tight ${
             muted ? "text-[#5b5868]" : "text-[#918c9e]"
           }`}
         >
@@ -755,7 +735,7 @@ function AccountCopyButton({
       onClick={onClick}
       disabled={disabled}
       title={disabled ? "Address unavailable" : "Copy address"}
-      className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-[#73707e] transition hover:bg-[#24212e] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+      className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-[#2b2636] bg-[#0f0d17] text-[#8c8797] transition hover:border-[#4a3d5d] hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
     >
       {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
     </button>
@@ -764,7 +744,7 @@ function AccountCopyButton({
 
 function GoogleMark() {
   return (
-    <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-white text-[13px] font-black leading-none text-[#4285f4]">
+    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[18px] font-black leading-none text-[#4285f4] shadow-[0_0_22px_rgba(66,133,244,0.18)]">
       G
     </span>
   );
@@ -867,30 +847,6 @@ function getProfileHandle(displayName: string, email: string | null) {
   const base = email?.split("@")[0] || displayName;
   const handle = base.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 18);
   return handle || "ChadTrader";
-}
-
-function getEvmAddress(user: ReturnType<typeof usePrivy>["user"]) {
-  if (!user) return null;
-
-  const walletAccount = user.linkedAccounts.find(
-    (linked) => hasStringAddress(linked) && /^0x[a-fA-F0-9]{40}$/.test(linked.address),
-  );
-
-  if (hasStringAddress(walletAccount)) return walletAccount.address;
-  if (hasStringAddress(user.wallet) && /^0x[a-fA-F0-9]{40}$/.test(user.wallet.address)) {
-    return user.wallet.address;
-  }
-
-  return null;
-}
-
-function hasStringAddress(value: unknown): value is { address: string } {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    "address" in value &&
-    typeof value.address === "string"
-  );
 }
 
 async function copyToClipboard(value: string) {
