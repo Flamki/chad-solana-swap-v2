@@ -58,6 +58,7 @@ import {
   type FollowStats,
   type TradeReceiptRecord,
   type UserProfileRecord,
+  type WalletTokenPosition,
   type WalletTransferRecord,
   recordWalletTransfer,
   recordUserProfile,
@@ -195,7 +196,11 @@ function ConnectedTradeProfileCenter({
   const cashBalance = usdc.data?.balance ?? 0;
   const solBalance = sol.data?.balance ?? 0;
   const solValue = sol.data?.valueUsd ?? 0;
-  const positions = walletPositions.data ?? [];
+  const positions = useMemo(
+    () => mergeWalletTokenPositions(walletPositions.data ?? []),
+    [walletPositions.data],
+  );
+  const duplicatePositionSymbols = useMemo(() => findDuplicateTokenSymbols(positions), [positions]);
   const followingCount = followStats.data?.following ?? 0;
   const followersCount = followStats.data?.followers ?? 0;
   const portfolioValue = positions.length
@@ -455,7 +460,14 @@ function ConnectedTradeProfileCenter({
                         key={position.mint}
                         className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(70px,0.8fr)] px-4 py-3 text-xs font-semibold"
                       >
-                        <span className="min-w-0 truncate text-white">{position.symbol}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-white">{position.symbol}</span>
+                          {duplicatePositionSymbols.has(normalizeTokenSymbol(position.symbol)) ? (
+                            <span className="block truncate font-mono text-[10px] text-[#7a7488]">
+                              {shortWallet(position.mint)}
+                            </span>
+                          ) : null}
+                        </span>
                         <span className="min-w-0 truncate font-mono text-[#a9b0d4]">
                           {formatTokenAmount(position.balance)}
                         </span>
@@ -501,11 +513,8 @@ function ConnectedTradeProfileCenter({
               {activityRows.length ? (
                 <div className="divide-y divide-[#171320]">
                   {activityRows.map((row) => (
-                    <a
+                    <div
                       key={`${row.kind}:${row.signature}`}
-                      href={row.explorerUrl}
-                      target="_blank"
-                      rel="noreferrer"
                       className="grid min-w-0 grid-cols-[minmax(58px,0.75fr)_minmax(52px,0.55fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(66px,0.7fr)] px-4 py-3 text-xs font-semibold transition hover:bg-[#151221]"
                     >
                       <span className="min-w-0 truncate text-white">{row.token}</span>
@@ -519,11 +528,16 @@ function ConnectedTradeProfileCenter({
                       <span className="min-w-0 truncate font-mono text-[#a9b0d4]">
                         {row.amount}
                       </span>
-                      <span className="min-w-0 truncate font-mono text-[#7da1ff]">
+                      <a
+                        href={row.explorerUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="min-w-0 truncate font-mono text-[#7da1ff] hover:text-white"
+                      >
                         {row.signature.startsWith("paper-")
                           ? "paper"
                           : `${row.signature.slice(0, 4)}...${row.signature.slice(-4)}`}
-                      </span>
+                      </a>
                       <span className="min-w-0 truncate text-right text-[#5c5669]">
                         {new Date(row.createdAt).toLocaleDateString()}
                       </span>
@@ -536,14 +550,18 @@ function ConnectedTradeProfileCenter({
                                 wallet={row.counterpartyWallet}
                                 onSelectProfile={onSelectProfile}
                               />
-                              {row.note ? <span className="truncate">- {row.note}</span> : null}
+                              {row.note ? (
+                                <span className="min-w-0">
+                                  - <InlineExpandableNote note={row.note} />
+                                </span>
+                              ) : null}
                             </span>
                           ) : (
-                            row.note
+                            <InlineExpandableNote note={row.note} />
                           )}
                         </span>
                       ) : null}
-                    </a>
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -800,7 +818,7 @@ function ProfileTransfersSection({
       className={`min-w-0 overflow-hidden rounded-lg border border-[#1b1726] bg-[#0b0912] ${className}`}
     >
       <div className="flex h-12 items-center gap-4 border-b border-[#1b1726] bg-[#15121d] px-4 text-sm font-black">
-        <span className="text-white">SOL transfers</span>
+        <span className="text-white">Asset transfers</span>
         <span className="text-[#5c5669]">Mainnet sends, receives, and notes</span>
       </div>
       <div className="grid min-w-0 grid-cols-[minmax(70px,0.7fr)_minmax(76px,0.7fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(66px,0.7fr)] border-b border-[#171320] px-4 py-2 text-xs font-semibold text-[#5c5669]">
@@ -833,9 +851,7 @@ function ProfileTransfersSection({
                   wallet={counterparty}
                   onSelectProfile={onSelectProfile}
                 />
-                <span className="min-w-0 truncate text-[#a9b0d4]">
-                  {transfer.note || "No note"}
-                </span>
+                <TransferNoteCell note={transfer.note} />
                 <a
                   href={transfer.explorerUrl}
                   target="_blank"
@@ -850,7 +866,7 @@ function ProfileTransfersSection({
         </div>
       ) : (
         <div className="grid h-32 place-items-center text-sm font-semibold text-[#5c5669]">
-          {loading ? "Loading transfers" : "No SOL transfers recorded yet"}
+          {loading ? "Loading transfers" : "No transfers recorded yet"}
         </div>
       )}
     </section>
@@ -910,6 +926,54 @@ function TransferCounterpartyInlineButton({
     >
       {displayName}
     </button>
+  );
+}
+
+function TransferNoteCell({ note }: { note: string }) {
+  const cleanNote = note.trim();
+
+  if (!cleanNote) {
+    return <span className="min-w-0 truncate text-[#5c5669]">No note</span>;
+  }
+
+  return (
+    <span className="min-w-0 text-[#a9b0d4]">
+      <ExpandableNote note={cleanNote} />
+    </span>
+  );
+}
+
+function InlineExpandableNote({ note }: { note: string }) {
+  const cleanNote = note.trim();
+  if (!cleanNote) return null;
+
+  return <ExpandableNote note={cleanNote} inline />;
+}
+
+function ExpandableNote({ note, inline = false }: { note: string; inline?: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const shouldCollapse = note.length > 72;
+  const preview = shouldCollapse ? `${note.slice(0, 72).trimEnd()}...` : note;
+
+  return (
+    <span className={inline ? "inline min-w-0" : "block min-w-0"}>
+      <span title={note} className={expanded ? "whitespace-pre-wrap break-words" : "break-words"}>
+        {expanded ? note : preview}
+      </span>
+      {shouldCollapse ? (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setExpanded((current) => !current);
+          }}
+          className="ml-1 font-bold text-[#7da1ff] transition hover:text-white"
+        >
+          {expanded ? "less" : "more"}
+        </button>
+      ) : null}
+    </span>
   );
 }
 
@@ -1376,7 +1440,7 @@ function ConnectedProfileSendPanel({
   const [submitted, setSubmitted] = useState<WalletTransferRecord | null>(null);
   const solBalance = sol.data?.balance ?? 0;
   const sendAssets = useMemo(() => {
-    const positions = walletPositions.data ?? [];
+    const positions = mergeWalletTokenPositions(walletPositions.data ?? []);
     if (positions.length) return positions.filter((position) => position.balance > 0);
 
     if (solBalance > 0) {
@@ -1397,6 +1461,10 @@ function ConnectedProfileSendPanel({
 
     return [];
   }, [solBalance, solPrice, walletPositions.data]);
+  const duplicateSendAssetSymbols = useMemo(
+    () => findDuplicateTokenSymbols(sendAssets),
+    [sendAssets],
+  );
   const selectedAsset =
     sendAssets.find((asset) => asset.mint === selectedMint) ?? sendAssets[0] ?? null;
   const selectedBalance = selectedAsset?.balance ?? 0;
@@ -1608,7 +1676,11 @@ function ConnectedProfileSendPanel({
             >
               {sendAssets.map((asset) => (
                 <option key={asset.mint} value={asset.mint}>
-                  {asset.symbol} - {formatTokenAmount(asset.balance)}
+                  {asset.symbol}
+                  {duplicateSendAssetSymbols.has(normalizeTokenSymbol(asset.symbol))
+                    ? ` (${shortWallet(asset.mint)})`
+                    : ""}{" "}
+                  - {formatTokenAmount(asset.balance)}
                 </option>
               ))}
             </select>
@@ -1710,11 +1782,8 @@ function ConnectedProfileSendPanel({
         </div>
         <div className="divide-y divide-[#171320]">
           {(transfers.data ?? []).slice(0, 6).map((transfer) => (
-            <a
+            <div
               key={transfer.signature}
-              href={transfer.explorerUrl}
-              target="_blank"
-              rel="noreferrer"
               className="block px-3 py-3 text-xs transition hover:bg-[#151221]"
             >
               <div className="flex items-center justify-between gap-2">
@@ -1736,9 +1805,20 @@ function ConnectedProfileSendPanel({
                   : transfer.senderWallet}
               </div>
               {transfer.note ? (
-                <div className="mt-1 line-clamp-2 text-[#a9b0d4]">{transfer.note}</div>
+                <div className="mt-1 text-[#a9b0d4]">
+                  <ExpandableNote note={transfer.note.trim()} />
+                </div>
               ) : null}
-            </a>
+              <a
+                href={transfer.explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-1 inline-flex items-center gap-1 font-mono text-[10px] text-[#7da1ff] hover:text-white"
+              >
+                {transfer.signature.slice(0, 4)}...{transfer.signature.slice(-4)}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
           ))}
           {!transfers.data?.length ? (
             <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
@@ -1771,6 +1851,62 @@ function ProfileStat({ value, label }: { value: string; label: string }) {
       <div className="font-mono text-[18px] font-black text-white">{value}</div>
       <div className="text-xs font-semibold text-[#a9b0d4]">{label}</div>
     </div>
+  );
+}
+
+function mergeWalletTokenPositions(positions: WalletTokenPosition[]) {
+  const byMint = new Map<string, WalletTokenPosition>();
+
+  for (const position of positions) {
+    const current = byMint.get(position.mint);
+    if (!current) {
+      byMint.set(position.mint, { ...position });
+      continue;
+    }
+
+    const balance = current.balance + position.balance;
+    const valueUsd = current.valueUsd + position.valueUsd;
+    const merged = {
+      ...current,
+      balance,
+      valueUsd,
+      price: balance > 0 ? valueUsd / balance : current.price || position.price,
+      decimals: current.decimals || position.decimals,
+      source: mergePositionSource(current.source, position.source),
+    };
+
+    if (!merged.programId && position.programId) {
+      merged.programId = position.programId;
+    }
+
+    byMint.set(position.mint, merged);
+  }
+
+  return Array.from(byMint.values()).sort((left, right) => right.valueUsd - left.valueUsd);
+}
+
+function mergePositionSource(left: string, right: string) {
+  if (!left) return right;
+  if (!right || left === right) return left;
+  return `${left} + ${right}`;
+}
+
+function normalizeTokenSymbol(symbol: string) {
+  return symbol.trim().toUpperCase();
+}
+
+function findDuplicateTokenSymbols(positions: Pick<WalletTokenPosition, "symbol">[]) {
+  const counts = new Map<string, number>();
+
+  for (const position of positions) {
+    const key = normalizeTokenSymbol(position.symbol);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return new Set(
+    Array.from(counts.entries())
+      .filter(([, count]) => count > 1)
+      .map(([symbol]) => symbol),
   );
 }
 
