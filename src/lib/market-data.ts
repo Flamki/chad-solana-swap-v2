@@ -123,6 +123,14 @@ export type AppLeaderboardUser = {
 
 export type AppLeaderboardPeriod = "24h" | "7d" | "30d" | "all";
 
+export type AppFeedTrade = TradeReceiptRecord & {
+  trader: Pick<UserProfileRecord, "wallet" | "username" | "displayName" | "avatarDataUrl">;
+  token: Token;
+  tokenSymbol: string;
+  tokenName: string;
+  marketCap: number;
+};
+
 export type FollowStats = {
   following: number;
   followers: number;
@@ -858,14 +866,51 @@ export async function recordTradeReceipt(receipt: TradeReceiptRecord) {
   throw new Error(result?.error ?? `Unable to store trade receipt (${response.status})`);
 }
 
+const tradeReceiptSelect =
+  "signature,status,slot,wallet,mode,side,input_symbol,output_symbol,input_amount,output_amount,route,router,token_mint,created_at,explorer_url";
+
+function mapTradeReceiptRow(receipt: {
+  signature: string;
+  status: TradeReceiptRecord["status"];
+  slot: number | null;
+  wallet: string;
+  mode: TradeReceiptRecord["mode"];
+  side: TradeReceiptRecord["side"];
+  input_symbol: string;
+  output_symbol: string;
+  input_amount: string;
+  output_amount: number | string | null;
+  route: string;
+  router: string;
+  token_mint: string;
+  created_at: string;
+  explorer_url?: string | null;
+}): TradeReceiptRecord {
+  return {
+    signature: receipt.signature,
+    status: receipt.status,
+    slot: receipt.slot,
+    wallet: receipt.wallet,
+    mode: receipt.mode,
+    side: receipt.side,
+    inputSymbol: receipt.input_symbol,
+    outputSymbol: receipt.output_symbol,
+    inputAmount: receipt.input_amount,
+    outputAmount: Number(receipt.output_amount ?? 0),
+    route: receipt.route,
+    router: receipt.router,
+    tokenMint: receipt.token_mint,
+    createdAt: receipt.created_at,
+    explorerUrl: receipt.explorer_url ?? `https://solscan.io/tx/${receipt.signature}`,
+  };
+}
+
 export async function fetchStoredTradeReceipts(wallet: string, signal?: AbortSignal) {
   if (!supabase) return [];
 
   const query = supabase
     .from("trade_receipts")
-    .select(
-      "signature,status,slot,wallet,mode,side,input_symbol,output_symbol,input_amount,output_amount,route,router,token_mint,created_at,explorer_url",
-    )
+    .select(tradeReceiptSelect)
     .eq("wallet", wallet)
     .order("created_at", { ascending: false })
     .limit(50);
@@ -875,25 +920,79 @@ export async function fetchStoredTradeReceipts(wallet: string, signal?: AbortSig
   const { data, error } = await query;
   if (error) throw error;
 
-  return (data ?? []).map(
-    (receipt): TradeReceiptRecord => ({
-      signature: receipt.signature,
-      status: receipt.status,
-      slot: receipt.slot,
-      wallet: receipt.wallet,
-      mode: receipt.mode,
-      side: receipt.side,
-      inputSymbol: receipt.input_symbol,
-      outputSymbol: receipt.output_symbol,
-      inputAmount: receipt.input_amount,
-      outputAmount: Number(receipt.output_amount ?? 0),
-      route: receipt.route,
-      router: receipt.router,
-      tokenMint: receipt.token_mint,
-      createdAt: receipt.created_at,
-      explorerUrl: receipt.explorer_url ?? `https://solscan.io/tx/${receipt.signature}`,
-    }),
+  return (data ?? []).map(mapTradeReceiptRow);
+}
+
+export async function fetchAppFeedTrades(signal?: AbortSignal): Promise<AppFeedTrade[]> {
+  if (!supabase) return [];
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const { data, error } = await supabase
+    .from("trade_receipts")
+    .select(tradeReceiptSelect)
+    .eq("mode", "mainnet")
+    .in("status", ["submitted", "confirmed", "finalized"])
+    .order("created_at", { ascending: false })
+    .limit(80);
+
+  if (error) {
+    if (error.code === "42P01") return [];
+    throw error;
+  }
+
+  const receipts = (data ?? []).map(mapTradeReceiptRow);
+  if (!receipts.length) return [];
+
+  const wallets = Array.from(new Set(receipts.map((receipt) => receipt.wallet).filter(Boolean)));
+  const mints = Array.from(new Set(receipts.map((receipt) => receipt.tokenMint).filter(Boolean)));
+
+  const [profilesResult, tokenMarkets] = await Promise.all([
+    wallets.length
+      ? supabase
+          .from("user_profiles")
+          .select("wallet,username,display_name,avatar_data_url")
+          .in("wallet", wallets)
+      : Promise.resolve({ data: [], error: null }),
+    fetchWatchlistTokenMarkets(mints.slice(0, 40), signal).catch(() => []),
+  ]);
+
+  if (profilesResult.error) throw profilesResult.error;
+
+  const profilesByWallet = new Map(
+    (profilesResult.data ?? []).map((profile) => [
+      profile.wallet,
+      {
+        wallet: profile.wallet,
+        username: profile.username,
+        displayName: profile.display_name,
+        avatarDataUrl: profile.avatar_data_url,
+      },
+    ]),
   );
+  const tokensByMint = new Map(tokenMarkets.map((token) => [token.mint, token]));
+
+  return receipts.map((receipt) => {
+    const profile = profilesByWallet.get(receipt.wallet);
+    const tokenMarket =
+      tokensByMint.get(receipt.tokenMint) ?? createFallbackToken(receipt.tokenMint);
+    const receiptSymbol = receipt.side === "buy" ? receipt.outputSymbol : receipt.inputSymbol;
+    const symbol = tokenMarket.symbol && tokenMarket.price > 0 ? tokenMarket.symbol : receiptSymbol;
+
+    return {
+      ...receipt,
+      trader: {
+        wallet: receipt.wallet,
+        username: profile?.username || shortWalletAddress(receipt.wallet),
+        displayName: profile?.displayName || shortWalletAddress(receipt.wallet),
+        avatarDataUrl: profile?.avatarDataUrl || "",
+      },
+      token: tokenMarket,
+      tokenSymbol: symbol || tokenMarket.symbol,
+      tokenName:
+        tokenMarket.name && tokenMarket.price > 0 ? tokenMarket.name : symbol || tokenMarket.name,
+      marketCap: tokenMarket.marketCap,
+    };
+  });
 }
 
 export async function fetchStoredWatchlist(wallet: string, signal?: AbortSignal) {
@@ -1536,6 +1635,17 @@ export function useAppLeaderboard(period: AppLeaderboardPeriod = "all") {
     enabled: Boolean(supabase),
     refetchInterval: 15_000,
     staleTime: 10_000,
+    retry: 1,
+  });
+}
+
+export function useAppFeedTrades() {
+  return useQuery({
+    queryKey: ["app-feed-trades"],
+    queryFn: ({ signal }) => fetchAppFeedTrades(signal),
+    enabled: Boolean(supabase),
+    refetchInterval: 15_000,
+    staleTime: 8_000,
     retry: 1,
   });
 }

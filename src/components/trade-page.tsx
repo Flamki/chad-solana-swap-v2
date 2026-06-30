@@ -13,13 +13,11 @@ import {
   Columns2,
   Copy,
   ExternalLink,
+  Filter,
   PanelBottom,
-  SlidersHorizontal,
   Star,
   TrendingDown,
   TrendingUp,
-  Users,
-  Volume2,
   X,
 } from "lucide-react";
 
@@ -34,9 +32,11 @@ import {
 } from "@/components/trade/profile-center";
 import { SwapPanel } from "@/components/trade/swap-panel";
 import {
+  type AppFeedTrade,
   type AppLeaderboardPeriod,
   type AppLeaderboardUser,
   type ChartInterval,
+  useAppFeedTrades,
   useAppLeaderboard,
   useCryptoTokens,
   recordTradeReceipt,
@@ -78,114 +78,127 @@ interface TokenPreviewState {
   closing?: boolean;
 }
 
-interface AlertFeedItem {
-  id: string;
-  user: string;
-  action: "Buy" | "Sell" | "Thesis";
-  time: string;
-  tokenName: string;
-  amount: string;
-  marketCap?: string;
-  thesisText?: string;
-  priceChange?: string;
-  logo?: string;
-}
-
-const mockAlerts: AlertFeedItem[] = [
-  {
-    id: "1",
-    user: "quinn",
-    action: "Sell",
-    time: "2h",
-    tokenName: "POKEQ",
-    amount: "$507",
-    marketCap: "$25.1K",
-  },
-  {
-    id: "2",
-    user: "BinkBinkBink",
-    action: "Buy",
-    time: "1d",
-    tokenName: "LAZARUS",
-    amount: "$3.3K",
-    marketCap: "$324.8K",
-  },
-  {
-    id: "3",
-    user: "quinn",
-    action: "Buy",
-    time: "1d",
-    tokenName: "POKEQ",
-    amount: "$233",
-    marketCap: "$43.8K",
-  },
-  {
-    id: "4",
-    user: "quinn",
-    action: "Sell",
-    time: "1d",
-    tokenName: "REPPO",
-    amount: "$6.2K",
-    marketCap: "$8.1M",
-  },
-  {
-    id: "5",
-    user: "BinkBinkBink",
-    action: "Thesis",
-    time: "1d",
-    tokenName: "OPCODE",
-    amount: "$48,875.52",
-    priceChange: "-$30,764.48",
-    thesisText: "there's opportunity in uncertainty",
-  },
-];
-
-function AlertItem({ item }: { item: AlertFeedItem }) {
-  const isBuy = item.action === "Buy";
-  const isSell = item.action === "Sell";
-  const isThesis = item.action === "Thesis";
+function FeedTradeItem({
+  item,
+  solPrice,
+  onSelectProfile,
+}: {
+  item: AppFeedTrade;
+  solPrice: number;
+  onSelectProfile: (wallet: string) => void;
+}) {
+  const isBuy = item.side === "buy";
+  const amountLabel = formatFeedTradeAmount(item, solPrice);
+  const marketCapLabel = item.marketCap > 0 ? `$${formatCompact(item.marketCap)} MC` : null;
+  const traderName = item.trader.displayName || item.trader.username;
 
   return (
-    <div className="border-b border-[#1b1726]/40 p-3.5 hover:bg-[#12111a]/20 transition-colors">
+    <div className="group border-b border-[#17131f] px-3.5 py-3 transition-colors hover:bg-[#151221]/55">
       <div className="flex items-center gap-2">
-        <div className="h-6 w-6 rounded-full bg-[#1b1726] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-          {item.user.slice(0, 2).toUpperCase()}
-        </div>
-        <span className="text-[13px] font-bold text-[#e8e4f0]">{item.user}</span>
+        <button
+          type="button"
+          onClick={() => onSelectProfile(item.trader.wallet)}
+          className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full border border-[#28223a] bg-[#1b1726] text-[9.5px] font-black text-white"
+          aria-label={`Open ${traderName} profile`}
+        >
+          {item.trader.avatarDataUrl ? (
+            <img
+              src={item.trader.avatarDataUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            feedInitials(traderName)
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectProfile(item.trader.wallet)}
+          className="min-w-0 truncate text-[13px] font-black leading-none text-[#f0edf6] transition-colors hover:text-white"
+        >
+          {traderName}
+        </button>
         <span
-          className={`rounded px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-            isBuy
-              ? "bg-[#20d772]/10 text-[#20d772]"
-              : isSell
-                ? "bg-[#ff5e36]/10 text-[#ff5e36]"
-                : "bg-[#7567ff]/10 text-[#7567ff]"
+          className={`rounded px-1.5 py-[3px] text-[10px] font-black leading-none ${
+            isBuy ? "bg-[#06351d] text-[#19e27b]" : "bg-[#35160f] text-[#ff5e36]"
           }`}
         >
-          {item.action}
+          {isBuy ? "Buy" : "Sell"}
         </span>
-        <span className="ml-auto text-[11px] text-[#554f63]">{item.time}</span>
+        <span className="ml-auto shrink-0 text-[11px] font-semibold text-[#5f596c]">
+          {formatRelativeFeedTime(item.createdAt)}
+        </span>
       </div>
-      <div className="mt-2.5 pl-8 flex items-center gap-2">
-        <div className="h-5 w-5 rounded-full bg-[#171421] border border-[#252137] flex items-center justify-center text-[9px] font-bold text-[#7a7488]">
-          {item.tokenName.slice(0, 2)}
-        </div>
-        <span className="text-[12.5px] font-bold text-[#e8e4f0]">{item.tokenName}</span>
-        <span className="text-[12.5px] text-[#e8e4f0] font-mono">{item.amount}</span>
-        {!isThesis && (
+
+      <Link
+        href={solanaTokenPath(item.tokenMint)}
+        className="mt-2 flex min-w-0 items-center gap-2 pl-8 text-[13px] leading-none"
+      >
+        <TokenImage token={item.token} size="xs" />
+        <span className="truncate font-black text-[#e8e4f0]">{item.tokenSymbol}</span>
+        <span className="shrink-0 font-mono font-black text-[#e8e4f0]">{amountLabel}</span>
+        {marketCapLabel ? (
           <>
-            <span className="text-[11px] text-[#554f63]">at</span>
-            <span className="text-[11.5px] text-[#7a7488] font-bold">{item.marketCap} MC</span>
+            <span className="shrink-0 text-[11px] font-semibold text-[#575165]">at</span>
+            <span className="min-w-0 truncate text-[12px] font-black text-[#9690a5]">
+              {marketCapLabel}
+            </span>
           </>
-        )}
-        {isThesis && item.priceChange && (
-          <span className="text-[11px] text-[#ff5e36] font-mono">({item.priceChange})</span>
-        )}
+        ) : null}
+      </Link>
+      <div className="mt-2 truncate pl-8 text-[11px] font-semibold text-[#5f596c]">
+        {item.route || item.router}
       </div>
-      {item.thesisText && (
-        <div className="mt-2 pl-8 text-[12px] text-[#9099a3] italic">"{item.thesisText}"</div>
-      )}
     </div>
   );
+}
+
+function formatFeedTradeAmount(item: AppFeedTrade, solPrice: number) {
+  const usdValue = feedTradeUsdValue(item, solPrice);
+  if (usdValue && usdValue > 0) {
+    return usdValue >= 1_000 ? `$${formatCompact(usdValue)}` : formatUsd(usdValue);
+  }
+
+  const amount = item.side === "buy" ? item.outputAmount : Number(item.inputAmount);
+  const symbol = item.side === "buy" ? item.outputSymbol : item.inputSymbol;
+  if (!Number.isFinite(amount) || amount <= 0) return item.tokenSymbol;
+
+  return `${formatCompact(amount)} ${symbol}`;
+}
+
+function feedTradeUsdValue(item: AppFeedTrade, solPrice: number) {
+  const inputAmount = Number(item.inputAmount);
+  const outputAmount = Number(item.outputAmount);
+  const symbol = (item.side === "buy" ? item.inputSymbol : item.outputSymbol).toUpperCase();
+  const amount = item.side === "buy" ? inputAmount : outputAmount;
+
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (symbol === "SOL" && solPrice > 0) return amount * solPrice;
+  if (symbol === "USDC" || symbol === "USDT" || symbol === "USD") return amount;
+  return null;
+}
+
+function formatRelativeFeedTime(value: string) {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "";
+
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (seconds < 45) return "now";
+  if (seconds < 60 * 60) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 24 * 60 * 60) return `${Math.floor(seconds / 3600)}h`;
+  if (seconds < 7 * 24 * 60 * 60) return `${Math.floor(seconds / 86400)}d`;
+  return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function feedInitials(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
 }
 
 function LeaderboardRankMark({ rank }: { rank: number }) {
@@ -354,6 +367,7 @@ export function TradePage({
   const { data: crypto = [], isLoading: cryptoLoading } = useCryptoTokens();
   const [leaderboardPeriod, setLeaderboardPeriod] = useState<AppLeaderboardPeriod>("24h");
   const leaderboard = useAppLeaderboard(leaderboardPeriod);
+  const appFeed = useAppFeedTrades();
   const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
   const [copiedMint, setCopiedMint] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -739,22 +753,35 @@ export function TradePage({
           </div>
         ) : pane.activeTab === "Alerts" || pane.activeTab === "Feed" ? (
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            {/* Alerts subheaders */}
-            <div className="shrink-0 flex items-center gap-4 px-3.5 py-2 text-[#7a7488] text-[12px] border-b border-[#1b1726]/40 bg-[#08060f]">
-              <div className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors">
-                <Users className="h-3.5 w-3.5" />
-                <span>Traders</span>
-                <Volume2 className="h-3 w-3 ml-0.5" />
+            <div className="shrink-0 flex h-10 items-center justify-between border-b border-[#17131f] bg-[#08060f] px-3.5 text-[12px] font-semibold text-[#8f879d]">
+              <div className="flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5" />
+                <span>Filter</span>
               </div>
-              <div className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors">
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span>Filters</span>
-              </div>
+              {appFeed.isFetching ? (
+                <span className="rounded-full bg-[#242033] px-2 py-1 text-[10px] font-black text-[#8ea2ff]">
+                  LIVE
+                </span>
+              ) : null}
             </div>
-            {/* Feed list */}
             <div className="terminal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#08060f] no-scrollbar">
-              {mockAlerts.map((item) => (
-                <AlertItem key={item.id} item={item} />
+              {appFeed.isLoading ? (
+                <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
+                  Loading live app activity
+                </div>
+              ) : null}
+              {!appFeed.isLoading && !appFeed.data?.length ? (
+                <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
+                  No recorded swaps yet
+                </div>
+              ) : null}
+              {(appFeed.data ?? []).map((item) => (
+                <FeedTradeItem
+                  key={`${item.signature}-${item.side}-${item.createdAt}`}
+                  item={item}
+                  solPrice={solPrice}
+                  onSelectProfile={selectLeaderboardProfile}
+                />
               ))}
             </div>
           </div>
@@ -1712,9 +1739,9 @@ function PreviewMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TokenImage({ token, size = "sm" }: { token: Token; size?: "sm" | "lg" }) {
-  const sizeClass = size === "lg" ? "h-10 w-10" : "h-8 w-8";
-  const px = size === "lg" ? 40 : 32;
+function TokenImage({ token, size = "sm" }: { token: Token; size?: "xs" | "sm" | "lg" }) {
+  const sizeClass = size === "lg" ? "h-10 w-10" : size === "xs" ? "h-5 w-5" : "h-8 w-8";
+  const px = size === "lg" ? 40 : size === "xs" ? 20 : 32;
   const logo = sanitizeImageUrl(token.logo);
 
   if (!logo) {
