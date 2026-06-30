@@ -21,6 +21,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
 import { useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import {
   ArrowDownToLine,
   ArrowRight,
@@ -59,8 +60,10 @@ import { env, hasPrivy, hasRpcEndpoint } from "@/lib/env";
 import {
   recordWalletTransfer,
   useTokenPosition,
+  useStoredUserProfile,
   type WalletTransferRecord,
 } from "@/lib/market-data";
+import { profilePath } from "@/lib/routes";
 import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
 import {
   broadcastSignedSolanaTransaction,
@@ -99,6 +102,7 @@ function ConnectedTradeAccount({
   onProfile?: () => void;
 }) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { ready, authenticated, user } = usePrivy();
   const { wallets } = useWallets();
   const { logout } = useLogout();
@@ -116,6 +120,7 @@ function ConnectedTradeAccount({
     decimals: 6,
     price: 1,
   });
+  const storedProfile = useStoredUserProfile(address);
   const [dialog, setDialog] = useState<AccountDialog>(null);
   const [blurBalances, setBlurBalances] = useState(false);
   const [copied, setCopied] = useState<string | null>(null);
@@ -140,6 +145,7 @@ function ConnectedTradeAccount({
   const displayName = getDisplayName(user, email);
   const evmAddress = getEvmAddress(user);
   const profileInitial = displayName.charAt(0).toUpperCase();
+  const profileHandle = storedProfile.data?.username || getProfileHandle(displayName, email);
   const shortAddress = `${address.slice(0, 4)}...${address.slice(-4)}`;
 
   const copyText = async (value: string, key: string) => {
@@ -155,12 +161,8 @@ function ConnectedTradeAccount({
     window.localStorage.setItem("chadwallet-blur-balances", String(checked));
   };
   const openProfile = () => {
-    if (onProfile) {
-      onProfile();
-      return;
-    }
-
-    setDialog("manage");
+    router.push(profilePath(profileHandle));
+    onProfile?.();
   };
   const handleLogout = async () => {
     window.sessionStorage.removeItem(PENDING_AUTH_REDIRECT_KEY);
@@ -859,6 +861,12 @@ function getDisplayName(user: ReturnType<typeof usePrivy>["user"], email: string
   }
 
   return "Chad Trader";
+}
+
+function getProfileHandle(displayName: string, email: string | null) {
+  const base = email?.split("@")[0] || displayName;
+  const handle = base.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 18);
+  return handle || "ChadTrader";
 }
 
 function getEvmAddress(user: ReturnType<typeof usePrivy>["user"]) {

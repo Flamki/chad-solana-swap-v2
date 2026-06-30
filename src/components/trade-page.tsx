@@ -44,6 +44,8 @@ import {
   useTokenMarket,
   useTokenOhlcv,
   useStoredWatchlist,
+  useStoredUserProfile,
+  useStoredUserProfileByIdentifier,
   useTokenTrades,
   useTrendingTokens,
   useWatchlistTokenMarkets,
@@ -51,7 +53,7 @@ import {
   type TradeReceiptRecord,
 } from "@/lib/market-data";
 import { hasPrivy } from "@/lib/env";
-import { solanaTokenPath } from "@/lib/routes";
+import { profilePath, solanaTokenPath } from "@/lib/routes";
 import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 type TokenListMode = "watchlist" | "crypto" | "trending" | "most-held" | "graduates";
@@ -323,11 +325,24 @@ function normalizeSidebarColumn(column: SidebarColumnState): SidebarColumnState 
   };
 }
 
-export function TradePage({ mint }: { mint: string }) {
+type TradePageProps = {
+  mint: string;
+  initialView?: "trade" | "profile";
+  profileIdentifier?: string | null;
+};
+
+export function TradePage({
+  mint,
+  initialView = "trade",
+  profileIdentifier = null,
+}: TradePageProps) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { ready, authenticated, user } = usePrivy();
   const { wallets } = useWallets();
   const walletAddress = wallets[0]?.address ?? user?.wallet?.address;
+  const ownProfile = useStoredUserProfile(walletAddress);
+  const routeProfile = useStoredUserProfileByIdentifier(profileIdentifier);
   const initialToken = useMemo(() => createFallbackToken(mint), [mint]);
   const market = useTokenMarket(mint);
   const solMarket = useTokenMarket(SOL_MINT);
@@ -342,7 +357,7 @@ export function TradePage({ mint }: { mint: string }) {
   const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
   const [copiedMint, setCopiedMint] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [centerView, setCenterView] = useState<"trade" | "profile">("trade");
+  const [centerView, setCenterView] = useState<"trade" | "profile">(initialView);
   const [selectedProfileWallet, setSelectedProfileWallet] = useState<string | null>(null);
   const [tokenPreview, setTokenPreview] = useState<TokenPreviewState | null>(null);
   const tokenPreviewTimer = useRef<number | null>(null);
@@ -412,9 +427,35 @@ export function TradePage({ mint }: { mint: string }) {
     };
   }, []);
 
+  const routeProfileWallet = routeProfile.data?.wallet ?? null;
+  const ownProfileIdentifier = ownProfile.data?.username || walletAddress || "me";
+  const currentRoutePath =
+    initialView === "profile"
+      ? profilePath(profileIdentifier || ownProfileIdentifier)
+      : solanaTokenPath(mint);
+
+  const openProfile = useCallback(
+    (profileWallet: string) => {
+      const knownProfile = leaderboard.data?.find((trader) => trader.wallet === profileWallet);
+      router.push(profilePath(knownProfile?.username || profileWallet));
+    },
+    [leaderboard.data, router],
+  );
+
+  const openOwnProfile = useCallback(() => {
+    router.push(profilePath(ownProfileIdentifier));
+  }, [ownProfileIdentifier, router]);
+
   useEffect(() => {
-    setCenterView("trade");
-    setSelectedProfileWallet(null);
+    if (initialView === "profile") {
+      setCenterView("profile");
+      setSelectedProfileWallet(
+        routeProfileWallet && routeProfileWallet !== walletAddress ? routeProfileWallet : null,
+      );
+    } else {
+      setCenterView("trade");
+      setSelectedProfileWallet(null);
+    }
     setLeftCol((current) => ({
       ...current,
       isActive: true,
@@ -423,7 +464,7 @@ export function TradePage({ mint }: { mint: string }) {
         activeTab: "Tokens",
       },
     }));
-  }, [mint]);
+  }, [initialView, mint, routeProfileWallet, walletAddress]);
 
   const token = market.data ?? initialToken;
   const solPrice = solMarket.data?.price || (token.mint === SOL_MINT ? token.price : 0);
@@ -595,8 +636,7 @@ export function TradePage({ mint }: { mint: string }) {
     const ownLeaderboard = ownLeaderboardIndex >= 0 ? leaderboardRows[ownLeaderboardIndex] : null;
     const visibleLeaderboardRows = leaderboardRows.slice(0, 20);
     const selectLeaderboardProfile = (profileWallet: string) => {
-      setSelectedProfileWallet(profileWallet);
-      setCenterView("profile");
+      openProfile(profileWallet);
     };
 
     return (
@@ -883,7 +923,7 @@ export function TradePage({ mint }: { mint: string }) {
   }
 
   if (!ready || !authenticated) {
-    return <TradeAuthGate ready={ready} redirectTo={solanaTokenPath(mint)} />;
+    return <TradeAuthGate ready={ready} redirectTo={currentRoutePath} />;
   }
 
   return (
@@ -978,13 +1018,7 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
 
             <div className="flex items-center justify-end gap-2 pr-3">
-              <TradeAccount
-                solPrice={solPrice}
-                onProfile={() => {
-                  setSelectedProfileWallet(null);
-                  setCenterView("profile");
-                }}
-              />
+              <TradeAccount solPrice={solPrice} />
             </div>
           </div>
         </header>
@@ -1109,11 +1143,8 @@ export function TradePage({ mint }: { mint: string }) {
               <TradeProfileCenter
                 solPrice={solPrice}
                 viewedWallet={selectedProfileWallet}
-                onBackToOwnProfile={() => setSelectedProfileWallet(null)}
-                onSelectProfile={(profileWallet) => {
-                  setSelectedProfileWallet(profileWallet);
-                  setCenterView("profile");
-                }}
+                onBackToOwnProfile={openOwnProfile}
+                onSelectProfile={openProfile}
               />
             ) : (
               <>
@@ -1359,12 +1390,7 @@ export function TradePage({ mint }: { mint: string }) {
             selectedProfileWallet && selectedProfileWallet !== walletAddress ? (
               <ProfileSendPanel solPrice={solPrice} recipientWallet={selectedProfileWallet} />
             ) : (
-              <FollowTopTradersPanel
-                onSelectProfile={(profileWallet) => {
-                  setSelectedProfileWallet(profileWallet);
-                  setCenterView("profile");
-                }}
-              />
+              <FollowTopTradersPanel onSelectProfile={openProfile} />
             )
           ) : (
             <aside className="w-[320px] 2xl:w-[340px] shrink-0 flex flex-col overflow-y-auto pb-2 no-scrollbar">

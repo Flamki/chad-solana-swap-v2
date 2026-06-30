@@ -1071,6 +1071,48 @@ export async function fetchStoredUserProfile(wallet: string, signal?: AbortSigna
   } satisfies UserProfileRecord;
 }
 
+export async function fetchStoredUserProfileByIdentifier(identifier: string, signal?: AbortSignal) {
+  if (!supabase) return null;
+  if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+
+  const cleanIdentifier = identifier.replace(/^@+/, "").trim();
+  if (!cleanIdentifier) return null;
+
+  const select = "wallet,username,display_name,bio,avatar_data_url,banner_data_url,updated_at";
+  const { data: usernameProfile, error: usernameError } = await supabase
+    .from("user_profiles")
+    .select(select)
+    .ilike("username", cleanIdentifier)
+    .limit(1)
+    .maybeSingle();
+
+  if (usernameError) throw usernameError;
+
+  const walletLookup = usernameProfile
+    ? { data: usernameProfile, error: null }
+    : await supabase
+        .from("user_profiles")
+        .select(select)
+        .eq("wallet", cleanIdentifier)
+        .maybeSingle();
+
+  if (walletLookup.error) throw walletLookup.error;
+
+  const walletProfile = walletLookup.data;
+
+  if (!walletProfile) return null;
+
+  return {
+    wallet: walletProfile.wallet,
+    username: walletProfile.username,
+    displayName: walletProfile.display_name,
+    bio: walletProfile.bio,
+    avatarDataUrl: walletProfile.avatar_data_url,
+    bannerDataUrl: walletProfile.banner_data_url,
+    updatedAt: walletProfile.updated_at,
+  } satisfies UserProfileRecord;
+}
+
 export async function recordUserProfile(profile: UserProfileRecord) {
   if (!supabase) return { stored: false };
 
@@ -1408,6 +1450,16 @@ export function useStoredUserProfile(wallet?: string) {
     queryKey: ["user-profile", wallet],
     queryFn: ({ signal }) => fetchStoredUserProfile(wallet!, signal),
     enabled: Boolean(wallet && supabase),
+    staleTime: 30_000,
+    retry: 1,
+  });
+}
+
+export function useStoredUserProfileByIdentifier(identifier?: string | null) {
+  return useQuery({
+    queryKey: ["user-profile-by-identifier", identifier],
+    queryFn: ({ signal }) => fetchStoredUserProfileByIdentifier(identifier!, signal),
+    enabled: Boolean(identifier && supabase),
     staleTime: 30_000,
     retry: 1,
   });
