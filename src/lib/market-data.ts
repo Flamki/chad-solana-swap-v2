@@ -200,6 +200,7 @@ export type WalletTokenPosition = {
   valueUsd: number;
   price: number;
   decimals: number;
+  programId?: string;
   source: string;
 };
 
@@ -247,7 +248,7 @@ type ParsedTokenAccount = {
 
 const SPL_TOKEN_PROGRAM_IDS = [
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-  "TokenzQdBNbLqP5VEhdkAS6EPF4SFAj4WuAQkHoefF41c",
+  "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
 ] as const;
 
 type RpcParsedTransaction = {
@@ -634,14 +635,15 @@ export async function fetchWalletTokenPositions(
     ),
   ]);
 
-  const byMint = new Map<string, { balance: number; decimals: number }>();
+  const byMint = new Map<string, { balance: number; decimals: number; programId?: string }>();
   const solBalance = solBalanceResult.value / 10 ** 9;
   if (solBalance > 0) {
     byMint.set(SOL_MINT, { balance: solBalance, decimals: 9 });
   }
 
-  for (const result of tokenAccountResults) {
+  for (const [index, result] of tokenAccountResults.entries()) {
     if (result.status !== "fulfilled") continue;
+    const programId = SPL_TOKEN_PROGRAM_IDS[index];
 
     for (const item of result.value.value ?? []) {
       const info = item.account?.data?.parsed?.info;
@@ -656,6 +658,7 @@ export async function fetchWalletTokenPositions(
       byMint.set(mint, {
         balance: (current?.balance ?? 0) + balance,
         decimals: amount.decimals ?? current?.decimals ?? 0,
+        programId: current?.programId ?? programId,
       });
     }
   }
@@ -672,7 +675,7 @@ export async function fetchWalletTokenPositions(
   );
 
   return mints
-    .map((mint, index) => {
+    .map((mint, index): WalletTokenPosition | null => {
       const position = byMint.get(mint);
       if (!position) return null;
 
@@ -683,7 +686,7 @@ export async function fetchWalletTokenPositions(
       const price = mint === SOL_MINT ? solPrice : market.price;
       const valueUsd = position.balance * price;
 
-      return {
+      const walletPosition = {
         mint,
         symbol: market.symbol,
         name: market.name,
@@ -694,6 +697,10 @@ export async function fetchWalletTokenPositions(
         decimals: position.decimals || market.decimals,
         source: market.source ?? "rpc",
       } satisfies WalletTokenPosition;
+
+      return position.programId
+        ? { ...walletPosition, programId: position.programId }
+        : walletPosition;
     })
     .filter((position): position is WalletTokenPosition => Boolean(position))
     .sort((left, right) => right.valueUsd - left.valueUsd);

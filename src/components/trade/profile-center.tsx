@@ -4,6 +4,11 @@ import { useLinkWithOAuth, usePrivy } from "@privy-io/react-auth";
 import { useSignTransaction, useWallets } from "@privy-io/react-auth/solana";
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
+  findAssociatedTokenPda,
+  getCreateAssociatedTokenIdempotentInstruction,
+  getTransferCheckedInstruction,
+} from "@solana-program/token";
+import {
   address as solanaAddress,
   appendTransactionMessageInstruction,
   compileTransaction,
@@ -71,11 +76,16 @@ import { SOLANA_MAINNET_CHAIN } from "@/lib/solana-chain";
 import {
   broadcastSignedSolanaTransaction,
   bytesToBase64,
+  fetchTokenTransferSourceAccount,
   formatLamportsAsSol,
+  formatTokenUnits,
   maxTransferableSol,
   normalizeSolanaTransactionError,
   parseSolLamports,
+  parseTokenUnits,
   SOL_TRANSFER_FEE_RESERVE_SOL,
+  SPL_TOKEN_PROGRAM_ID,
+  TOKEN_TRANSFER_FEE_RESERVE_SOL,
 } from "@/lib/solana-transfer-utils";
 import { SOL_MINT, USDC_MINT, formatUsd } from "@/lib/tokens";
 
@@ -1354,28 +1364,66 @@ function ConnectedProfileSendPanel({
     decimals: 9,
     price: solPrice,
   });
+  const walletPositions = useWalletTokenPositions(address, solPrice);
   const transfers = useWalletTransfers(address);
   const rpc = useMemo(() => (hasRpcEndpoint ? createSolanaRpc(env.solanaRpcUrl) : null), []);
   const [recipient, setRecipient] = useState(recipientWallet ?? "");
+  const [selectedMint, setSelectedMint] = useState(SOL_MINT);
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState<WalletTransferRecord | null>(null);
   const solBalance = sol.data?.balance ?? 0;
+  const sendAssets = useMemo(() => {
+    const positions = walletPositions.data ?? [];
+    if (positions.length) return positions.filter((position) => position.balance > 0);
+
+    if (solBalance > 0) {
+      return [
+        {
+          mint: SOL_MINT,
+          symbol: "SOL",
+          name: "Solana",
+          logo: "",
+          balance: solBalance,
+          valueUsd: solBalance * solPrice,
+          price: solPrice,
+          decimals: 9,
+          source: "rpc",
+        },
+      ];
+    }
+
+    return [];
+  }, [solBalance, solPrice, walletPositions.data]);
+  const selectedAsset =
+    sendAssets.find((asset) => asset.mint === selectedMint) ?? sendAssets[0] ?? null;
+  const selectedBalance = selectedAsset?.balance ?? 0;
+  const selectedPrice = selectedAsset?.price ?? (selectedAsset?.mint === SOL_MINT ? solPrice : 0);
+  const selectedSymbol = selectedAsset?.symbol ?? "SOL";
+  const selectedDecimals = selectedAsset?.decimals ?? 9;
+  const selectedMaxAmount =
+    selectedAsset?.mint === SOL_MINT ? maxTransferableSol(selectedBalance) : selectedBalance;
   const amountNumber = Number(amount);
   const recipientClean = recipient.trim();
   const canSend =
     ready &&
     authenticated &&
-    Boolean(wallet && address && rpc && recipientClean) &&
+    Boolean(wallet && address && rpc && recipientClean && selectedAsset) &&
     Number.isFinite(amountNumber) &&
     amountNumber > 0 &&
-    amountNumber <= maxTransferableSol(solBalance);
+    amountNumber <= selectedMaxAmount &&
+    (selectedAsset?.mint === SOL_MINT || solBalance >= TOKEN_TRANSFER_FEE_RESERVE_SOL);
 
   useEffect(() => {
     setRecipient(recipientWallet ?? "");
   }, [recipientWallet]);
+
+  useEffect(() => {
+    if (selectedAsset || !sendAssets[0]) return;
+    setSelectedMint(sendAssets[0].mint);
+  }, [selectedAsset, sendAssets]);
 
   const sendTransfer = async () => {
     setError("");
@@ -1383,35 +1431,99 @@ function ConnectedProfileSendPanel({
 
     try {
       if (!wallet || !address || !rpc) throw new Error("Wallet or Solana RPC is unavailable.");
+      if (!selectedAsset) throw new Error("Choose a token to send.");
       const destination = solanaAddress(recipientClean);
       const source = solanaAddress(address);
-      const lamports = parseSolLamports(amount);
-      const sourceSol = formatLamportsAsSol(lamports);
-      const value = Number(sourceSol);
       if (recipientClean === address)
         throw new Error("Choose a recipient that is not your wallet.");
-      if (value > maxTransferableSol(solBalance)) {
+      if (amountNumber > selectedMaxAmount) {
+        throw new Error(`Not enough ${selectedSymbol} for this send.`);
+      }
+      if (selectedAsset.mint === SOL_MINT && amountNumber > maxTransferableSol(solBalance)) {
         throw new Error(`Leave at least ${SOL_TRANSFER_FEE_RESERVE_SOL} SOL for network fees.`);
+      }
+      if (selectedAsset.mint !== SOL_MINT && solBalance < TOKEN_TRANSFER_FEE_RESERVE_SOL) {
+        throw new Error(
+          `Keep at least ${TOKEN_TRANSFER_FEE_RESERVE_SOL} SOL for token transfer network fees.`,
+        );
       }
 
       setSending(true);
       const { value: latestBlockhash } = await rpc
         .getLatestBlockhash({ commitment: "confirmed" })
         .send();
-      const transactionMessage = pipe(
+      const baseTransactionMessage = pipe(
         createTransactionMessage({ version: "legacy" }),
         (message) => setTransactionMessageFeePayer(source, message),
         (message) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, message),
-        (message) =>
-          appendTransactionMessageInstruction(
-            getTransferSolInstruction({
-              source: createNoopSigner(source),
-              destination,
-              amount: lamports,
-            }),
-            message,
-          ),
       );
+      let sourceAmount = "";
+      const transactionMessage =
+        selectedAsset.mint === SOL_MINT
+          ? (() => {
+              const lamports = parseSolLamports(amount);
+              sourceAmount = formatLamportsAsSol(lamports);
+              return pipe(baseTransactionMessage, (message) =>
+                appendTransactionMessageInstruction(
+                  getTransferSolInstruction({
+                    source: createNoopSigner(source),
+                    destination,
+                    amount: lamports,
+                  }),
+                  message,
+                ),
+              );
+            })()
+          : await (async () => {
+              const mint = solanaAddress(selectedAsset.mint);
+              const tokenProgram = solanaAddress(selectedAsset.programId ?? SPL_TOKEN_PROGRAM_ID);
+              const tokenAmount = parseTokenUnits(amount, selectedDecimals, selectedSymbol);
+              sourceAmount = formatTokenUnits(tokenAmount, selectedDecimals);
+              const sourceTokenAccount = solanaAddress(
+                await fetchTokenTransferSourceAccount({
+                  rpcUrl: env.solanaRpcUrl,
+                  owner: address,
+                  mint: selectedAsset.mint,
+                  tokenProgram: selectedAsset.programId ?? SPL_TOKEN_PROGRAM_ID,
+                  amount: tokenAmount,
+                }),
+              );
+              const [destinationTokenAccount] = await findAssociatedTokenPda({
+                owner: destination,
+                tokenProgram,
+                mint,
+              });
+
+              return pipe(
+                baseTransactionMessage,
+                (message) =>
+                  appendTransactionMessageInstruction(
+                    getCreateAssociatedTokenIdempotentInstruction({
+                      payer: createNoopSigner(source),
+                      ata: destinationTokenAccount,
+                      owner: destination,
+                      mint,
+                      tokenProgram,
+                    }),
+                    message,
+                  ),
+                (message) =>
+                  appendTransactionMessageInstruction(
+                    getTransferCheckedInstruction(
+                      {
+                        source: sourceTokenAccount,
+                        mint,
+                        destination: destinationTokenAccount,
+                        authority: createNoopSigner(source),
+                        amount: tokenAmount,
+                        decimals: selectedDecimals,
+                      },
+                      { programAddress: tokenProgram },
+                    ),
+                    message,
+                  ),
+              );
+            })();
       const transaction = compileTransaction(transactionMessage);
       const { signedTransaction } = await signTransaction({
         wallet,
@@ -1428,9 +1540,9 @@ function ConnectedProfileSendPanel({
         signature,
         senderWallet: address,
         recipientWallet: recipientClean,
-        assetSymbol: "SOL",
-        assetMint: SOL_MINT,
-        amount: sourceSol,
+        assetSymbol: selectedSymbol,
+        assetMint: selectedAsset.mint,
+        amount: sourceAmount,
         note: note.trim().slice(0, NOTE_MAX_LENGTH),
         status: "submitted",
         slot: null,
@@ -1477,14 +1589,35 @@ function ConnectedProfileSendPanel({
             Send
           </div>
           <span className="rounded-md border border-[#252137] bg-[#0d0a13] px-2 py-1 font-mono text-[11px] font-bold text-[#a9b0d4]">
-            SOL only
+            {sendAssets.length ? `${sendAssets.length} assets` : "No assets"}
           </span>
         </div>
 
         <div className="rounded-xl border border-[#1b1726]/70 bg-[#100d18] p-3">
+          <label className="mb-3 block text-[11px] font-semibold text-[#7a7488]">
+            Asset
+            <select
+              value={selectedAsset?.mint ?? selectedMint}
+              onChange={(event) => {
+                setSelectedMint(event.target.value);
+                setAmount("");
+                setSubmitted(null);
+                setError("");
+              }}
+              className="mt-1 h-10 w-full rounded-lg border border-[#1b1726] bg-[#0b0912] px-3 text-xs font-black text-white outline-none transition focus:border-[#5365ff]"
+            >
+              {sendAssets.map((asset) => (
+                <option key={asset.mint} value={asset.mint}>
+                  {asset.symbol} - {formatTokenAmount(asset.balance)}
+                </option>
+              ))}
+            </select>
+          </label>
           <div className="mb-1 flex items-center justify-between text-[11px] font-semibold text-[#7a7488]">
             <span>You send</span>
-            <span className="font-mono">{solBalance.toFixed(6)} SOL</span>
+            <span className="font-mono">
+              {formatTokenAmount(selectedBalance)} {selectedSymbol}
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -1495,18 +1628,25 @@ function ConnectedProfileSendPanel({
               className="min-w-0 flex-1 bg-transparent font-mono text-[30px] font-black text-white outline-none placeholder:text-[#3a3348]"
             />
             <button
-              onClick={() => setAmount(String(maxTransferableSol(solBalance)))}
+              onClick={() => setAmount(String(selectedMaxAmount))}
               className="rounded-md border border-[#252137] px-2 py-1 text-[11px] font-black text-[#a9b0d4] hover:text-white"
             >
               MAX
             </button>
-            <span className="font-mono text-sm font-black text-[#a9b0d4]">SOL</span>
+            <span className="font-mono text-sm font-black text-[#a9b0d4]">{selectedSymbol}</span>
           </div>
           <div className="mt-1 text-right text-[11px] font-semibold text-[#7a7488]">
             {Number.isFinite(amountNumber) && amountNumber > 0
-              ? `~ ${formatUsd(amountNumber * solPrice)}`
+              ? selectedPrice > 0
+                ? `~ ${formatUsd(amountNumber * selectedPrice)}`
+                : "Live USD price unavailable"
               : "$0"}
           </div>
+          {selectedAsset?.mint !== SOL_MINT && solBalance < TOKEN_TRANSFER_FEE_RESERVE_SOL ? (
+            <div className="mt-2 rounded-md border border-[#4a3518] bg-[#241808] px-2 py-1.5 text-[10.5px] font-semibold text-[#ffbd6b]">
+              Keep at least {TOKEN_TRANSFER_FEE_RESERVE_SOL} SOL for token network fees.
+            </div>
+          ) : null}
         </div>
 
         <label className="mt-3 block text-[11px] font-semibold text-[#7a7488]">
@@ -1542,7 +1682,7 @@ function ConnectedProfileSendPanel({
         </button>
 
         <p className="mt-2 text-[10.5px] font-semibold leading-relaxed text-[#7a7488]">
-          Real mainnet SOL transfer. Wallet confirmation is required and the receipt is recorded.
+          Real mainnet transfer. Wallet confirmation is required and the receipt is recorded.
         </p>
 
         {error ? (
