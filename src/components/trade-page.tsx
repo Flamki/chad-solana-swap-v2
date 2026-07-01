@@ -65,10 +65,10 @@ import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } f
 
 type TokenListMode = "watchlist" | "crypto" | "trending" | "most-held" | "graduates";
 const MANUAL_LOGOUT_REDIRECT_KEY = "chadwallet:manual-logout";
-const GECKO_CHART_HEIGHT_KEY = "chadwallet:gecko-terminal-height:v5";
-const DEFAULT_GECKO_CHART_HEIGHT = 760;
-const MIN_GECKO_CHART_HEIGHT = 560;
-const MAX_GECKO_CHART_HEIGHT = 1400;
+const GECKO_CHART_HEIGHT_KEY = "chadwallet:gecko-terminal-height:v4";
+const DEFAULT_GECKO_CHART_HEIGHT = 1840;
+const MIN_GECKO_CHART_HEIGHT = 760;
+const MAX_GECKO_CHART_HEIGHT = 2600;
 
 interface SidebarPaneState {
   activeTab: string;
@@ -1430,44 +1430,48 @@ export function TradePage({
                   )}
                 </div>
 
-                {/* Chart Overlays Bar */}
-                <div className="flex items-center gap-4 border-t border-[#1b1726]/40 bg-transparent px-4 py-1.5 shrink-0 text-[11px] text-[#7a7488] select-none no-scrollbar overflow-x-auto">
-                  <span className="font-semibold text-[#5c5669] shrink-0">Chart overlays</span>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>My swaps</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>Thesis</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>Friends only</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>Min size (&gt;$1K)</span>
-                  </label>
-                </div>
+                {!hasGeckoTerminal && (
+                  <>
+                    {/* Chart Overlays Bar */}
+                    <div className="flex items-center gap-4 border-t border-[#1b1726]/40 bg-transparent px-4 py-1.5 shrink-0 text-[11px] text-[#7a7488] select-none no-scrollbar overflow-x-auto">
+                      <span className="font-semibold text-[#5c5669] shrink-0">Chart overlays</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>My swaps</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>Thesis</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>Friends only</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>Min size (&gt;$1K)</span>
+                      </label>
+                    </div>
 
-                {/* Bottom Activity Section */}
-                <MarketActivity token={token} />
+                    {/* Bottom Activity Section */}
+                    <MarketActivity token={token} />
+                  </>
+                )}
               </>
             )}
           </section>
@@ -1931,7 +1935,7 @@ function MarketActivity({ token }: { token: Token }) {
   ];
 
   return (
-    <div className="shrink-0 h-[720px] border-t border-[#1b1726]/60 flex flex-col min-h-0 overflow-hidden bg-transparent">
+    <div className="shrink-0 h-[280px] border-t border-[#1b1726]/60 flex flex-col min-h-0 overflow-hidden bg-transparent">
       {/* Tab bar */}
       <div className="flex h-[36px] items-center gap-0 border-b border-[#1b1726]/40 bg-transparent px-4 shrink-0 text-xs font-semibold">
         {tabs.map((tab) => (

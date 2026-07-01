@@ -241,7 +241,7 @@ export function PriceChart({
     const params = new URLSearchParams({
       embed: "1",
       info: "0",
-      swaps: "0",
+      swaps: "1",
       light_chart: "0",
       chart_type: metric === "mcap" ? "market_cap" : "price",
       resolution: geckoResolution(interval),
