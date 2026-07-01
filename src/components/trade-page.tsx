@@ -6,7 +6,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Route } from "next";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   ChevronsLeft,
   ChevronsRight,
@@ -58,6 +65,10 @@ import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } f
 
 type TokenListMode = "watchlist" | "crypto" | "trending" | "most-held" | "graduates";
 const MANUAL_LOGOUT_REDIRECT_KEY = "chadwallet:manual-logout";
+const GECKO_CHART_HEIGHT_KEY = "chadwallet:gecko-chart-height";
+const DEFAULT_GECKO_CHART_HEIGHT = 620;
+const MIN_GECKO_CHART_HEIGHT = 500;
+const MAX_GECKO_CHART_HEIGHT = 780;
 
 interface SidebarPaneState {
   activeTab: string;
@@ -374,6 +385,7 @@ export function TradePage({
   const [centerView, setCenterView] = useState<"trade" | "profile">(initialView);
   const [selectedProfileWallet, setSelectedProfileWallet] = useState<string | null>(null);
   const [tokenPreview, setTokenPreview] = useState<TokenPreviewState | null>(null);
+  const [geckoChartHeight, setGeckoChartHeight] = useState(DEFAULT_GECKO_CHART_HEIGHT);
   const tokenPreviewTimer = useRef<number | null>(null);
 
   const defaultPane = (tab = "Tokens"): SidebarPaneState => ({
@@ -434,6 +446,19 @@ export function TradePage({
   }, [isSidebarCollapsed]);
 
   useEffect(() => {
+    const savedHeight = Number(localStorage.getItem(GECKO_CHART_HEIGHT_KEY));
+    if (!Number.isFinite(savedHeight)) return;
+
+    setGeckoChartHeight(
+      Math.min(MAX_GECKO_CHART_HEIGHT, Math.max(MIN_GECKO_CHART_HEIGHT, savedHeight)),
+    );
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(GECKO_CHART_HEIGHT_KEY, String(Math.round(geckoChartHeight)));
+  }, [geckoChartHeight]);
+
+  useEffect(() => {
     return () => {
       if (tokenPreviewTimer.current) {
         window.clearTimeout(tokenPreviewTimer.current);
@@ -485,6 +510,31 @@ export function TradePage({
   const history = useTokenOhlcv(token.mint, chartInterval);
   const hasGeckoTerminal = Boolean(history.data?.geckoPoolAddress);
   const up = token.change24h >= 0;
+
+  const startGeckoChartResize = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+
+      const startY = event.clientY;
+      const startHeight = geckoChartHeight;
+
+      const handleMove = (moveEvent: PointerEvent) => {
+        const nextHeight = startHeight + moveEvent.clientY - startY;
+        setGeckoChartHeight(
+          Math.min(MAX_GECKO_CHART_HEIGHT, Math.max(MIN_GECKO_CHART_HEIGHT, nextHeight)),
+        );
+      };
+
+      const handleUp = () => {
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleUp);
+      };
+
+      window.addEventListener("pointermove", handleMove);
+      window.addEventListener("pointerup", handleUp);
+    },
+    [geckoChartHeight],
+  );
 
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const storedWatchlist = useStoredWatchlist(walletAddress);
@@ -1330,9 +1380,10 @@ export function TradePage({
 
                 {/* Chart Area */}
                 <div
-                  className={`relative flex-1 bg-transparent ${
-                    hasGeckoTerminal ? "min-h-[620px]" : "min-h-[300px]"
+                  className={`relative bg-transparent ${
+                    hasGeckoTerminal ? "shrink-0" : "min-h-[300px] flex-1"
                   }`}
+                  style={hasGeckoTerminal ? { height: `${geckoChartHeight}px` } : undefined}
                 >
                   {history.data?.data.length || history.data?.geckoPoolAddress ? (
                     <PriceChart
@@ -1364,6 +1415,18 @@ export function TradePage({
                           : "This token has live pricing, but chart candles have not landed from the market data providers yet."
                       }
                     />
+                  )}
+                  {hasGeckoTerminal && (
+                    <button
+                      type="button"
+                      aria-label="Resize Gecko chart"
+                      title="Drag to resize chart. Double-click to reset."
+                      onPointerDown={startGeckoChartResize}
+                      onDoubleClick={() => setGeckoChartHeight(DEFAULT_GECKO_CHART_HEIGHT)}
+                      className="absolute bottom-1 left-1/2 z-20 flex h-4 w-16 -translate-x-1/2 cursor-row-resize items-center justify-center rounded-full border border-[#2b2638]/80 bg-[#0c0a12]/90 text-[#8f879e] shadow-[0_0_14px_rgba(0,0,0,0.45)] transition hover:border-[#6d5dfc]/70 hover:text-white"
+                    >
+                      <span className="h-[2px] w-8 rounded-full bg-current" />
+                    </button>
                   )}
                 </div>
 

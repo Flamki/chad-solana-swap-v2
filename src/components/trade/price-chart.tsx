@@ -174,9 +174,6 @@ export function PriceChart({
   const priceLabel = `${token.symbol}/${quote.toUpperCase()}`;
   const metricLabel = metric === "mcap" ? "Market Cap" : "Price";
   const exchangeLabel = quote === "usd" ? "USD" : "SOL";
-  const publicGeckoTitle = `${priceLabel} · ${interval.replace("H", "h")} · ${
-    geckoPoolDex || "Solana"
-  }`;
 
   const { candles, lineData, volumes, latest, first } = useMemo(() => {
     let previousClose = data[0]?.value ?? 0;
@@ -373,14 +370,6 @@ export function PriceChart({
           allow="clipboard-write; fullscreen"
           className="h-full w-full border-0 bg-transparent"
         />
-        <div className="pointer-events-none absolute left-[66px] top-[50px] z-10 flex h-[30px] max-w-[620px] items-center bg-black pr-5">
-          <span
-            className="truncate text-[20px] font-semibold leading-none text-[#d6d2de]"
-            title={publicGeckoTitle}
-          >
-            {publicGeckoTitle}
-          </span>
-        </div>
       </div>
     );
   }
@@ -587,14 +576,6 @@ export function PriceChart({
             allow="clipboard-write; fullscreen"
             className="h-full w-full border-0 bg-transparent"
           />
-          <div className="pointer-events-none absolute left-[66px] top-[50px] z-10 flex h-[30px] max-w-[620px] items-center bg-black pr-5">
-            <span
-              className="truncate text-[20px] font-semibold leading-none text-[#d6d2de]"
-              title={publicGeckoTitle}
-            >
-              {publicGeckoTitle}
-            </span>
-          </div>
         </div>
       ) : chartEngine === "tradingview" && tradingViewSymbol ? (
         <TradingViewAdvancedChart symbol={tradingViewSymbol} interval={interval} />
