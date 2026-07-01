@@ -3,6 +3,7 @@ import Image, { type StaticImageData } from "next/image";
 import { DownloadAppButton } from "@/components/landing/download-app-button";
 import { LazyVideo } from "@/components/landing/lazy-video";
 import { LazySignInButton } from "@/components/landing/lazy-sign-in-button";
+import { TrendingCoinTicker } from "@/components/landing/trending-coin-ticker";
 import { SOL_TOKEN_PATH } from "@/lib/routes";
 
 import buySell from "@/assets/flow/buy-sell-4.png";
@@ -321,6 +322,8 @@ export function Landing() {
           <StoreBadges />
         </div>
       </section>
+
+      <TrendingCoinTicker />
 
       <section
         className="landing-deferred relative w-full overflow-hidden bg-black leading-none"

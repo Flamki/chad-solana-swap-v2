@@ -262,6 +262,55 @@
   }
 }
 
+.landing-trending-strip {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 50%, rgb(48 44 112 / 0.16), transparent 62%),
+    linear-gradient(180deg, transparent, rgb(8 6 18 / 0.64) 42%, transparent);
+  padding: 1.35rem 0 1.6rem;
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+
+.landing-trending-track {
+  display: flex;
+  width: max-content;
+  animation: landing-trending-scroll 46s linear infinite;
+  will-change: transform;
+}
+
+.landing-trending-strip:hover .landing-trending-track,
+.landing-trending-strip:focus-within .landing-trending-track {
+  animation-play-state: paused;
+}
+
+.landing-trending-set {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.82rem;
+  padding-right: 0.82rem;
+}
+
+@keyframes landing-trending-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-trending-track {
+    animation-duration: 0.001ms;
+    animation-iteration-count: 1;
+    transform: none;
+  }
+}
+
 .landing-deferred {
   content-visibility: auto;
   contain-intrinsic-size: auto 900px;
