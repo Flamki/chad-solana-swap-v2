@@ -64,6 +64,8 @@ const visibleIntervals: Array<{ label: string; value?: ChartInterval }> = [
   { label: "D", value: "1D" },
 ];
 
+const GECKO_FOOTER_TRIM_PX = 44;
+
 const intervalMenuGroups: Array<{
   title: string;
   items: Array<{ label: string; value?: ChartInterval; favorite?: boolean }>;
@@ -368,7 +370,8 @@ export function PriceChart({
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
           allow="clipboard-write; fullscreen"
-          className="h-full w-full border-0 bg-transparent"
+          className="w-full border-0 bg-transparent"
+          style={{ height: `calc(100% + ${GECKO_FOOTER_TRIM_PX}px)` }}
         />
       </div>
     );
@@ -574,7 +577,8 @@ export function PriceChart({
             loading="lazy"
             referrerPolicy="no-referrer-when-downgrade"
             allow="clipboard-write; fullscreen"
-            className="h-full w-full border-0 bg-transparent"
+            className="w-full border-0 bg-transparent"
+            style={{ height: `calc(100% + ${GECKO_FOOTER_TRIM_PX}px)` }}
           />
         </div>
       ) : chartEngine === "tradingview" && tradingViewSymbol ? (
