@@ -176,6 +176,10 @@ export function PriceChart({
   const priceLabel = `${token.symbol}/${quote.toUpperCase()}`;
   const metricLabel = metric === "mcap" ? "Market Cap" : "Price";
   const exchangeLabel = quote === "usd" ? "USD" : "SOL";
+  const geckoTitleBase = geckoPoolName ? geckoPoolTitleSymbol(geckoPoolName) : token.symbol;
+  const geckoCleanTitle = `${geckoTitleBase}/USD · ${geckoTitleResolution(interval)}${
+    geckoPoolDex ? ` · ${formatDexName(geckoPoolDex)}` : ""
+  }`;
 
   const { candles, lineData, volumes, latest, first } = useMemo(() => {
     let previousClose = data[0]?.value ?? 0;
@@ -373,6 +377,7 @@ export function PriceChart({
           className="w-full border-0 bg-transparent"
           style={{ height: `calc(100% + ${GECKO_FOOTER_TRIM_PX}px)` }}
         />
+        <GeckoTitleMask title={geckoCleanTitle} />
       </div>
     );
   }
@@ -580,6 +585,7 @@ export function PriceChart({
             className="w-full border-0 bg-transparent"
             style={{ height: `calc(100% + ${GECKO_FOOTER_TRIM_PX}px)` }}
           />
+          <GeckoTitleMask title={geckoCleanTitle} />
         </div>
       ) : chartEngine === "tradingview" && tradingViewSymbol ? (
         <TradingViewAdvancedChart symbol={tradingViewSymbol} interval={interval} />
@@ -831,10 +837,49 @@ function geckoResolution(interval: ChartInterval) {
   )[interval];
 }
 
+function geckoTitleResolution(interval: ChartInterval) {
+  return (
+    {
+      "1m": "1",
+      "5m": "5",
+      "15m": "15",
+      "1H": "1h",
+      "4H": "4h",
+      "1D": "1d",
+    } satisfies Record<ChartInterval, string>
+  )[interval];
+}
+
+function geckoPoolTitleSymbol(poolName: string) {
+  const firstToken = poolName.split("/")[0]?.trim();
+  return (firstToken || poolName).replace(/^\$/, "").replace(/\s+/g, " ").slice(0, 18);
+}
+
+function formatDexName(dexName: string) {
+  return dexName
+    .replace(/[_-]/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function marketProviderLabel(provider: "birdeye" | "geckoterminal" | "solana-rpc") {
   if (provider === "geckoterminal") return "MARKET";
   if (provider === "solana-rpc") return "Solana RPC";
   return "BirdEye";
+}
+
+function GeckoTitleMask({ title }: { title: string }) {
+  return (
+    <div
+      className="pointer-events-none absolute left-[22px] top-[41px] z-20 flex h-[29px] items-center overflow-hidden bg-black pr-4"
+      style={{ width: "min(440px, 39vw)" }}
+    >
+      <span className="truncate font-sans text-[20px] font-semibold leading-none text-[#d7d4df]">
+        {title}
+      </span>
+    </div>
+  );
 }
 
 function ChartDropdown({ children, className }: { children: React.ReactNode; className: string }) {
