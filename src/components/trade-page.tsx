@@ -65,10 +65,10 @@ import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } f
 
 type TokenListMode = "watchlist" | "crypto" | "trending" | "most-held" | "graduates";
 const MANUAL_LOGOUT_REDIRECT_KEY = "chadwallet:manual-logout";
-const GECKO_CHART_HEIGHT_KEY = "chadwallet:gecko-terminal-height:v2";
-const DEFAULT_GECKO_CHART_HEIGHT = 1120;
-const MIN_GECKO_CHART_HEIGHT = 760;
-const MAX_GECKO_CHART_HEIGHT = 1600;
+const GECKO_CHART_HEIGHT_KEY = "chadwallet:gecko-terminal-height:v3";
+const DEFAULT_GECKO_CHART_HEIGHT = 760;
+const MIN_GECKO_CHART_HEIGHT = 620;
+const MAX_GECKO_CHART_HEIGHT = 1280;
 
 interface SidebarPaneState {
   activeTab: string;
