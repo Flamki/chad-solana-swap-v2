@@ -65,6 +65,7 @@ const visibleIntervals: Array<{ label: string; value?: ChartInterval }> = [
 ];
 
 const GECKO_FOOTER_TRIM_PX = 44;
+const GECKO_TITLE_LEFT_PX = 22;
 
 const intervalMenuGroups: Array<{
   title: string;
@@ -870,16 +871,19 @@ function marketProviderLabel(provider: "birdeye" | "geckoterminal" | "solana-rpc
 }
 
 function GeckoTitleMask({ title }: { title: string }) {
+  const left = getGeckoProviderTrimLeft(title);
+
   return (
     <div
-      className="pointer-events-none absolute left-[22px] top-[41px] z-20 flex h-[29px] items-center overflow-hidden bg-black pr-4"
-      style={{ width: "min(440px, 39vw)" }}
-    >
-      <span className="truncate font-sans text-[20px] font-semibold leading-none text-[#d7d4df]">
-        {title}
-      </span>
-    </div>
+      className="pointer-events-none absolute top-[41px] z-20 h-[29px] bg-black"
+      style={{ left, width: `calc(100% - ${left}px)` }}
+    />
   );
+}
+
+function getGeckoProviderTrimLeft(title: string) {
+  const estimatedTitleWidth = Math.round(title.length * 10.4);
+  return Math.min(Math.max(GECKO_TITLE_LEFT_PX + estimatedTitleWidth + 8, 156), 430);
 }
 
 function ChartDropdown({ children, className }: { children: React.ReactNode; className: string }) {
