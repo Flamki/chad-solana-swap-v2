@@ -271,6 +271,7 @@ export function tradesFromBirdeye(items: BirdeyeTxItem[], mint: string) {
       price,
       wallet: item.owner ? `${item.owner.slice(0, 4)}...${item.owner.slice(-4)}` : "unknown",
       ago: formatAge(age),
+      timestamp: item.blockUnixTime ? item.blockUnixTime * 1000 : undefined,
       source: item.source,
     };
   });

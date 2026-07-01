@@ -9,13 +9,13 @@ export async function GET(_request: Request, context: { params: Promise<{ mint: 
   try {
     const { mint } = await context.params;
     try {
+      return NextResponse.json(await tokenFromFallbackProviders(mint));
+    } catch {
       const overview = await birdeyeJson<Parameters<typeof tokenFromOverview>[1]>(
         `/defi/token_overview?address=${encodeURIComponent(mint)}`,
       );
 
       return NextResponse.json(tokenFromOverview(mint, overview));
-    } catch {
-      return NextResponse.json(await tokenFromFallbackProviders(mint));
     }
   } catch (error) {
     return apiError(error);

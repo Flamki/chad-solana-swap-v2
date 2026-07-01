@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { useMarketTicker } from "@/lib/market-data";
+import { solanaTokenPath } from "@/lib/routes";
 import { formatUsd } from "@/lib/tokens";
 
 export function MarketTicker({
@@ -60,7 +61,7 @@ export function MarketTicker({
             {items.map((token) => (
               <Link
                 key={`${token.mint}-${duplicate}`}
-                href={`/trade/${token.mint}`}
+                href={solanaTokenPath(token.mint)}
                 title={`${token.symbol} live price from ${token.source === "jupiter" ? "Jupiter" : "BirdEye"}${marketTicker.data?.updatedAt ? `, updated ${new Date(marketTicker.data.updatedAt).toLocaleTimeString()}` : ""}`}
                 onPointerDown={() => setInteractionPaused(true)}
                 onPointerCancel={() => setInteractionPaused(false)}

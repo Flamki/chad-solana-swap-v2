@@ -1,21 +1,30 @@
 "use client";
 
+import { useLogin, usePrivy } from "@privy-io/react-auth";
+import { useWallets } from "@privy-io/react-auth/solana";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Route } from "next";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  Bell,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import {
   ChevronsLeft,
   ChevronsRight,
   Columns2,
   Copy,
   ExternalLink,
+  Filter,
   PanelBottom,
-  SlidersHorizontal,
   Star,
   TrendingDown,
   TrendingUp,
-  Users,
-  Volume2,
   X,
 } from "lucide-react";
 
@@ -23,27 +32,43 @@ import { ChadLogo } from "@/components/chad-logo";
 import { TokenSearch } from "@/components/token-search";
 import { TradeAccount } from "@/components/trade-account";
 import { PriceChart } from "@/components/trade/price-chart";
-import { FollowTopTradersPanel, TradeProfileCenter } from "@/components/trade/profile-center";
+import {
+  FollowTopTradersPanel,
+  ProfileSendPanel,
+  TradeProfileCenter,
+} from "@/components/trade/profile-center";
 import { SwapPanel } from "@/components/trade/swap-panel";
 import {
+  type AppFeedTrade,
+  type AppLeaderboardPeriod,
+  type AppLeaderboardUser,
   type ChartInterval,
+  useAppFeedTrades,
+  useAppLeaderboard,
+  useCryptoTokens,
+  recordTradeReceipt,
   useTokenHolders,
   useTokenMarket,
   useTokenOhlcv,
+  useStoredWatchlist,
+  useStoredUserProfile,
+  useStoredUserProfileByIdentifier,
   useTokenTrades,
   useTrendingTokens,
+  useWatchlistTokenMarkets,
+  syncWatchlistToken,
+  type TradeReceiptRecord,
 } from "@/lib/market-data";
-import {
-  SOL_MINT,
-  TOKENS,
-  createFallbackToken,
-  formatCompact,
-  formatUsd,
-  getToken,
-  type Token,
-} from "@/lib/tokens";
+import { hasPrivy } from "@/lib/env";
+import { profilePath, solanaTokenPath } from "@/lib/routes";
+import { SOL_MINT, createFallbackToken, formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 type TokenListMode = "watchlist" | "crypto" | "trending" | "most-held" | "graduates";
+const MANUAL_LOGOUT_REDIRECT_KEY = "chadwallet:manual-logout";
+const GECKO_CHART_HEIGHT_KEY = "chadwallet:gecko-terminal-height:v4";
+const DEFAULT_GECKO_CHART_HEIGHT = 1840;
+const MIN_GECKO_CHART_HEIGHT = 760;
+const MAX_GECKO_CHART_HEIGHT = 2600;
 
 interface SidebarPaneState {
   activeTab: string;
@@ -64,171 +89,303 @@ interface TokenPreviewState {
   closing?: boolean;
 }
 
-interface AlertFeedItem {
-  id: string;
-  user: string;
-  action: "Buy" | "Sell" | "Thesis";
-  time: string;
-  tokenName: string;
-  amount: string;
-  marketCap?: string;
-  thesisText?: string;
-  priceChange?: string;
-  logo?: string;
-}
-
-const mockAlerts: AlertFeedItem[] = [
-  {
-    id: "1",
-    user: "quinn",
-    action: "Sell",
-    time: "2h",
-    tokenName: "POKEQ",
-    amount: "$507",
-    marketCap: "$25.1K",
-  },
-  {
-    id: "2",
-    user: "BinkBinkBink",
-    action: "Buy",
-    time: "1d",
-    tokenName: "LAZARUS",
-    amount: "$3.3K",
-    marketCap: "$324.8K",
-  },
-  {
-    id: "3",
-    user: "quinn",
-    action: "Buy",
-    time: "1d",
-    tokenName: "POKEQ",
-    amount: "$233",
-    marketCap: "$43.8K",
-  },
-  {
-    id: "4",
-    user: "quinn",
-    action: "Sell",
-    time: "1d",
-    tokenName: "REPPO",
-    amount: "$6.2K",
-    marketCap: "$8.1M",
-  },
-  {
-    id: "5",
-    user: "BinkBinkBink",
-    action: "Thesis",
-    time: "1d",
-    tokenName: "OPCODE",
-    amount: "$48,875.52",
-    priceChange: "-$30,764.48",
-    thesisText: "there's opportunity in uncertainty",
-  },
-];
-
-interface LeaderboardItem {
-  rank: number;
-  user: string;
-  pnl: string;
-  winRate: string;
-  volume: string;
-}
-
-const mockLeaderboard: LeaderboardItem[] = [
-  { rank: 1, user: "BinkBinkBink", pnl: "+$142.5K", winRate: "78%", volume: "$1.2M" },
-  { rank: 2, user: "quinn", pnl: "+$94.1K", winRate: "69%", volume: "$840K" },
-  { rank: 3, user: "Chameleon", pnl: "+$62.8K", winRate: "64%", volume: "$510K" },
-  { rank: 4, user: "unc", pnl: "+$41.2K", winRate: "59%", volume: "$320K" },
-  { rank: 5, user: "Hantavirus", pnl: "+$32.5K", winRate: "55%", volume: "$210K" },
-];
-
-function AlertItem({ item }: { item: AlertFeedItem }) {
-  const isBuy = item.action === "Buy";
-  const isSell = item.action === "Sell";
-  const isThesis = item.action === "Thesis";
+function FeedTradeItem({
+  item,
+  solPrice,
+  onSelectProfile,
+}: {
+  item: AppFeedTrade;
+  solPrice: number;
+  onSelectProfile: (wallet: string) => void;
+}) {
+  const isBuy = item.side === "buy";
+  const amountLabel = formatFeedTradeAmount(item, solPrice);
+  const marketCapLabel = item.marketCap > 0 ? `$${formatCompact(item.marketCap)} MC` : null;
+  const traderName = item.trader.displayName || item.trader.username;
 
   return (
-    <div className="border-b border-[#1b1726]/40 p-3.5 hover:bg-[#12111a]/20 transition-colors">
+    <div className="group border-b border-[#17131f] px-3.5 py-3 transition-colors hover:bg-[#151221]/55">
       <div className="flex items-center gap-2">
-        <div className="h-6 w-6 rounded-full bg-[#1b1726] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-          {item.user.slice(0, 2).toUpperCase()}
-        </div>
-        <span className="text-[13px] font-bold text-[#e8e4f0]">{item.user}</span>
+        <button
+          type="button"
+          onClick={() => onSelectProfile(item.trader.wallet)}
+          className="grid h-6 w-6 shrink-0 place-items-center overflow-hidden rounded-full border border-[#28223a] bg-[#1b1726] text-[9.5px] font-black text-white"
+          aria-label={`Open ${traderName} profile`}
+        >
+          {item.trader.avatarDataUrl ? (
+            <img
+              src={item.trader.avatarDataUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            feedInitials(traderName)
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectProfile(item.trader.wallet)}
+          className="min-w-0 truncate text-[13px] font-black leading-none text-[#f0edf6] transition-colors hover:text-white"
+        >
+          {traderName}
+        </button>
         <span
-          className={`rounded px-1.5 py-0.5 text-[10px] font-bold leading-none ${
-            isBuy
-              ? "bg-[#20d772]/10 text-[#20d772]"
-              : isSell
-                ? "bg-[#ff5e36]/10 text-[#ff5e36]"
-                : "bg-[#7567ff]/10 text-[#7567ff]"
+          className={`rounded px-1.5 py-[3px] text-[10px] font-black leading-none ${
+            isBuy ? "bg-[#06351d] text-[#19e27b]" : "bg-[#35160f] text-[#ff5e36]"
           }`}
         >
-          {item.action}
+          {isBuy ? "Buy" : "Sell"}
         </span>
-        <span className="ml-auto text-[11px] text-[#554f63]">{item.time}</span>
+        <span className="ml-auto shrink-0 text-[11px] font-semibold text-[#5f596c]">
+          {formatRelativeFeedTime(item.createdAt)}
+        </span>
       </div>
-      <div className="mt-2.5 pl-8 flex items-center gap-2">
-        <div className="h-5 w-5 rounded-full bg-[#171421] border border-[#252137] flex items-center justify-center text-[9px] font-bold text-[#7a7488]">
-          {item.tokenName.slice(0, 2)}
-        </div>
-        <span className="text-[12.5px] font-bold text-[#e8e4f0]">{item.tokenName}</span>
-        <span className="text-[12.5px] text-[#e8e4f0] font-mono">{item.amount}</span>
-        {!isThesis && (
+
+      <Link
+        href={solanaTokenPath(item.tokenMint)}
+        className="mt-2 flex min-w-0 items-center gap-2 pl-8 text-[13px] leading-none"
+      >
+        <TokenImage token={item.token} size="xs" />
+        <span className="truncate font-black text-[#e8e4f0]">{item.tokenSymbol}</span>
+        <span className="shrink-0 font-mono font-black text-[#e8e4f0]">{amountLabel}</span>
+        {marketCapLabel ? (
           <>
-            <span className="text-[11px] text-[#554f63]">at</span>
-            <span className="text-[11.5px] text-[#7a7488] font-bold">{item.marketCap} MC</span>
+            <span className="shrink-0 text-[11px] font-semibold text-[#575165]">at</span>
+            <span className="min-w-0 truncate text-[12px] font-black text-[#9690a5]">
+              {marketCapLabel}
+            </span>
           </>
-        )}
-        {isThesis && item.priceChange && (
-          <span className="text-[11px] text-[#ff5e36] font-mono">({item.priceChange})</span>
-        )}
+        ) : null}
+      </Link>
+      <div className="mt-2 truncate pl-8 text-[11px] font-semibold text-[#5f596c]">
+        {item.route || item.router}
       </div>
-      {item.thesisText && (
-        <div className="mt-2 pl-8 text-[12px] text-[#9099a3] italic">"{item.thesisText}"</div>
+    </div>
+  );
+}
+
+function formatFeedTradeAmount(item: AppFeedTrade, solPrice: number) {
+  const usdValue = feedTradeUsdValue(item, solPrice);
+  if (usdValue && usdValue > 0) {
+    return usdValue >= 1_000 ? `$${formatCompact(usdValue)}` : formatUsd(usdValue);
+  }
+
+  const amount = item.side === "buy" ? item.outputAmount : Number(item.inputAmount);
+  const symbol = item.side === "buy" ? item.outputSymbol : item.inputSymbol;
+  if (!Number.isFinite(amount) || amount <= 0) return item.tokenSymbol;
+
+  return `${formatCompact(amount)} ${symbol}`;
+}
+
+function feedTradeUsdValue(item: AppFeedTrade, solPrice: number) {
+  const inputAmount = Number(item.inputAmount);
+  const outputAmount = Number(item.outputAmount);
+  const symbol = (item.side === "buy" ? item.inputSymbol : item.outputSymbol).toUpperCase();
+  const amount = item.side === "buy" ? inputAmount : outputAmount;
+
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (symbol === "SOL" && solPrice > 0) return amount * solPrice;
+  if (symbol === "USDC" || symbol === "USDT" || symbol === "USD") return amount;
+  return null;
+}
+
+function formatRelativeFeedTime(value: string) {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "";
+
+  const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (seconds < 45) return "now";
+  if (seconds < 60 * 60) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 24 * 60 * 60) return `${Math.floor(seconds / 3600)}h`;
+  if (seconds < 7 * 24 * 60 * 60) return `${Math.floor(seconds / 86400)}d`;
+  return new Date(value).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function feedInitials(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+}
+
+function LeaderboardRankMark({ rank }: { rank: number }) {
+  if (rank <= 3) {
+    return (
+      <div
+        className={`grid h-7 w-7 place-items-center rounded-full text-[13px] font-black ${
+          rank === 1
+            ? "bg-[#f6c94b] text-[#24180a]"
+            : rank === 2
+              ? "bg-[#b9b8c4] text-[#17151e]"
+              : "bg-[#b36d35] text-[#1d1108]"
+        }`}
+      >
+        {rank}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid h-7 w-7 place-items-center font-mono text-[13px] font-bold text-[#8f879d]">
+      {rank}.
+    </div>
+  );
+}
+
+function LeaderboardAvatar({ trader }: { trader: AppLeaderboardUser }) {
+  return (
+    <div className="grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full border border-[#28223a] bg-[#201d2c] text-[11px] font-black text-white">
+      {trader.avatarDataUrl ? (
+        <img
+          src={trader.avatarDataUrl}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      ) : (
+        trader.displayName.slice(0, 2).toUpperCase()
       )}
     </div>
   );
 }
 
-function LeaderboardRow({ item }: { item: LeaderboardItem }) {
+function LeaderboardRow({
+  trader,
+  rank,
+  solPrice,
+  onSelectProfile,
+}: {
+  trader: AppLeaderboardUser;
+  rank: number;
+  solPrice: number;
+  onSelectProfile: (wallet: string) => void;
+}) {
+  const volumeUsd = trader.volumeSol * solPrice;
+  const volumeLabel = volumeUsd > 0 ? `$${formatCompact(volumeUsd)}` : `${trader.trades} swaps`;
+  const handle = trader.username || shortAddress(trader.wallet);
+
   return (
-    <div className="flex items-center gap-3 border-b border-[#1b1726]/40 px-3.5 py-3 hover:bg-[#12111a]/20 transition-colors">
-      <span className="text-[13px] font-bold text-[#554f63] w-5 text-center">{item.rank}</span>
-      <div className="h-6 w-6 rounded-full bg-[#1b1726] flex items-center justify-center text-[10px] font-bold text-white shrink-0">
-        {item.user.slice(0, 2).toUpperCase()}
-      </div>
+    <button
+      type="button"
+      onClick={() => onSelectProfile(trader.wallet)}
+      className="flex w-full items-center gap-3 border-b border-[#151220] px-3.5 py-3 text-left transition-colors hover:bg-[#171421]"
+    >
+      <LeaderboardRankMark rank={rank} />
+      <LeaderboardAvatar trader={trader} />
       <div className="min-w-0 flex-1">
-        <div className="text-[13px] font-bold text-[#e8e4f0] truncate">{item.user}</div>
-        <div className="text-[11px] text-[#7a7488]">Vol: {item.volume}</div>
+        <div className="truncate text-[13px] font-black text-[#f2eff8]">{trader.displayName}</div>
+        <div className="mt-0.5 truncate text-[11px] font-semibold text-[#8f879d]">@{handle}</div>
+        <div className="mt-2 flex min-w-0 items-center gap-1.5">
+          <span className="rounded bg-[#07351e] px-2 py-0.5 text-[10px] font-black text-[#20d772]">
+            B {trader.buys}
+          </span>
+          <span className="rounded bg-[#35160f] px-2 py-0.5 text-[10px] font-black text-[#ff5e36]">
+            S {trader.sells}
+          </span>
+          {trader.latestTokens.slice(0, 2).map((symbol) => (
+            <span
+              key={symbol}
+              className="max-w-[52px] truncate rounded bg-[#1b1726] px-1.5 py-0.5 text-[10px] font-bold text-[#9e96af]"
+            >
+              {symbol}
+            </span>
+          ))}
+          {trader.latestTokens.length > 2 ? (
+            <span className="rounded bg-[#1b1726] px-1.5 py-0.5 text-[10px] font-bold text-[#9e96af]">
+              {trader.latestTokens.length - 2}+
+            </span>
+          ) : null}
+        </div>
       </div>
-      <div className="text-right">
-        <div className="text-[13.5px] font-bold text-[#20d772] font-mono">{item.pnl}</div>
-        <div className="text-[11px] text-[#7a7488]">Win Rate: {item.winRate}</div>
+      <div className="shrink-0 text-right">
+        <div className="font-mono text-[13px] font-black text-[#20d772]">{volumeLabel}</div>
+        <div className="mt-1 text-[11px] font-semibold text-[#7a7488]">{trader.trades} swaps</div>
       </div>
-    </div>
+    </button>
   );
 }
 
-const sidebarPrimaryTabs = ["Alerts", "Tokens", "Leaderboard", "Feed"];
+const sidebarPrimaryTabs = ["Tokens", "Leaderboard", "Feed"];
 const sidebarFilterTabs = ["Watchlist", "Crypto", "Trending", "Most held", "Graduates"];
+const leaderboardPeriods: { key: AppLeaderboardPeriod; label: string }[] = [
+  { key: "24h", label: "24H" },
+  { key: "7d", label: "7D" },
+  { key: "30d", label: "30D" },
+  { key: "all", label: "ALL" },
+];
+const hiddenSidebarTabs = new Set(["Alerts"]);
+const legacyWatchlistStorageKey = "chadwallet_watchlist";
+const localTradeReceiptStorageKey = "chadwallet-trade-receipts";
 
-export function TradePage({ mint }: { mint: string }) {
-  const initialToken = getToken(mint) ?? createFallbackToken(mint);
-  const market = useTokenMarket(initialToken.mint, initialToken);
-  const solMarket = useTokenMarket(
-    SOL_MINT,
-    initialToken.mint === SOL_MINT ? initialToken : undefined,
-  );
+function watchlistStorageKey(wallet?: string) {
+  return wallet ? `${legacyWatchlistStorageKey}:${wallet}` : legacyWatchlistStorageKey;
+}
+
+function readStoredWatchlist(key: string) {
+  try {
+    return (JSON.parse(localStorage.getItem(key) || "[]") as string[]).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredWatchlist(key: string, mints: string[]) {
+  localStorage.setItem(key, JSON.stringify(Array.from(new Set(mints.filter(Boolean)))));
+}
+
+function normalizeSidebarPane(pane: SidebarPaneState): SidebarPaneState {
+  return hiddenSidebarTabs.has(pane.activeTab) ? { ...pane, activeTab: "Tokens" } : pane;
+}
+
+function normalizeSidebarColumn(column: SidebarColumnState): SidebarColumnState {
+  return {
+    ...column,
+    topPane: normalizeSidebarPane(column.topPane),
+    bottomPane: normalizeSidebarPane(column.bottomPane),
+  };
+}
+
+type TradePageProps = {
+  mint: string;
+  initialView?: "trade" | "profile";
+  profileIdentifier?: string | null;
+};
+
+export function TradePage({
+  mint,
+  initialView = "trade",
+  profileIdentifier = null,
+}: TradePageProps) {
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const { ready, authenticated, user } = usePrivy();
+  const { wallets } = useWallets();
+  const walletAddress = wallets[0]?.address ?? user?.wallet?.address;
+  const ownProfile = useStoredUserProfile(walletAddress);
+  const routeProfile = useStoredUserProfileByIdentifier(profileIdentifier);
+  const initialToken = useMemo(() => createFallbackToken(mint), [mint]);
+  const market = useTokenMarket(mint);
+  const solMarket = useTokenMarket(SOL_MINT);
   const {
     data: trending = [],
     isLoading: trendingLoading,
     isError: trendingError,
   } = useTrendingTokens();
+  const { data: crypto = [], isLoading: cryptoLoading } = useCryptoTokens();
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<AppLeaderboardPeriod>("24h");
+  const leaderboard = useAppLeaderboard(leaderboardPeriod);
+  const appFeed = useAppFeedTrades();
   const [chartInterval, setChartInterval] = useState<ChartInterval>("15m");
   const [copiedMint, setCopiedMint] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [centerView, setCenterView] = useState<"trade" | "profile">("trade");
+  const [centerView, setCenterView] = useState<"trade" | "profile">(initialView);
+  const [selectedProfileWallet, setSelectedProfileWallet] = useState<string | null>(null);
   const [tokenPreview, setTokenPreview] = useState<TokenPreviewState | null>(null);
+  const [geckoChartHeight, setGeckoChartHeight] = useState(DEFAULT_GECKO_CHART_HEIGHT);
   const tokenPreviewTimer = useRef<number | null>(null);
 
   const defaultPane = (tab = "Tokens"): SidebarPaneState => ({
@@ -239,7 +396,7 @@ export function TradePage({ mint }: { mint: string }) {
   const [leftCol, setLeftCol] = useState<SidebarColumnState>({
     isActive: true,
     isSplitBottom: false,
-    topPane: defaultPane("Alerts"),
+    topPane: defaultPane("Tokens"),
     bottomPane: defaultPane("Tokens"),
   });
 
@@ -247,7 +404,7 @@ export function TradePage({ mint }: { mint: string }) {
     isActive: false,
     isSplitBottom: false,
     topPane: defaultPane("Tokens"),
-    bottomPane: defaultPane("Alerts"),
+    bottomPane: defaultPane("Tokens"),
   });
 
   // Restore sidebar layout configurations on mount
@@ -258,14 +415,14 @@ export function TradePage({ mint }: { mint: string }) {
 
     if (savedLeftCol) {
       try {
-        setLeftCol(JSON.parse(savedLeftCol));
+        setLeftCol(normalizeSidebarColumn(JSON.parse(savedLeftCol)));
       } catch (e) {
         console.error("Failed to parse left col state", e);
       }
     }
     if (savedRightCol) {
       try {
-        setRightCol(JSON.parse(savedRightCol));
+        setRightCol(normalizeSidebarColumn(JSON.parse(savedRightCol)));
       } catch (e) {
         console.error("Failed to parse right col state", e);
       }
@@ -289,6 +446,19 @@ export function TradePage({ mint }: { mint: string }) {
   }, [isSidebarCollapsed]);
 
   useEffect(() => {
+    const savedHeight = Number(localStorage.getItem(GECKO_CHART_HEIGHT_KEY));
+    if (!Number.isFinite(savedHeight)) return;
+
+    setGeckoChartHeight(
+      Math.min(MAX_GECKO_CHART_HEIGHT, Math.max(MIN_GECKO_CHART_HEIGHT, savedHeight)),
+    );
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(GECKO_CHART_HEIGHT_KEY, String(Math.round(geckoChartHeight)));
+  }, [geckoChartHeight]);
+
+  useEffect(() => {
     return () => {
       if (tokenPreviewTimer.current) {
         window.clearTimeout(tokenPreviewTimer.current);
@@ -296,28 +466,154 @@ export function TradePage({ mint }: { mint: string }) {
     };
   }, []);
 
+  const routeProfileWallet = routeProfile.data?.wallet ?? null;
+  const ownProfileIdentifier = ownProfile.data?.username || walletAddress || "me";
+  const currentRoutePath =
+    initialView === "profile"
+      ? profilePath(profileIdentifier || ownProfileIdentifier)
+      : solanaTokenPath(mint);
+
+  const openProfile = useCallback(
+    (profileWallet: string) => {
+      const knownProfile = leaderboard.data?.find((trader) => trader.wallet === profileWallet);
+      router.push(profilePath(knownProfile?.username || profileWallet));
+    },
+    [leaderboard.data, router],
+  );
+
+  const openOwnProfile = useCallback(() => {
+    router.push(profilePath(ownProfileIdentifier));
+  }, [ownProfileIdentifier, router]);
+
+  useEffect(() => {
+    if (initialView === "profile") {
+      setCenterView("profile");
+      setSelectedProfileWallet(
+        routeProfileWallet && routeProfileWallet !== walletAddress ? routeProfileWallet : null,
+      );
+    } else {
+      setCenterView("trade");
+      setSelectedProfileWallet(null);
+    }
+    setLeftCol((current) => ({
+      ...current,
+      isActive: true,
+      topPane: {
+        ...current.topPane,
+        activeTab: "Tokens",
+      },
+    }));
+  }, [initialView, mint, routeProfileWallet, walletAddress]);
+
   const token = market.data ?? initialToken;
   const solPrice = solMarket.data?.price || (token.mint === SOL_MINT ? token.price : 0);
   const history = useTokenOhlcv(token.mint, chartInterval);
+  const hasGeckoTerminal = Boolean(history.data?.geckoPoolAddress);
   const up = token.change24h >= 0;
 
+  const startGeckoChartResize = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+
+      const startY = event.clientY;
+      const startHeight = geckoChartHeight;
+
+      const handleMove = (moveEvent: PointerEvent) => {
+        const nextHeight = startHeight + moveEvent.clientY - startY;
+        setGeckoChartHeight(
+          Math.min(MAX_GECKO_CHART_HEIGHT, Math.max(MIN_GECKO_CHART_HEIGHT, nextHeight)),
+        );
+      };
+
+      const handleUp = () => {
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleUp);
+      };
+
+      window.addEventListener("pointermove", handleMove);
+      window.addEventListener("pointerup", handleUp);
+    },
+    [geckoChartHeight],
+  );
+
   const [watchlist, setWatchlist] = useState<string[]>([]);
+  const storedWatchlist = useStoredWatchlist(walletAddress);
+  const watchlistMarkets = useWatchlistTokenMarkets(watchlist);
 
   useEffect(() => {
-    const saved = localStorage.getItem("chadwallet_watchlist");
-    if (saved) {
-      try {
-        setWatchlist(JSON.parse(saved));
-      } catch (e) {
-        // Safe fallback
+    if (!walletAddress) {
+      setWatchlist(readStoredWatchlist(legacyWatchlistStorageKey));
+      return;
+    }
+
+    const walletKey = watchlistStorageKey(walletAddress);
+    const hasWalletList = localStorage.getItem(walletKey) !== null;
+    const walletSaved = readStoredWatchlist(walletKey);
+    const legacySaved = readStoredWatchlist(legacyWatchlistStorageKey);
+    const saved = Array.from(new Set(hasWalletList ? walletSaved : legacySaved));
+
+    setWatchlist(saved);
+
+    if (!hasWalletList && legacySaved.length) {
+      writeStoredWatchlist(walletKey, legacySaved);
+      localStorage.removeItem(legacyWatchlistStorageKey);
+
+      for (const mint of legacySaved) {
+        void syncWatchlistToken({ wallet: walletAddress, mint, watched: true });
       }
     }
-  }, []);
+  }, [walletAddress]);
+
+  useEffect(() => {
+    if (!storedWatchlist.data) return;
+    setWatchlist((current) => {
+      const merged = Array.from(new Set([...storedWatchlist.data, ...current]));
+      writeStoredWatchlist(watchlistStorageKey(walletAddress), merged);
+      return merged;
+    });
+  }, [storedWatchlist.data, walletAddress]);
+
+  useEffect(() => {
+    if (!walletAddress) return;
+
+    try {
+      const receipts = JSON.parse(
+        window.localStorage.getItem(localTradeReceiptStorageKey) || "[]",
+      ) as TradeReceiptRecord[];
+      const mainnetReceipts = receipts.filter(
+        (receipt) =>
+          receipt.mode === "mainnet" &&
+          receipt.wallet?.toLowerCase() === walletAddress.toLowerCase() &&
+          receipt.signature,
+      );
+
+      if (!mainnetReceipts.length) return;
+
+      void Promise.allSettled(mainnetReceipts.map((receipt) => recordTradeReceipt(receipt))).then(
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ["trade-receipts", walletAddress] });
+          void queryClient.invalidateQueries({ queryKey: ["app-leaderboard"] });
+        },
+      );
+    } catch {
+      // Local receipts are best-effort recovery data only.
+    }
+  }, [queryClient, walletAddress]);
 
   const toggleWatchlist = (mint: string) => {
     setWatchlist((prev) => {
       const next = prev.includes(mint) ? prev.filter((m) => m !== mint) : [...prev, mint];
-      localStorage.setItem("chadwallet_watchlist", JSON.stringify(next));
+      const watched = next.includes(mint);
+      writeStoredWatchlist(watchlistStorageKey(walletAddress), next);
+      if (walletAddress) {
+        localStorage.removeItem(legacyWatchlistStorageKey);
+        queryClient.setQueryData(["watchlist", walletAddress], next);
+      }
+      void syncWatchlistToken({ wallet: walletAddress, mint, watched }).finally(() => {
+        if (walletAddress) {
+          void queryClient.invalidateQueries({ queryKey: ["watchlist", walletAddress] });
+        }
+      });
       return next;
     });
   };
@@ -329,13 +625,32 @@ export function TradePage({ mint }: { mint: string }) {
     return total > 0 ? `${total.toFixed(2)}%` : "13.63%";
   }, [holders.data]);
 
-  const sidebarTokens = useMemo(() => {
-    return trending.length ? trending : [token];
-  }, [token, trending]);
+  const trendingTokens = useMemo(() => uniqueTokens(trending), [trending]);
+  const watchlistTokens = useMemo(() => {
+    const watchedCurrentToken = watchlist.includes(token.mint) ? [token] : [];
+    const watchedTrendingTokens = trendingTokens.filter((item) => watchlist.includes(item.mint));
+    return uniqueTokens([
+      ...(watchlistMarkets.data ?? []),
+      ...watchedTrendingTokens,
+      ...watchedCurrentToken,
+    ]);
+  }, [token, trendingTokens, watchlist, watchlistMarkets.data]);
+  const mostHeldTokens = useMemo(
+    () =>
+      [...trendingTokens].sort((a, b) => {
+        const holderDiff = (b.holders || 0) - (a.holders || 0);
+        if (holderDiff !== 0) return holderDiff;
+        return b.marketCap - a.marketCap;
+      }),
+    [trendingTokens],
+  );
+  const cryptoTokens = useMemo(() => uniqueTokens(crypto).filter(isLiveCryptoToken), [crypto]);
+  const graduatedTokens = useMemo(
+    () => trendingTokens.filter(isLikelyGraduatedToken),
+    [trendingTokens],
+  );
 
-  const tokenListSubtitle = trendingError
-    ? "Live feed reconnecting"
-    : "Live Jupiter + BirdEye feed";
+  const tokenListSubtitle = trendingError ? "Live feed reconnecting" : "Live GeckoTerminal pools";
 
   const handleCloseLeftColumn = () => {
     if (rightCol.isActive) {
@@ -367,23 +682,26 @@ export function TradePage({ mint }: { mint: string }) {
     onSplitBottom: () => void,
     onSplitRight: () => void,
   ) => {
-    const allTokens = [...uniqueTokens([...trending, ...TOKENS, token])];
     const paneTokens =
       pane.tokenListMode === "most-held"
-        ? [...allTokens].sort((a, b) => {
-            const holderDiff = (b.holders || 0) - (a.holders || 0);
-            if (holderDiff !== 0) return holderDiff;
-            return b.marketCap - a.marketCap;
-          })
+        ? mostHeldTokens
         : pane.tokenListMode === "watchlist"
-          ? [...allTokens].filter((t) => watchlist.includes(t.mint))
+          ? watchlistTokens
           : pane.tokenListMode === "crypto"
-            ? [...allTokens].filter((t) => t.symbol === "SOL" || t.symbol === "USDC")
+            ? cryptoTokens
             : pane.tokenListMode === "graduates"
-              ? [...allTokens].filter((t) => t.marketCap > 100_000_000)
-              : trending.length
-                ? trending
-                : [token];
+              ? graduatedTokens
+              : trendingTokens;
+    const paneLoading = pane.tokenListMode === "crypto" ? cryptoLoading : trendingLoading;
+    const leaderboardRows = leaderboard.data ?? [];
+    const ownLeaderboardIndex = walletAddress
+      ? leaderboardRows.findIndex((trader) => trader.wallet === walletAddress)
+      : -1;
+    const ownLeaderboard = ownLeaderboardIndex >= 0 ? leaderboardRows[ownLeaderboardIndex] : null;
+    const visibleLeaderboardRows = leaderboardRows.slice(0, 20);
+    const selectLeaderboardProfile = (profileWallet: string) => {
+      openProfile(profileWallet);
+    };
 
     return (
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -402,14 +720,6 @@ export function TradePage({ mint }: { mint: string }) {
                       : "text-[#9099a3] hover:text-white"
                   }`}
                 >
-                  {tab === "Alerts" && (
-                    <span className="relative flex h-3.5 w-3.5 items-center justify-center mr-1">
-                      <Bell
-                        className={`h-3.5 w-3.5 ${tab === pane.activeTab ? "text-white" : "text-[#9099a3]"}`}
-                      />
-                      <span className="absolute right-0 top-0 h-1.5 w-1.5 rounded-full bg-[#ff5e36]" />
-                    </span>
-                  )}
                   {tab}
                 </button>
               </div>
@@ -470,9 +780,14 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
             {/* Tokens list */}
             <div className="terminal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#08060f] no-scrollbar">
-              {pane.tokenListMode === "trending" && trendingLoading && trending.length === 0 && (
+              {paneLoading && paneTokens.length === 0 && (
                 <div className="px-3 py-3 text-[11px] text-muted-foreground">
                   Loading live tokens...
+                </div>
+              )}
+              {!paneLoading && paneTokens.length === 0 && (
+                <div className="px-3 py-3 text-[11px] text-muted-foreground">
+                  No live tokens in this section yet.
                 </div>
               )}
               {paneTokens.map((item) => (
@@ -488,37 +803,117 @@ export function TradePage({ mint }: { mint: string }) {
           </div>
         ) : pane.activeTab === "Alerts" || pane.activeTab === "Feed" ? (
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            {/* Alerts subheaders */}
-            <div className="shrink-0 flex items-center gap-4 px-3.5 py-2 text-[#7a7488] text-[12px] border-b border-[#1b1726]/40 bg-[#08060f]">
-              <div className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors">
-                <Users className="h-3.5 w-3.5" />
-                <span>Traders</span>
-                <Volume2 className="h-3 w-3 ml-0.5" />
+            <div className="shrink-0 flex h-10 items-center justify-between border-b border-[#17131f] bg-[#08060f] px-3.5 text-[12px] font-semibold text-[#8f879d]">
+              <div className="flex items-center gap-1.5">
+                <Filter className="h-3.5 w-3.5" />
+                <span>Filter</span>
               </div>
-              <div className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors">
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                <span>Filters</span>
-              </div>
+              {appFeed.isFetching ? (
+                <span className="rounded-full bg-[#242033] px-2 py-1 text-[10px] font-black text-[#8ea2ff]">
+                  LIVE
+                </span>
+              ) : null}
             </div>
-            {/* Feed list */}
             <div className="terminal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#08060f] no-scrollbar">
-              {mockAlerts.map((item) => (
-                <AlertItem key={item.id} item={item} />
+              {appFeed.isLoading ? (
+                <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
+                  Loading live app activity
+                </div>
+              ) : null}
+              {!appFeed.isLoading && !appFeed.data?.length ? (
+                <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
+                  No recorded swaps yet
+                </div>
+              ) : null}
+              {(appFeed.data ?? []).map((item) => (
+                <FeedTradeItem
+                  key={`${item.signature}-${item.side}-${item.createdAt}`}
+                  item={item}
+                  solPrice={solPrice}
+                  onSelectProfile={selectLeaderboardProfile}
+                />
               ))}
             </div>
           </div>
         ) : (
           /* Leaderboard Tab */
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            {/* Leaderboard Header */}
-            <div className="shrink-0 flex items-center justify-between px-3.5 py-2 text-[#7a7488] text-[12px] border-b border-[#1b1726]/40 bg-[#08060f]">
-              <span>Top Traders</span>
-              <span>Profit / Win Rate</span>
+            <div className="shrink-0 border-b border-[#1b1726]/60 bg-[#08060f] px-3.5 py-3">
+              <div className="mb-3 flex items-center gap-1.5">
+                {leaderboardPeriods.map((period) => {
+                  const active = leaderboardPeriod === period.key;
+                  return (
+                    <button
+                      key={period.key}
+                      type="button"
+                      onClick={() => setLeaderboardPeriod(period.key)}
+                      className={`h-7 rounded-md px-2.5 text-[11px] font-black transition-colors ${
+                        active
+                          ? "bg-[#242033] text-white"
+                          : "bg-[#0d0a14] text-[#5f596c] hover:text-white"
+                      }`}
+                    >
+                      {period.label}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] font-bold text-[#8f879d]">
+                <div>Your rank</div>
+                <div>Volume</div>
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="grid h-9 w-9 place-items-center overflow-hidden rounded-full border border-[#28223a] bg-[#201d2c] text-[11px] font-black text-white">
+                  {ownLeaderboard?.avatarDataUrl ? (
+                    <img
+                      src={ownLeaderboard.avatarDataUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    (ownLeaderboard?.displayName ?? user?.google?.name ?? "You")
+                      .slice(0, 2)
+                      .toUpperCase()
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-mono text-[16px] font-black text-[#8ea2ff]">
+                    {ownLeaderboardIndex >= 0 ? `#${ownLeaderboardIndex + 1}` : "# -"}
+                  </div>
+                  <div className="truncate text-[11px] font-semibold text-[#756f83]">
+                    {ownLeaderboard
+                      ? `${ownLeaderboard.trades} swaps recorded`
+                      : "No swaps in range"}
+                  </div>
+                </div>
+                <div className="text-right font-mono text-[13px] font-black text-[#e8e4f0]">
+                  {ownLeaderboard && ownLeaderboard.volumeSol > 0
+                    ? `$${formatCompact(ownLeaderboard.volumeSol * solPrice)}`
+                    : "--"}
+                </div>
+              </div>
             </div>
-            {/* Leaderboard list */}
             <div className="terminal-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain bg-[#08060f] no-scrollbar">
-              {mockLeaderboard.map((item) => (
-                <LeaderboardRow key={item.rank} item={item} />
+              {leaderboard.isFetching && !visibleLeaderboardRows.length ? (
+                <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
+                  Loading app leaderboard
+                </div>
+              ) : null}
+              {!leaderboard.isFetching && !visibleLeaderboardRows.length ? (
+                <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
+                  No ChadWallet traders in this range yet
+                </div>
+              ) : null}
+              {visibleLeaderboardRows.map((trader, index) => (
+                <LeaderboardRow
+                  key={trader.wallet}
+                  trader={trader}
+                  rank={index + 1}
+                  solPrice={solPrice}
+                  onSelectProfile={selectLeaderboardProfile}
+                />
               ))}
             </div>
           </div>
@@ -598,6 +993,14 @@ export function TradePage({ mint }: { mint: string }) {
 
     setCopiedMint(true);
     window.setTimeout(() => setCopiedMint(false), 1400);
+  }
+
+  if (!hasPrivy) {
+    return <div className="min-h-screen bg-[#08060f]" />;
+  }
+
+  if (!ready || !authenticated) {
+    return <TradeAuthGate ready={ready} redirectTo={currentRoutePath} />;
   }
 
   return (
@@ -692,7 +1095,7 @@ export function TradePage({ mint }: { mint: string }) {
             </div>
 
             <div className="flex items-center justify-end gap-2 pr-3">
-              <TradeAccount solPrice={solPrice} onProfile={() => setCenterView("profile")} />
+              <TradeAccount solPrice={solPrice} />
             </div>
           </div>
         </header>
@@ -803,14 +1206,23 @@ export function TradePage({ mint }: { mint: string }) {
           )}
 
           <section
-            className={`flex-1 flex min-w-0 flex-col min-h-0 overflow-hidden ${
+            className={`flex-1 flex min-w-0 flex-col min-h-0 ${
               centerView === "profile"
-                ? "bg-[#08060f]"
-                : "rounded-lg border border-[#1b1726]/70 bg-transparent"
+                ? "overflow-hidden bg-[#08060f]"
+                : `rounded-lg border border-[#1b1726]/70 bg-transparent ${
+                    hasGeckoTerminal
+                      ? "terminal-scroll overflow-y-auto overflow-x-hidden overscroll-contain"
+                      : "overflow-hidden"
+                  }`
             }`}
           >
             {centerView === "profile" ? (
-              <TradeProfileCenter solPrice={solPrice} />
+              <TradeProfileCenter
+                solPrice={solPrice}
+                viewedWallet={selectedProfileWallet}
+                onBackToOwnProfile={openOwnProfile}
+                onSelectProfile={openProfile}
+              />
             ) : (
               <>
                 {/* Token Header Bar */}
@@ -967,12 +1379,21 @@ export function TradePage({ mint }: { mint: string }) {
                 </div>
 
                 {/* Chart Area */}
-                <div className="flex-1 min-h-[300px] relative bg-transparent">
-                  {history.data?.data.length ? (
+                <div
+                  className={`relative bg-transparent ${
+                    hasGeckoTerminal ? "shrink-0" : "min-h-[300px] flex-1"
+                  }`}
+                  style={hasGeckoTerminal ? { height: `${geckoChartHeight}px` } : undefined}
+                >
+                  {history.data?.data.length || history.data?.geckoPoolAddress ? (
                     <PriceChart
-                      data={history.data.data}
+                      data={history.data.data ?? []}
                       dataStatus={history.data.status}
                       provider={history.data.provider}
+                      geckoPoolAddress={history.data.geckoPoolAddress}
+                      geckoTokenSide={history.data.geckoTokenSide}
+                      geckoPoolName={history.data.geckoPoolName}
+                      geckoPoolDex={history.data.geckoPoolDex}
                       updatedAt={history.data.updatedAt}
                       token={token}
                       solPrice={solPrice}
@@ -995,52 +1416,72 @@ export function TradePage({ mint }: { mint: string }) {
                       }
                     />
                   )}
+                  {hasGeckoTerminal && (
+                    <button
+                      type="button"
+                      aria-label="Resize Gecko chart"
+                      title="Drag to resize chart. Double-click to reset."
+                      onPointerDown={startGeckoChartResize}
+                      onDoubleClick={() => setGeckoChartHeight(DEFAULT_GECKO_CHART_HEIGHT)}
+                      className="absolute bottom-1 left-1/2 z-20 flex h-4 w-16 -translate-x-1/2 cursor-row-resize items-center justify-center rounded-full border border-[#2b2638]/80 bg-[#0c0a12]/90 text-[#8f879e] shadow-[0_0_14px_rgba(0,0,0,0.45)] transition hover:border-[#6d5dfc]/70 hover:text-white"
+                    >
+                      <span className="h-[2px] w-8 rounded-full bg-current" />
+                    </button>
+                  )}
                 </div>
 
-                {/* Chart Overlays Bar */}
-                <div className="flex items-center gap-4 border-t border-[#1b1726]/40 bg-transparent px-4 py-1.5 shrink-0 text-[11px] text-[#7a7488] select-none no-scrollbar overflow-x-auto">
-                  <span className="font-semibold text-[#5c5669] shrink-0">Chart overlays</span>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>My swaps</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>Thesis</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>Friends only</span>
-                  </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
-                    <input
-                      type="checkbox"
-                      defaultChecked
-                      className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
-                    />
-                    <span>Min size (&gt;$1K)</span>
-                  </label>
-                </div>
+                {!hasGeckoTerminal && (
+                  <>
+                    {/* Chart Overlays Bar */}
+                    <div className="flex items-center gap-4 border-t border-[#1b1726]/40 bg-transparent px-4 py-1.5 shrink-0 text-[11px] text-[#7a7488] select-none no-scrollbar overflow-x-auto">
+                      <span className="font-semibold text-[#5c5669] shrink-0">Chart overlays</span>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>My swaps</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>Thesis</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>Friends only</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer shrink-0 hover:text-white transition-colors">
+                        <input
+                          type="checkbox"
+                          defaultChecked
+                          className="accent-[#20d772] h-3 w-3 rounded border-[#2a2745] bg-[#12111a]"
+                        />
+                        <span>Min size (&gt;$1K)</span>
+                      </label>
+                    </div>
 
-                {/* Bottom Activity Section */}
-                <MarketActivity token={token} />
+                    {/* Bottom Activity Section */}
+                    <MarketActivity token={token} />
+                  </>
+                )}
               </>
             )}
           </section>
 
           {centerView === "profile" ? (
-            <FollowTopTradersPanel />
+            selectedProfileWallet && selectedProfileWallet !== walletAddress ? (
+              <ProfileSendPanel solPrice={solPrice} recipientWallet={selectedProfileWallet} />
+            ) : (
+              <FollowTopTradersPanel onSelectProfile={openProfile} />
+            )
           ) : (
             <aside className="w-[320px] 2xl:w-[340px] shrink-0 flex flex-col overflow-y-auto pb-2 no-scrollbar">
               <SwapPanel token={token} solPrice={solPrice} />
@@ -1056,10 +1497,71 @@ export function TradePage({ mint }: { mint: string }) {
           />
         )}
 
-        <TradeFooterTicker tokens={sidebarTokens} solPrice={solPrice} />
+        <TradeFooterTicker solPrice={solPrice} />
       </div>
     </>
   );
+}
+
+function TradeAuthGate({ ready, redirectTo }: { ready: boolean; redirectTo: string }) {
+  const router = useRouter();
+  const loginStarted = useRef(false);
+  const redirectStarted = useRef(false);
+  const redirectAfterLogin = useCallback(() => {
+    if (redirectStarted.current) return;
+
+    redirectStarted.current = true;
+    router.replace(redirectTo as Route);
+
+    window.setTimeout(() => {
+      const target = new URL(redirectTo, window.location.origin);
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+      if (current !== `${target.pathname}${target.search}${target.hash}`) {
+        window.location.assign(target.toString());
+      }
+    }, 250);
+  }, [redirectTo, router]);
+  const { login } = useLogin({
+    onComplete: redirectAfterLogin,
+    onError: (error) => {
+      if (!isLoginCancellation(error)) {
+        alert(`Privy login failed: ${String(error)}`);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (window.sessionStorage.getItem(MANUAL_LOGOUT_REDIRECT_KEY)) {
+      window.sessionStorage.removeItem(MANUAL_LOGOUT_REDIRECT_KEY);
+      window.location.replace("/");
+      return;
+    }
+
+    if (ready && !loginStarted.current) {
+      loginStarted.current = true;
+      login();
+    }
+  }, [login, ready]);
+
+  return (
+    <div
+      aria-label="Opening ChadWallet sign in"
+      className="min-h-screen bg-[#08060f]"
+      role="status"
+    />
+  );
+}
+
+function isLoginCancellation(error: unknown) {
+  const message =
+    error instanceof Error
+      ? `${error.name} ${error.message}`
+      : typeof error === "object" && error !== null
+        ? JSON.stringify(error)
+        : String(error);
+
+  return /exited_auth_flow|user_canceled|user_cancelled|login_cancelled/i.test(message);
 }
 
 function TrendingToken({
@@ -1073,18 +1575,28 @@ function TrendingToken({
   onPreview: (token: Token, element: HTMLElement) => void;
   onPreviewEnd: () => void;
 }) {
-  const up = token.change24h >= 0;
+  const direction = token.change24h > 0 ? "up" : token.change24h < 0 ? "down" : "flat";
+  const priceFlash = useValueFlash(token.price);
+  const marketCapFlash = useValueFlash(token.marketCap);
+  const rowFlash = priceFlash.direction ?? marketCapFlash.direction;
+  const toneClass =
+    direction === "up"
+      ? "token-live-tone-up"
+      : direction === "down"
+        ? "token-live-tone-down"
+        : "token-live-tone-flat";
 
   return (
     <Link
-      href={`/trade/${token.mint}`}
+      href={solanaTokenPath(token.mint)}
       onPointerEnter={(event) => onPreview(token, event.currentTarget)}
       onFocus={(event) => onPreview(token, event.currentTarget)}
       onPointerLeave={onPreviewEnd}
       onBlur={onPreviewEnd}
-      className={`flex items-center gap-3 px-3.5 py-2 transition-colors ${
+      className={`token-live-row flex items-center gap-3 px-3.5 py-2 transition-colors ${
         active ? "bg-[#1f1c2b]" : "hover:bg-[#151221]/50"
-      }`}
+      } ${rowFlash === "up" ? "token-live-row-up" : rowFlash === "down" ? "token-live-row-down" : ""}`}
+      data-flash-id={`${priceFlash.tick}-${marketCapFlash.tick}`}
     >
       <div className="relative shrink-0">
         <TokenImage token={token} size="sm" />
@@ -1105,24 +1617,82 @@ function TrendingToken({
           <span className="truncate text-[13.5px] font-bold text-[#e8e4f0] leading-none">
             {token.name}
           </span>
-          <span className="text-[13.5px] font-bold text-[#e8e4f0] leading-none">
-            ${formatCompact(token.marketCap)} MC
+          <span
+            key={`mc-${marketCapFlash.tick}`}
+            className={`token-live-value token-live-mcap text-[13.5px] font-bold leading-none text-[#e8e4f0] ${
+              marketCapFlash.direction === "up"
+                ? "token-live-value-up"
+                : marketCapFlash.direction === "down"
+                  ? "token-live-value-down"
+                  : ""
+            }`}
+          >
+            <span className="token-live-money">${formatCompact(token.marketCap)}</span>
+            <span className="token-live-unit"> MC</span>
           </span>
         </div>
         <div className="flex items-center justify-between mt-1">
-          <span className="truncate text-[11.5px] text-[#7a7488] leading-none">
+          <span
+            key={`price-${priceFlash.tick}`}
+            className={`token-live-value token-live-price truncate text-[11.5px] leading-none ${
+              priceFlash.direction === "up"
+                ? "token-live-value-up"
+                : priceFlash.direction === "down"
+                  ? "token-live-value-down"
+                  : ""
+            }`}
+          >
             {formatUsd(token.price)}
           </span>
           <span
-            className={`font-semibold text-[11px] leading-none flex items-center gap-0.5 ${up ? "text-[#20d772]" : "text-[#ff5e36]"}`}
+            className={`token-change-pill flex items-center gap-1 text-[11px] font-semibold leading-none ${toneClass}`}
           >
-            <span>{up ? "^" : "v"}</span>
+            <span className="token-change-triangle" aria-hidden="true" />
             <span>{Math.abs(token.change24h).toFixed(2)}%</span>
           </span>
         </div>
       </div>
     </Link>
   );
+}
+
+function useValueFlash(value: number) {
+  const previous = useRef(value);
+  const timeout = useRef<number | null>(null);
+  const [flash, setFlash] = useState<{ direction: "up" | "down" | null; tick: number }>({
+    direction: null,
+    tick: 0,
+  });
+
+  useEffect(() => {
+    if (!Number.isFinite(value)) return;
+
+    const last = previous.current;
+    previous.current = value;
+
+    if (!Number.isFinite(last) || value === last) return;
+
+    if (timeout.current) {
+      window.clearTimeout(timeout.current);
+    }
+
+    setFlash((current) => ({
+      direction: value > last ? "up" : "down",
+      tick: current.tick + 1,
+    }));
+    timeout.current = window.setTimeout(
+      () => setFlash((current) => ({ ...current, direction: null })),
+      950,
+    );
+
+    return () => {
+      if (timeout.current) {
+        window.clearTimeout(timeout.current);
+      }
+    };
+  }, [value]);
+
+  return flash;
 }
 
 function TokenHoverPreview({
@@ -1232,9 +1802,9 @@ function PreviewMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TokenImage({ token, size = "sm" }: { token: Token; size?: "sm" | "lg" }) {
-  const sizeClass = size === "lg" ? "h-10 w-10" : "h-8 w-8";
-  const px = size === "lg" ? 40 : 32;
+function TokenImage({ token, size = "sm" }: { token: Token; size?: "xs" | "sm" | "lg" }) {
+  const sizeClass = size === "lg" ? "h-10 w-10" : size === "xs" ? "h-5 w-5" : "h-8 w-8";
+  const px = size === "lg" ? 40 : size === "xs" ? 20 : 32;
   const logo = sanitizeImageUrl(token.logo);
 
   if (!logo) {
@@ -1281,6 +1851,27 @@ function uniqueTokens(tokens: Token[]) {
   }
 
   return [...byMint.values()];
+}
+
+function isLiveCryptoToken(token: Token) {
+  return (
+    Number.isFinite(token.price) &&
+    token.price > 0 &&
+    (Number.isFinite(token.marketCap) || Number.isFinite(token.liquidity ?? 0))
+  );
+}
+
+function isLikelyGraduatedToken(token: Token) {
+  const liquidity = token.liquidity ?? 0;
+  const marketCap = token.marketCap ?? 0;
+  const volume = token.volume24h ?? 0;
+
+  return (
+    token.mint !== SOL_MINT &&
+    isLiveCryptoToken(token) &&
+    liquidity >= 25_000 &&
+    (marketCap >= 50_000 || volume >= 100_000 || token.poolDex === "raydium")
+  );
 }
 
 async function copyText(value: string) {
@@ -1699,11 +2290,18 @@ function DataFreshness({
       }`}
     >
       <span className={status === "live" ? "text-[#20d772]" : ""}>
-        {provider === "solana-rpc" ? "Solana RPC" : "ChadFeed"} {status.toUpperCase()}
+        {dataProviderLabel(provider)} {status.toUpperCase()}
       </span>
       {updatedAt && <span>Updated {new Date(updatedAt).toLocaleTimeString()}</span>}
     </div>
   );
+}
+
+function dataProviderLabel(provider?: "birdeye" | "geckoterminal" | "solana-rpc") {
+  if (provider === "solana-rpc") return "Solana RPC";
+  if (provider === "geckoterminal") return "GeckoTerminal";
+  if (provider === "birdeye") return "BirdEye";
+  return "ChadFeed";
 }
 
 function LiveState({ title, detail }: { title: string; detail: string }) {
@@ -1736,39 +2334,12 @@ function TableState({
   );
 }
 
-function TradeFooterTicker({ tokens, solPrice }: { tokens: Token[]; solPrice: number }) {
-  const ticker = tokens.slice(0, 8).map((token) => ({
-    mint: token.mint,
-    symbol: token.symbol,
-    price: token.price,
-    change: token.change24h,
-  }));
-
+function TradeFooterTicker({ solPrice }: { solPrice: number }) {
   return (
-    <footer className="hidden h-6 shrink-0 items-center justify-between border-t border-[#201b2e] bg-[#08060f] px-2 text-[11px] lg:flex">
-      <div className="flex min-w-0 items-center gap-5 overflow-hidden">
-        {ticker.map((item, index) => {
-          const up = item.change >= 0;
-          return (
-            <span
-              key={`${item.mint}-${item.symbol}-${index}`}
-              className="flex shrink-0 items-center gap-1 font-mono"
-            >
-              <span className="font-bold text-white">{item.symbol}</span>
-              <span className="text-[#b4adbf]">{formatUsd(item.price)}</span>
-              <span className={up ? "text-[#20d772]" : "text-[#ff653d]"}>
-                {up ? "^" : "v"} {Math.abs(item.change).toFixed(2)}%
-              </span>
-            </span>
-          );
-        })}
-        {solPrice > 0 && <span className="sr-only">SOL reference {solPrice}</span>}
-      </div>
-      <div className="flex items-center gap-4 text-[#70687c]">
-        <span className="font-semibold text-[#20d772]">* Stable</span>
-        <span>Privacy</span>
-        <span>Terms</span>
-        <span>Help</span>
+    <footer className="hidden h-6 shrink-0 items-center border-t border-[#201b2e] bg-[#08060f] px-2 text-[11px] lg:flex">
+      <div className="flex min-w-0 items-center gap-1.5 overflow-hidden font-mono">
+        <span className="font-bold text-white">SOL</span>
+        <span className="text-[#b4adbf]">{solPrice > 0 ? formatUsd(solPrice) : "..."}</span>
       </div>
     </footer>
   );

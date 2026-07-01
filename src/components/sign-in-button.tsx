@@ -5,43 +5,74 @@ import { useWallets } from "@privy-io/react-auth/solana";
 import { LogOut, Wallet } from "lucide-react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 import { hasPrivy } from "@/lib/env";
+
+const PENDING_AUTH_REDIRECT_KEY = "chadwallet:pending-auth-redirect";
+const MANUAL_LOGOUT_REDIRECT_KEY = "chadwallet:manual-logout";
 
 export function SignInButton({
   variant = "default",
   redirectTo,
   autoLogin = false,
+  label = "Sign in",
 }: {
   variant?: "default" | "hero";
   redirectTo?: string;
   autoLogin?: boolean;
+  label?: string;
 }) {
   if (!hasPrivy) {
-    return <PrivySetupButton variant={variant} />;
+    return <PrivySetupButton variant={variant} label={label} />;
   }
 
-  return <ConnectedPrivyButton variant={variant} redirectTo={redirectTo} autoLogin={autoLogin} />;
+  return (
+    <ConnectedPrivyButton
+      variant={variant}
+      redirectTo={redirectTo}
+      autoLogin={autoLogin}
+      label={label}
+    />
+  );
 }
 
 function ConnectedPrivyButton({
   variant,
   redirectTo,
   autoLogin,
+  label,
 }: {
   variant: "default" | "hero";
   redirectTo?: string;
   autoLogin: boolean;
+  label: string;
 }) {
   const router = useRouter();
   const loginStarted = useRef(false);
+  const redirectStarted = useRef(false);
   const { ready, authenticated, user } = usePrivy();
+  const redirectAfterLogin = useCallback(() => {
+    if (!redirectTo || redirectStarted.current) {
+      return;
+    }
+
+    redirectStarted.current = true;
+    window.sessionStorage.removeItem(PENDING_AUTH_REDIRECT_KEY);
+    router.replace(redirectTo as Route);
+
+    window.setTimeout(() => {
+      const target = new URL(redirectTo, window.location.origin);
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+      if (current !== `${target.pathname}${target.search}${target.hash}`) {
+        window.location.assign(target.toString());
+      }
+    }, 250);
+  }, [redirectTo, router]);
   const { login } = useLogin({
     onComplete: () => {
-      if (redirectTo) {
-        router.replace(redirectTo as Route);
-      }
+      redirectAfterLogin();
     },
     onError: (error) => {
       if (isLoginCancellation(error)) {
@@ -53,12 +84,22 @@ function ConnectedPrivyButton({
   });
   const { logout } = useLogout();
   const { wallets } = useWallets();
+  const handleLogout = async () => {
+    window.sessionStorage.removeItem(PENDING_AUTH_REDIRECT_KEY);
+    window.sessionStorage.setItem(MANUAL_LOGOUT_REDIRECT_KEY, "true");
+
+    try {
+      await logout();
+    } finally {
+      window.location.assign("/");
+    }
+  };
 
   useEffect(() => {
-    if (ready && authenticated && redirectTo) {
-      router.replace(redirectTo as Route);
+    if (ready && authenticated) {
+      redirectAfterLogin();
     }
-  }, [authenticated, ready, redirectTo, router]);
+  }, [authenticated, ready, redirectAfterLogin]);
 
   useEffect(() => {
     if (autoLogin && ready && !authenticated && !loginStarted.current) {
@@ -81,13 +122,16 @@ function ConnectedPrivyButton({
         disabled={!ready}
         className={`${base} inline-flex min-h-10 items-center gap-2 disabled:cursor-default disabled:opacity-80`}
       >
-        Sign in
+        {label}
       </button>
     );
   }
 
   return (
-    <button onClick={() => logout()} className={`${base} inline-flex items-center gap-2`}>
+    <button
+      onClick={() => void handleLogout()}
+      className={`${base} inline-flex items-center gap-2`}
+    >
       <Wallet className="h-4 w-4" />
       <span className="max-w-28 truncate">
         {address ? `${address.slice(0, 4)}...${address.slice(-4)}` : "Signed in"}
@@ -108,7 +152,7 @@ function isLoginCancellation(error: unknown) {
   return /exited_auth_flow|user_canceled|user_cancelled|login_cancelled/i.test(message);
 }
 
-function PrivySetupButton({ variant }: { variant: "default" | "hero" }) {
+function PrivySetupButton({ variant, label }: { variant: "default" | "hero"; label: string }) {
   const base =
     variant === "hero"
       ? "rounded-full bg-gradient-to-r from-primary to-secondary text-primary-foreground glow-green px-6 py-3 text-base font-semibold"
@@ -123,7 +167,7 @@ function PrivySetupButton({ variant }: { variant: "default" | "hero" }) {
       }
       className={`${base} inline-flex items-center gap-2`}
     >
-      Sign in
+      {label}
     </button>
   );
 }
