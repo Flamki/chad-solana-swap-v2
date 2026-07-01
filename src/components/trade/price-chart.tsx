@@ -45,7 +45,7 @@ import { formatCompact, formatUsd, type Token } from "@/lib/tokens";
 
 type ChartMetric = "price" | "mcap";
 type QuoteCurrency = "usd" | "sol";
-type ChartEngine = "chadwallet" | "geckoterminal" | "tradingview";
+type ChartEngine = "chadwallet" | "tradingview";
 type ChartStyle = "candles" | "bars" | "line" | "area";
 type ChartMenu = "interval" | "style" | "indicators" | null;
 type PriceSeries =
@@ -63,9 +63,6 @@ const visibleIntervals: Array<{ label: string; value?: ChartInterval }> = [
   { label: "4h", value: "4H" },
   { label: "D", value: "1D" },
 ];
-
-const GECKO_FOOTER_TRIM_PX = 44;
-const GECKO_TITLE_LEFT_PX = 22;
 
 const intervalMenuGroups: Array<{
   title: string;
@@ -132,7 +129,6 @@ export function PriceChart({
   dataStatus,
   provider,
   geckoPoolAddress,
-  geckoTokenSide,
   geckoPoolName,
   geckoPoolDex,
   updatedAt,
@@ -169,18 +165,13 @@ export function PriceChart({
   const [showSma, setShowSma] = useState(false);
   const [showDevBuys, setShowDevBuys] = useState(false);
   const tradingViewSymbol = tradingViewSymbols[token.symbol.toUpperCase()];
-  const chartEngineOptions: Array<[ChartEngine, string]> = [["chadwallet", "Live"]];
-  if (geckoPoolAddress) chartEngineOptions.push(["geckoterminal", "Gecko"]);
-  if (tradingViewSymbol) chartEngineOptions.push(["tradingview", "TradingView"]);
+  const chartEngineOptions: Array<[ChartEngine, string]> = [["chadwallet", "TradingView"]];
+  if (tradingViewSymbol) chartEngineOptions.push(["tradingview", "TV Symbol"]);
 
   const tokenSupply = token.price > 0 && token.marketCap > 0 ? token.marketCap / token.price : 0;
   const priceLabel = `${token.symbol}/${quote.toUpperCase()}`;
   const metricLabel = metric === "mcap" ? "Market Cap" : "Price";
   const exchangeLabel = quote === "usd" ? "USD" : "SOL";
-  const geckoTitleBase = geckoPoolName ? geckoPoolTitleSymbol(geckoPoolName) : token.symbol;
-  const geckoCleanTitle = `${geckoTitleBase}/USD · ${geckoTitleResolution(interval)}${
-    geckoPoolDex ? ` · ${formatDexName(geckoPoolDex)}` : ""
-  }`;
 
   const { candles, lineData, volumes, latest, first } = useMemo(() => {
     let previousClose = data[0]?.value ?? 0;
@@ -242,24 +233,10 @@ export function PriceChart({
   const up = change >= 0;
   const latestVolume = volumes.at(-1)?.value ?? 0;
   const providerLabel = marketProviderLabel(provider);
-  const geckoEmbedUrl = useMemo(() => {
-    if (!geckoPoolAddress) return "";
-
-    const params = new URLSearchParams({
-      embed: "1",
-      info: "0",
-      swaps: "1",
-      light_chart: "0",
-      chart_type: metric === "mcap" ? "market_cap" : "price",
-      resolution: geckoResolution(interval),
-      token: geckoTokenSide ?? "base",
-      utm_source: "chadwallet",
-    });
-
-    return `https://www.geckoterminal.com/solana/pools/${encodeURIComponent(geckoPoolAddress)}?${params}`;
-  }, [geckoPoolAddress, geckoTokenSide, interval, metric]);
 
   useEffect(() => {
+    if (chartEngine !== "chadwallet") return;
+
     const container = containerRef.current;
     if (!container) return;
 
@@ -327,7 +304,7 @@ export function PriceChart({
       priceSeriesRef.current = null;
       volumeSeriesRef.current = null;
     };
-  }, [chartStyle]);
+  }, [chartEngine, chartStyle]);
 
   useEffect(() => {
     chartRef.current?.applyOptions({
@@ -361,27 +338,8 @@ export function PriceChart({
   }, [logScale]);
 
   useEffect(() => {
-    if (chartEngine === "geckoterminal" && !geckoEmbedUrl) setChartEngine("chadwallet");
     if (chartEngine === "tradingview" && !tradingViewSymbol) setChartEngine("chadwallet");
-  }, [chartEngine, geckoEmbedUrl, tradingViewSymbol]);
-
-  if (geckoEmbedUrl) {
-    return (
-      <div className="relative h-full min-h-[300px] w-full overflow-hidden bg-transparent">
-        <iframe
-          key={geckoEmbedUrl}
-          src={geckoEmbedUrl}
-          title={`${token.symbol} market chart`}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          allow="clipboard-write; fullscreen"
-          className="w-full border-0 bg-transparent"
-          style={{ height: `calc(100% + ${GECKO_FOOTER_TRIM_PX}px)` }}
-        />
-        <GeckoTitleMask title={geckoCleanTitle} />
-      </div>
-    );
-  }
+  }, [chartEngine, tradingViewSymbol]);
 
   return (
     <div className="relative flex h-full min-h-[300px] w-full flex-col overflow-hidden bg-transparent">
@@ -534,7 +492,7 @@ export function PriceChart({
           Dev Buys
         </button>
         <Divider />
-        {(geckoPoolAddress || tradingViewSymbol) && (
+        {tradingViewSymbol && (
           <>
             <Segmented value={chartEngine} options={chartEngineOptions} onChange={setChartEngine} />
             <Divider />
@@ -574,21 +532,7 @@ export function PriceChart({
         </div>
       </div>
 
-      {chartEngine === "geckoterminal" && geckoEmbedUrl ? (
-        <div className="relative min-h-0 flex-1 overflow-hidden">
-          <iframe
-            key={geckoEmbedUrl}
-            src={geckoEmbedUrl}
-            title={`${token.symbol} market chart`}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            allow="clipboard-write; fullscreen"
-            className="w-full border-0 bg-transparent"
-            style={{ height: `calc(100% + ${GECKO_FOOTER_TRIM_PX}px)` }}
-          />
-          <GeckoTitleMask title={geckoCleanTitle} />
-        </div>
-      ) : chartEngine === "tradingview" && tradingViewSymbol ? (
+      {chartEngine === "tradingview" && tradingViewSymbol ? (
         <TradingViewAdvancedChart symbol={tradingViewSymbol} interval={interval} />
       ) : (
         <div className="relative min-h-0 flex-1">
@@ -651,6 +595,16 @@ export function PriceChart({
             </div>
           )}
           <div ref={containerRef} className="h-full w-full pl-11" />
+          {candles.length === 0 && (
+            <div className="pointer-events-none absolute inset-0 left-11 z-20 grid place-items-center bg-[#050308]/72 px-6 text-center backdrop-blur-sm">
+              <div>
+                <div className="text-sm font-semibold text-foreground">Live chart loading</div>
+                <div className="mt-2 max-w-[360px] text-xs leading-5 text-muted-foreground">
+                  Waiting for real OHLCV candles from the market data providers.
+                </div>
+              </div>
+            </div>
+          )}
           <div className="absolute bottom-0 left-11 right-0 z-10 flex h-8 items-center justify-between border-t border-[#1b1726]/35 bg-[#08060f]/35 px-3 text-[12px] font-medium text-[#9ca3af] backdrop-blur">
             <div className="flex items-center gap-3">
               {["5y", "1y", "6m", "3m", "1m", "5d", "1d"].map((range) => (
@@ -679,16 +633,6 @@ export function PriceChart({
               </button>
             </div>
           </div>
-          {!geckoPoolAddress && (
-            <a
-              href="https://www.tradingview.com/lightweight-charts/"
-              target="_blank"
-              rel="noreferrer"
-              className="absolute bottom-10 left-14 rounded bg-background/70 px-2 py-1 text-[10px] font-mono text-muted-foreground backdrop-blur hover:text-foreground"
-            >
-              TradingView Lightweight Charts
-            </a>
-          )}
         </div>
       )}
     </div>
@@ -825,65 +769,10 @@ function tradingViewInterval(interval: ChartInterval) {
   )[interval];
 }
 
-function geckoResolution(interval: ChartInterval) {
-  return (
-    {
-      "1m": "1m",
-      "5m": "5m",
-      "15m": "15m",
-      "1H": "1h",
-      "4H": "4h",
-      "1D": "1d",
-    } satisfies Record<ChartInterval, string>
-  )[interval];
-}
-
-function geckoTitleResolution(interval: ChartInterval) {
-  return (
-    {
-      "1m": "1",
-      "5m": "5",
-      "15m": "15",
-      "1H": "1h",
-      "4H": "4h",
-      "1D": "1d",
-    } satisfies Record<ChartInterval, string>
-  )[interval];
-}
-
-function geckoPoolTitleSymbol(poolName: string) {
-  const firstToken = poolName.split("/")[0]?.trim();
-  return (firstToken || poolName).replace(/^\$/, "").replace(/\s+/g, " ").slice(0, 18);
-}
-
-function formatDexName(dexName: string) {
-  return dexName
-    .replace(/[_-]/g, " ")
-    .replace(/\b\w/g, (letter) => letter.toUpperCase())
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function marketProviderLabel(provider: "birdeye" | "geckoterminal" | "solana-rpc") {
   if (provider === "geckoterminal") return "MARKET";
   if (provider === "solana-rpc") return "Solana RPC";
   return "BirdEye";
-}
-
-function GeckoTitleMask({ title }: { title: string }) {
-  const left = getGeckoProviderTrimLeft(title);
-
-  return (
-    <div
-      className="pointer-events-none absolute top-[41px] z-20 h-[29px] bg-black"
-      style={{ left, width: `calc(100% - ${left}px)` }}
-    />
-  );
-}
-
-function getGeckoProviderTrimLeft(title: string) {
-  const estimatedTitleWidth = Math.round(title.length * 10.4);
-  return Math.min(Math.max(GECKO_TITLE_LEFT_PX + estimatedTitleWidth + 8, 156), 430);
 }
 
 function ChartDropdown({ children, className }: { children: React.ReactNode; className: string }) {
