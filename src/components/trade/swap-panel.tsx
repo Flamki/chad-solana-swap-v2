@@ -216,6 +216,7 @@ function SwapPanelCore({
   const networkFeeUsd = ((quoteQuery.data?.feeLamports ?? 5_000) / 1_000_000_000) * solPrice;
   const inputBalance = inputPositionQuery.data?.balance ?? 0;
   const hasOutputTokenPosition = Boolean(
+    (outputPositionQuery.data?.accountCount ?? 0) > 0 ||
     (outputPositionQuery.data?.balance ?? 0) > 0 ||
     walletPositionsQuery.data?.some(
       (position) => position.mint === pair.outputMint && position.balance > 0,
@@ -285,7 +286,9 @@ function SwapPanelCore({
     if (!inputBalanceReady) return "Checking balance";
     if (!hasInputBalance) {
       return pair.inputSymbol === "SOL"
-        ? `Need ${formatTokenAmount(solBalanceShortfall)} more SOL`
+        ? needsNewTokenAccountRent
+          ? `Need ${formatTokenAmount(solBalanceShortfall)} SOL rent/fees`
+          : `Need ${formatTokenAmount(solBalanceShortfall)} more SOL`
         : `Deposit ${pair.inputSymbol} first`;
     }
     return `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
@@ -377,9 +380,9 @@ function SwapPanelCore({
     if (!hasInputBalance) {
       setTradeError(
         pair.inputSymbol === "SOL"
-          ? `Need ${formatTokenAmount(solBalanceShortfall)} more SOL for this buy${
+          ? `Need ${formatTokenAmount(solBalanceShortfall)} more SOL${
               needsNewTokenAccountRent
-                ? " because this wallet has to open the token account first"
+                ? " for token-account rent and fees before this first receive"
                 : ""
             }.`
           : `Insufficient ${pair.inputSymbol} balance.`,
@@ -645,7 +648,7 @@ function SwapPanelCore({
             ? "Paper mode - no wallet signature or on-chain transaction"
             : walletAddress
               ? !hasInputBalance && pair.inputSymbol === "SOL"
-                ? `${formatTokenAmount(inputBalance)} SOL available, need ${formatTokenAmount(solBalanceShortfall)} more${needsNewTokenAccountRent ? " for first buy" : ""}`
+                ? `${formatTokenAmount(inputBalance)} SOL available, need ${formatTokenAmount(solBalanceShortfall)} more${needsNewTokenAccountRent ? " for rent/fees" : ""}`
                 : `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
               : "Connect wallet to view balance"}
         </div>

@@ -203,6 +203,7 @@ export type LiveHolder = {
 export type TokenPosition = {
   balance: number;
   valueUsd: number;
+  accountCount?: number;
   source: string;
 };
 
@@ -589,6 +590,7 @@ export async function fetchTokenPosition({
     return {
       balance,
       valueUsd: balance * price,
+      accountCount: 1,
       source: env.solanaRpcUrl.includes("alchemy.com") ? "Alchemy RPC" : "Solana RPC",
     };
   }
@@ -622,6 +624,7 @@ export async function fetchTokenPosition({
   return {
     balance,
     valueUsd: balance * price,
+    accountCount: result.value?.length ?? 0,
     source: env.solanaRpcUrl.includes("alchemy.com") ? "Alchemy RPC" : "Solana RPC",
   };
 }
