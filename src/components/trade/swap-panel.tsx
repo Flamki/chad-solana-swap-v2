@@ -39,7 +39,8 @@ import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, rawAmountFromUi } from "
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
-const SOL_TRADE_FEE_RESERVE = 0.0021;
+const SOL_TRADE_FEE_RESERVE = 0.0022;
+const SOL_NEW_TOKEN_ACCOUNT_RESERVE = 0.0043;
 const TOKEN_NOT_TRADABLE_PATTERN = /TOKEN_NOT_TRADABLE|not tradable/i;
 
 type TradeReceipt = TradeReceiptRecord;
@@ -206,7 +207,16 @@ function SwapPanelCore({
       : inputUsd / (pair.outputSymbol === "USDC" ? 1 : Math.max(solPrice, 0.00000001)));
   const networkFeeUsd = ((quoteQuery.data?.feeLamports ?? 5_000) / 1_000_000_000) * solPrice;
   const inputBalance = inputPositionQuery.data?.balance ?? 0;
-  const requiredInputBalance = pair.inputSymbol === "SOL" ? amt + SOL_TRADE_FEE_RESERVE : amt;
+  const hasOutputTokenPosition = Boolean(
+    walletPositionsQuery.data?.some(
+      (position) => position.mint === pair.outputMint && position.balance > 0,
+    ),
+  );
+  const solTradeReserve =
+    pair.inputSymbol === "SOL" && side === "buy" && !hasOutputTokenPosition
+      ? SOL_NEW_TOKEN_ACCOUNT_RESERVE
+      : SOL_TRADE_FEE_RESERVE;
+  const requiredInputBalance = pair.inputSymbol === "SOL" ? amt + solTradeReserve : amt;
   const inputBalanceReady =
     isTradeTestMode || !authenticated || !walletAddress || Boolean(inputPositionQuery.data);
   const hasInputBalance =
@@ -348,7 +358,13 @@ function SwapPanelCore({
     }
 
     if (!hasInputBalance) {
-      setTradeError(`Insufficient ${pair.inputSymbol} balance.`);
+      setTradeError(
+        pair.inputSymbol === "SOL"
+          ? `Need ${formatTokenAmount(requiredInputBalance)} SOL including network fees${
+              solTradeReserve >= SOL_NEW_TOKEN_ACCOUNT_RESERVE ? " and token account rent" : ""
+            }.`
+          : `Insufficient ${pair.inputSymbol} balance.`,
+      );
       return;
     }
 
@@ -541,8 +557,8 @@ function SwapPanelCore({
               disabled={!inputBalanceReady || inputBalance <= 0}
               onClick={() => {
                 const maxSpendable =
-                  pair.inputSymbol === "SOL" && inputBalance > SOL_TRADE_FEE_RESERVE
-                    ? inputBalance - SOL_TRADE_FEE_RESERVE
+                  pair.inputSymbol === "SOL" && inputBalance > solTradeReserve
+                    ? inputBalance - solTradeReserve
                     : inputBalance;
                 setAmount(formatAmountForInput((maxSpendable * percent) / 100, pair.inputDecimals));
                 setSelectedPercent(percent);
@@ -612,7 +628,7 @@ function SwapPanelCore({
             ? "Paper mode - no wallet signature or on-chain transaction"
             : walletAddress
               ? !hasInputBalance && pair.inputSymbol === "SOL"
-                ? `${formatTokenAmount(inputBalance)} SOL available`
+                ? `${formatTokenAmount(inputBalance)} SOL available, ${formatTokenAmount(requiredInputBalance)} needed`
                 : `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
               : "Connect wallet to view balance"}
         </div>
