@@ -564,11 +564,11 @@ function SwapPanelCore({
           {[10, 25, 50, 75, 100].map((percent) => (
             <button
               key={percent}
-              disabled={!inputBalanceReady || spendableInputBalance <= 0}
+              disabled={!inputBalanceReady || inputBalance <= 0}
               onClick={() => {
-                setAmount(
-                  formatAmountForInput((spendableInputBalance * percent) / 100, pair.inputDecimals),
-                );
+                const maxSpendable =
+                  spendableInputBalance > 0 ? spendableInputBalance : inputBalance;
+                setAmount(formatAmountForInput((maxSpendable * percent) / 100, pair.inputDecimals));
                 setSelectedPercent(percent);
                 setTradeError("");
               }}
