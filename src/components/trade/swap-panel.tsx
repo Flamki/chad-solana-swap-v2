@@ -39,6 +39,7 @@ const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
 const HIGH_PRICE_IMPACT_PCT = 25;
 const SOL_TRADE_FEE_RESERVE = 0.003;
+const TOKEN_NOT_TRADABLE_PATTERN = /TOKEN_NOT_TRADABLE|not tradable/i;
 
 type TradeReceipt = TradeReceiptRecord;
 
@@ -69,6 +70,10 @@ function formatQuoteUsd(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "$0.00";
   if (value < 0.01) return `$${value.toFixed(6)}`;
   return formatUsd(value);
+}
+
+function isTokenNotTradableMessage(message: string) {
+  return TOKEN_NOT_TRADABLE_PATTERN.test(message);
 }
 
 export function SwapPanel({ token, solPrice }: { token: Token; solPrice: number }) {
@@ -222,8 +227,10 @@ function SwapPanelCore({
   const isDustQuoteAmount = hasValidAmount && inputUsd > 0 && inputUsd < 0.01;
   const routeUnavailableMessage = isDustQuoteAmount
     ? `Amount is only ${formatQuoteUsd(inputUsd)}. Use a larger ${pair.inputSymbol} amount.`
-    : quoteError ||
-      `${token.symbol} is live, but Jupiter has no route for this token or amount yet.`;
+    : isTokenNotTradableMessage(quoteError)
+      ? `${token.symbol} is not tradable through Jupiter right now.`
+      : quoteError ||
+        `${token.symbol} is live, but Jupiter has no route for this token or amount yet.`;
   const quoteStatus = !hasValidAmount
     ? amountTooSmall
       ? `Minimum precision is ${pair.inputDecimals} decimals`
@@ -231,7 +238,7 @@ function SwapPanelCore({
     : quoteQuery.isFetching
       ? "Fetching live Jupiter quote"
       : priceImpactTooHigh
-        ? `Price impact ${quoteQuery.data!.priceImpactPct.toFixed(1)}% is too high`
+        ? `Jupiter route unsafe: ${quoteQuery.data!.priceImpactPct.toFixed(1)}% price impact`
         : quoteReady
           ? `${formatTokenAmount(quoteQuery.data!.outUiAmount)} ${pair.outputSymbol} via ${quoteQuery.data!.route}`
           : quoteUnavailable
@@ -243,7 +250,7 @@ function SwapPanelCore({
       if (quoteQuery.isFetching) return "Refreshing quote";
       if (!hasValidAmount) return `Enter ${pair.inputSymbol} amount`;
       if (!quoteReady) return "Waiting for quote";
-      if (priceImpactTooHigh) return "Reduce amount";
+      if (priceImpactTooHigh) return "Price impact too high";
       return `Paper ${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
     }
 
@@ -254,7 +261,7 @@ function SwapPanelCore({
     if (quoteQuery.isFetching) return "Refreshing quote";
     if (quoteUnavailable) return isDustQuoteAmount ? "Amount too small" : "No Jupiter route";
     if (!quoteReady) return "Waiting for quote";
-    if (priceImpactTooHigh) return "Reduce amount";
+    if (priceImpactTooHigh) return "Price impact too high";
     if (!inputBalanceReady) return "Checking balance";
     if (!hasInputBalance) {
       return pair.inputSymbol === "SOL" ? "Keep SOL for fees" : `Deposit ${pair.inputSymbol} first`;
@@ -543,7 +550,9 @@ function SwapPanelCore({
               disabled={!inputBalanceReady || inputBalance <= 0}
               onClick={() => {
                 const maxSpendable =
-                  pair.inputSymbol === "SOL" ? Math.max(inputBalance - 0.002, 0) : inputBalance;
+                  pair.inputSymbol === "SOL"
+                    ? Math.max(inputBalance - SOL_TRADE_FEE_RESERVE, 0)
+                    : inputBalance;
                 setAmount(formatAmountForInput((maxSpendable * percent) / 100, pair.inputDecimals));
                 setSelectedPercent(percent);
                 setTradeError("");
@@ -614,6 +623,13 @@ function SwapPanelCore({
               ? `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
               : "Connect wallet to view balance"}
         </div>
+
+        {priceImpactTooHigh && (
+          <div className="rounded-lg border border-[#ff5b45]/45 bg-[#ff5b45]/10 p-2.5 text-[11px] leading-snug text-[#ff8d7c]">
+            Jupiter marks this route as unsafe. Try a much smaller amount or a token with deeper
+            liquidity.
+          </div>
+        )}
 
         {/* Main Action Button */}
         <button
@@ -1169,6 +1185,9 @@ function rawAmountToUi(rawAmount: string | undefined, decimals: number) {
 
 function normalizeSwapError(error: unknown) {
   if (error instanceof Error && error.message) {
+    if (isTokenNotTradableMessage(error.message)) {
+      return "Jupiter does not mark this token as tradable right now. Try again later or choose a higher-liquidity token.";
+    }
     if (/simulation failed|custom program error: 0x1/i.test(error.message)) {
       return "Swap simulation failed before broadcast. The route likely cannot execute at current liquidity, slippage, or wallet fee balance. Try a smaller amount or a higher-liquidity token.";
     }
