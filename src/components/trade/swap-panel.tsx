@@ -38,6 +38,7 @@ const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
 const HIGH_PRICE_IMPACT_PCT = 25;
+const SOL_TRADE_FEE_RESERVE = 0.003;
 
 type TradeReceipt = TradeReceiptRecord;
 
@@ -199,10 +200,14 @@ function SwapPanelCore({
       : inputUsd / (pair.outputSymbol === "USDC" ? 1 : Math.max(solPrice, 0.00000001)));
   const networkFeeUsd = ((quoteQuery.data?.feeLamports ?? 5_000) / 1_000_000_000) * solPrice;
   const inputBalance = inputPositionQuery.data?.balance ?? 0;
+  const requiredInputBalance = pair.inputSymbol === "SOL" ? amt + SOL_TRADE_FEE_RESERVE : amt;
   const inputBalanceReady =
     isTradeTestMode || !authenticated || !walletAddress || Boolean(inputPositionQuery.data);
   const hasInputBalance =
-    isTradeTestMode || !authenticated || !walletAddress || inputBalance + 1e-9 >= amt;
+    isTradeTestMode ||
+    !authenticated ||
+    !walletAddress ||
+    inputBalance + 1e-9 >= requiredInputBalance;
   const openPositions = useMemo(
     () => mergeWalletPositions(walletPositionsQuery.data ?? []),
     [walletPositionsQuery.data],
@@ -238,6 +243,7 @@ function SwapPanelCore({
       if (quoteQuery.isFetching) return "Refreshing quote";
       if (!hasValidAmount) return `Enter ${pair.inputSymbol} amount`;
       if (!quoteReady) return "Waiting for quote";
+      if (priceImpactTooHigh) return "Reduce amount";
       return `Paper ${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
     }
 
@@ -248,13 +254,17 @@ function SwapPanelCore({
     if (quoteQuery.isFetching) return "Refreshing quote";
     if (quoteUnavailable) return isDustQuoteAmount ? "Amount too small" : "No Jupiter route";
     if (!quoteReady) return "Waiting for quote";
+    if (priceImpactTooHigh) return "Reduce amount";
     if (!inputBalanceReady) return "Checking balance";
-    if (!hasInputBalance) return `Deposit ${pair.inputSymbol} first`;
+    if (!hasInputBalance) {
+      return pair.inputSymbol === "SOL" ? "Keep SOL for fees" : `Deposit ${pair.inputSymbol} first`;
+    }
     return `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
   })();
   const primaryDisabled =
     isExecuting ||
     quoteQuery.isFetching ||
+    priceImpactTooHigh ||
     (isTradeTestMode && (!hasValidAmount || !quoteReady)) ||
     (!isTradeTestMode &&
       authenticated &&
@@ -343,6 +353,14 @@ function SwapPanelCore({
 
     if (!quoteReady) {
       setTradeError(quoteUnavailable ? quoteStatus : "Waiting for live Jupiter quote.");
+      return;
+    }
+
+    if (priceImpactTooHigh) {
+      const impact = quoteQuery.data?.priceImpactPct.toFixed(1);
+      setTradeError(
+        `Price impact${impact ? ` ${impact}%` : ""} is too high. Try a smaller amount or a higher-liquidity token.`,
+      );
       return;
     }
 
@@ -1150,7 +1168,12 @@ function rawAmountToUi(rawAmount: string | undefined, decimals: number) {
 }
 
 function normalizeSwapError(error: unknown) {
-  if (error instanceof Error && error.message) return error.message;
+  if (error instanceof Error && error.message) {
+    if (/simulation failed|custom program error: 0x1/i.test(error.message)) {
+      return "Swap simulation failed before broadcast. The route likely cannot execute at current liquidity, slippage, or wallet fee balance. Try a smaller amount or a higher-liquidity token.";
+    }
+    return error.message;
+  }
   return "Swap failed. Check wallet balance, slippage, and route liquidity.";
 }
 
