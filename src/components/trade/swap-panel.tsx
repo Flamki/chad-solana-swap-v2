@@ -39,7 +39,7 @@ import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, rawAmountFromUi } from "
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
-const SOL_TRADE_FEE_RESERVE = 0.006;
+const SOL_TRADE_FEE_RESERVE = 0.0021;
 const TOKEN_NOT_TRADABLE_PATTERN = /TOKEN_NOT_TRADABLE|not tradable/i;
 
 type TradeReceipt = TradeReceiptRecord;
