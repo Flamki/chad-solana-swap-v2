@@ -38,7 +38,6 @@ import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, rawAmountFromUi } from "
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
-const HIGH_PRICE_IMPACT_PCT = 25;
 const SOL_TRADE_FEE_RESERVE = 0.003;
 const TOKEN_NOT_TRADABLE_PATTERN = /TOKEN_NOT_TRADABLE|not tradable/i;
 
@@ -219,8 +218,6 @@ function SwapPanelCore({
     [walletPositionsQuery.data],
   );
   const quoteReady = Boolean(quoteQuery.data && hasValidAmount);
-  const priceImpactTooHigh =
-    quoteReady && (quoteQuery.data?.priceImpactPct ?? 0) > HIGH_PRICE_IMPACT_PCT;
   const quoteError = quoteQuery.error instanceof Error ? quoteQuery.error.message : "";
   const quoteUnavailable = hasValidAmount && quoteQuery.isError && !quoteQuery.data;
   const amountTooSmall = amount.length > 0 && amt > 0 && rawAmount <= 0n;
@@ -238,20 +235,17 @@ function SwapPanelCore({
       : "Enter an amount to fetch a live Jupiter quote"
     : quoteQuery.isFetching
       ? "Fetching live Jupiter quote"
-      : priceImpactTooHigh
-        ? `Jupiter route unsafe: ${quoteQuery.data!.priceImpactPct.toFixed(1)}% price impact`
-        : quoteReady
-          ? `${formatTokenAmount(quoteQuery.data!.outUiAmount)} ${pair.outputSymbol} via ${quoteQuery.data!.route}`
-          : quoteUnavailable
-            ? routeUnavailableMessage
-            : "Waiting for live Jupiter quote";
+      : quoteReady
+        ? `${formatTokenAmount(quoteQuery.data!.outUiAmount)} ${pair.outputSymbol} via ${quoteQuery.data!.route}`
+        : quoteUnavailable
+          ? routeUnavailableMessage
+          : "Waiting for live Jupiter quote";
 
   const buttonLabel = (() => {
     if (isTradeTestMode) {
       if (quoteQuery.isFetching) return "Refreshing quote";
       if (!hasValidAmount) return `Enter ${pair.inputSymbol} amount`;
       if (!quoteReady) return "Waiting for quote";
-      if (priceImpactTooHigh) return `Paper ${side === "buy" ? "Buy" : "Sell"} anyway`;
       return `Paper ${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
     }
 
@@ -262,7 +256,6 @@ function SwapPanelCore({
     if (quoteQuery.isFetching) return "Refreshing quote";
     if (quoteUnavailable) return isDustQuoteAmount ? "Amount too small" : "No Jupiter route";
     if (!quoteReady) return "Waiting for quote";
-    if (priceImpactTooHigh) return `${side === "buy" ? "Buy" : "Sell"} anyway`;
     if (!inputBalanceReady) return "Checking balance";
     if (!hasInputBalance) {
       return pair.inputSymbol === "SOL" ? "Keep SOL for fees" : `Deposit ${pair.inputSymbol} first`;
@@ -425,9 +418,6 @@ function SwapPanelCore({
       saveTradeReceipt(nextReceipt);
 
       if (nextReceipt.status === "failed") {
-        setTradeError(
-          "Swap was sent but did not complete on-chain. Your wallet was not credited with this token. Try a smaller amount or a stronger route.",
-        );
         return;
       }
 
@@ -531,15 +521,13 @@ function SwapPanelCore({
           <div className="text-[10.5px] text-[#7a7488] font-mono mt-0.5">
             {quoteQuery.isFetching
               ? "Fetching Jupiter quote..."
-              : priceImpactTooHigh
-                ? quoteStatus
-                : quoteReady
-                  ? side === "buy"
-                    ? `~ ${estimatedOut.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${pair.outputSymbol}`
-                    : `~ ${formatUsd(inputUsd)}`
-                  : quoteUnavailable
-                    ? routeUnavailableMessage
-                    : quoteStatus}
+              : quoteReady
+                ? side === "buy"
+                  ? `~ ${estimatedOut.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${pair.outputSymbol}`
+                  : `~ ${formatUsd(inputUsd)}`
+                : quoteUnavailable
+                  ? routeUnavailableMessage
+                  : quoteStatus}
           </div>
         </div>
 
@@ -624,13 +612,6 @@ function SwapPanelCore({
               ? `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
               : "Connect wallet to view balance"}
         </div>
-
-        {priceImpactTooHigh && (
-          <div className="rounded-lg border border-[#ff5b45]/45 bg-[#ff5b45]/10 p-2.5 text-[11px] leading-snug text-[#ff8d7c]">
-            Jupiter marks this route as unsafe. Try a much smaller amount or a token with deeper
-            liquidity.
-          </div>
-        )}
 
         {/* Main Action Button */}
         <button
