@@ -38,7 +38,7 @@ import { SOL_MINT, USDC_MINT, formatCompact, formatUsd, rawAmountFromUi } from "
 const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
-const SOL_TRADE_FEE_RESERVE = 0.003;
+const SOL_TRADE_FEE_RESERVE = 0.006;
 const TOKEN_NOT_TRADABLE_PATTERN = /TOKEN_NOT_TRADABLE|not tradable/i;
 
 type TradeReceipt = TradeReceiptRecord;
@@ -258,7 +258,7 @@ function SwapPanelCore({
     if (!quoteReady) return "Waiting for quote";
     if (!inputBalanceReady) return "Checking balance";
     if (!hasInputBalance) {
-      return pair.inputSymbol === "SOL" ? "Keep SOL for fees" : `Deposit ${pair.inputSymbol} first`;
+      return pair.inputSymbol === "SOL" ? "Deposit more SOL" : `Deposit ${pair.inputSymbol} first`;
     }
     return `${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
   })();
@@ -609,7 +609,9 @@ function SwapPanelCore({
           {isTradeTestMode
             ? "Paper mode - no wallet signature or on-chain transaction"
             : walletAddress
-              ? `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
+              ? !hasInputBalance && pair.inputSymbol === "SOL"
+                ? `${formatTokenAmount(inputBalance)} SOL available`
+                : `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
               : "Connect wallet to view balance"}
         </div>
 

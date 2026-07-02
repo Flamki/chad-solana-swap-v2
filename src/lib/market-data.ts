@@ -850,6 +850,7 @@ export async function recordTokenIntent(intent: {
 
 export async function recordTradeReceipt(receipt: TradeReceiptRecord) {
   if (receipt.mode !== "mainnet") return { stored: false };
+  if (receipt.status === "failed") return { stored: false, reason: "failed" };
 
   const response = await fetch("/api/trade/receipt", {
     method: "POST",

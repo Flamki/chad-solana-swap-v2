@@ -32,6 +32,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ stored: false, reason: "not-mainnet" });
     }
 
+    if (receipt.status === "failed") {
+      return NextResponse.json({ stored: false, reason: "failed" });
+    }
+
     if (
       !receipt.signature ||
       !receipt.wallet ||
