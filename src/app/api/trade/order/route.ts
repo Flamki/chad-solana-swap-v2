@@ -96,6 +96,7 @@ async function buildLegacySwap(body: ValidOrderRequest) {
       quoteResponse: quote,
       userPublicKey: body.taker,
       wrapAndUnwrapSol: true,
+      dynamicSlippage: true,
       dynamicComputeUnitLimit: true,
       prioritizationFeeLamports: "auto",
     }),

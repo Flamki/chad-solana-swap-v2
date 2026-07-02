@@ -125,7 +125,7 @@ function SwapPanelCore({
   const queryClient = useQueryClient();
   const [side, setSide] = useState<"buy" | "sell">("buy");
   const [amount, setAmount] = useState(token.mint === SOL_MINT ? "25" : "0.5");
-  const [slippage, setSlippage] = useState("1");
+  const [slippage, setSlippage] = useState("10");
   const [isExecuting, setIsExecuting] = useState(false);
   const [tradeError, setTradeError] = useState("");
   const [signature, setSignature] = useState("");
@@ -586,7 +586,7 @@ function SwapPanelCore({
             <div className="flex items-center justify-between border-t border-[#1b1726]/20 pt-1.5 mt-1.5">
               <span className="text-[#7a7488]">Slippage limit</span>
               <div className="flex gap-1">
-                {["0.5", "1", "2"].map((value) => (
+                {["5", "10", "20"].map((value) => (
                   <button
                     key={value}
                     onClick={() => setSlippage(value)}
