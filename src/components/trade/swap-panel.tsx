@@ -197,6 +197,14 @@ function SwapPanelCore({
     decimals: pair.inputDecimals,
     price: pair.inputPrice,
   });
+  const outputPrice =
+    pair.outputMint === SOL_MINT ? solPrice : pair.outputSymbol === "USDC" ? 1 : token.price || 0;
+  const outputPositionQuery = useTokenPosition({
+    owner: walletAddress,
+    mint: pair.outputMint,
+    decimals: pair.outputDecimals,
+    price: outputPrice,
+  });
   const walletPositionsQuery = useWalletTokenPositions(walletAddress, solPrice);
 
   const inputUsd = quoteQuery.data?.inputUsd ?? amt * pair.inputPrice;
@@ -208,21 +216,22 @@ function SwapPanelCore({
   const networkFeeUsd = ((quoteQuery.data?.feeLamports ?? 5_000) / 1_000_000_000) * solPrice;
   const inputBalance = inputPositionQuery.data?.balance ?? 0;
   const hasOutputTokenPosition = Boolean(
+    (outputPositionQuery.data?.balance ?? 0) > 0 ||
     walletPositionsQuery.data?.some(
       (position) => position.mint === pair.outputMint && position.balance > 0,
     ),
   );
-  const solTradeReserve =
-    pair.inputSymbol === "SOL" && side === "buy" && !hasOutputTokenPosition
-      ? SOL_NEW_TOKEN_ACCOUNT_RESERVE
-      : SOL_TRADE_FEE_RESERVE;
+  const needsOutputTokenAccount =
+    pair.inputSymbol === "SOL" && pair.outputMint !== SOL_MINT && !hasOutputTokenPosition;
+  const solTradeReserve = needsOutputTokenAccount
+    ? SOL_NEW_TOKEN_ACCOUNT_RESERVE
+    : SOL_TRADE_FEE_RESERVE;
   const requiredInputBalance = pair.inputSymbol === "SOL" ? amt + solTradeReserve : amt;
   const solBalanceShortfall =
     pair.inputSymbol === "SOL" ? Math.max(requiredInputBalance - inputBalance, 0) : 0;
   const spendableInputBalance =
     pair.inputSymbol === "SOL" ? Math.max(inputBalance - solTradeReserve, 0) : inputBalance;
-  const needsNewTokenAccountRent =
-    pair.inputSymbol === "SOL" && side === "buy" && !hasOutputTokenPosition;
+  const needsNewTokenAccountRent = needsOutputTokenAccount;
   const inputBalanceReady =
     isTradeTestMode || !authenticated || !walletAddress || Boolean(inputPositionQuery.data);
   const hasInputBalance =
