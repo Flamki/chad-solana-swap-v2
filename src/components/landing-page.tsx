@@ -1,4 +1,5 @@
-import Image, { type StaticImageData } from "next/image";
+import type { ReactNode } from "react";
+import Image from "next/image";
 
 import { DownloadAppButton } from "@/components/landing/download-app-button";
 import { LazyVideo } from "@/components/landing/lazy-video";
@@ -6,12 +7,6 @@ import { LazySignInButton } from "@/components/landing/lazy-sign-in-button";
 import { TrendingCoinTicker } from "@/components/landing/trending-coin-ticker";
 import { SOL_TOKEN_PATH } from "@/lib/routes";
 
-import buySell from "@/assets/flow/buy-sell-4.png";
-import kol from "@/assets/flow/kol-4.png";
-import launch from "@/assets/flow/launch-4.png";
-import memecoin from "@/assets/flow/memecoin-4.png";
-import portfolio from "@/assets/flow/portfolio-4.png";
-import relaunch from "@/assets/flow/relaunch-4.png";
 import chadLogo from "@/assets/logo/dark.png";
 
 const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
@@ -23,6 +18,95 @@ const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
 const PHONE_MOCKUP = "/assets/landing/phone-mockup.png";
 const PHONE_VIDEO = "/assets/video/chadwallet.mp4";
 const FOOTER_IMAGE = "/assets/landing/chad-footer.png";
+const FEATURE_LEADERBOARD = "/assets/landing/features/leaderboard.webp";
+const FEATURE_SOCIAL = "/assets/landing/features/social-static.webp";
+const FEATURE_ALERTS = "/assets/landing/features/alerts-static.webp";
+const FEATURE_APPLE_PAY = "/assets/landing/features/apple-pay-static.webp";
+
+type FeatureCardProps = {
+  eyebrow: string;
+  title: string;
+  children: ReactNode;
+  className?: string;
+  visualClassName?: string;
+};
+
+function FeatureCard({
+  eyebrow,
+  title,
+  children,
+  className = "",
+  visualClassName = "",
+}: FeatureCardProps) {
+  return (
+    <article
+      className={`relative flex aspect-[1/1] min-h-[440px] flex-col overflow-hidden rounded-[25px] border border-white/[0.06] bg-[#12111a] px-7 pb-0 pt-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:px-9 lg:min-h-[478px] ${className}`}
+    >
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#151420] via-[#101018]/75 to-transparent" />
+      <p className="relative z-10 font-mono text-[13px] font-bold uppercase tracking-[0.17em] text-[#5f7cff] sm:text-[14px]">
+        {eyebrow}
+      </p>
+      <h3 className="relative z-10 mt-5 max-w-[430px] text-[clamp(2rem,2.25vw,2.62rem)] font-bold leading-[1.08] text-white">
+        {title}
+      </h3>
+      <div
+        className={`absolute inset-x-0 bottom-0 z-0 flex h-[56%] items-end justify-center ${visualClassName}`}
+      >
+        {children}
+      </div>
+    </article>
+  );
+}
+
+function FeatureImage({
+  src,
+  alt,
+  className = "",
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+}) {
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={1200}
+      height={780}
+      quality={90}
+      sizes="(min-width: 1280px) 31vw, (min-width: 768px) 46vw, 92vw"
+      className={`pointer-events-none select-none object-contain ${className}`}
+    />
+  );
+}
+
+function AssetsVisual() {
+  return (
+    <div className="relative mb-[-54px] h-[285px] w-full">
+      <div className="absolute left-[16%] top-[18%] h-24 w-56 -rotate-12 rounded-[18px] border border-white/30 bg-gradient-to-br from-cyan-100 via-sky-500 to-violet-600 opacity-95 shadow-[0_0_46px_rgba(85,160,255,0.45)]" />
+      <div className="absolute left-[23%] top-[39%] h-20 w-48 -rotate-12 rounded-[16px] border border-white/25 bg-gradient-to-br from-white via-cyan-300 to-violet-500 opacity-90 shadow-[0_0_34px_rgba(137,92,246,0.35)]" />
+      <div className="absolute right-[18%] top-[12%] h-44 w-44 rotate-6 rounded-[30px] border border-white/35 bg-gradient-to-br from-cyan-200 via-blue-500 to-violet-700 opacity-95 shadow-[0_0_58px_rgba(59,130,246,0.45)]" />
+      <div className="absolute bottom-[-8%] left-[30%] h-24 w-32 rotate-12 rounded-[20px] bg-gradient-to-br from-amber-200 via-amber-500 to-orange-700 opacity-90 shadow-[0_0_38px_rgba(251,191,36,0.28)]" />
+      <div className="absolute bottom-[-13%] right-[28%] h-36 w-36 -rotate-12 rounded-[28px] border border-white/30 bg-gradient-to-br from-white via-violet-300 to-indigo-700 opacity-95 shadow-[0_0_50px_rgba(168,85,247,0.45)]" />
+    </div>
+  );
+}
+
+function SignInVisual() {
+  return (
+    <div className="relative mb-8 flex w-[82%] max-w-[408px] flex-col gap-3">
+      <div className="flex h-14 items-center justify-center gap-3 rounded-2xl bg-white text-lg font-bold text-black shadow-[0_16px_44px_rgba(255,255,255,0.13)]">
+        <span className="text-xl">Apple</span>
+        <span>Sign in with Apple</span>
+      </div>
+      <div className="flex h-14 items-center justify-center gap-3 rounded-2xl bg-[#151515] text-lg font-bold text-white shadow-[0_16px_44px_rgba(59,130,246,0.16)]">
+        <span className="text-xl text-[#4285f4]">G</span>
+        <span>Sign in with Google</span>
+      </div>
+      <div className="pointer-events-none absolute -bottom-28 right-[24%] h-44 w-14 rounded-t-full bg-gradient-to-b from-[#ffd7ca] via-[#e7a18e] to-[#9a574c] shadow-[0_-18px_50px_rgba(255,210,190,0.18)]" />
+    </div>
+  );
+}
 
 function StoreBadges({ className = "" }: { className?: string }) {
   return (
@@ -215,96 +299,59 @@ export function Landing() {
           </div>
         </section>
 
-        <section className="relative z-10 px-6 pb-12 pt-4 md:pb-14">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-5 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-              <p className="font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
-                THE FLOW
-              </p>
-            </div>
-            <div className="mb-8 grid items-end gap-5 md:grid-cols-2">
-              <h2 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
-                One wallet.
-                <br />
-                Every play.
-              </h2>
-              <p className="max-w-md text-base text-white/50 sm:text-lg md:justify-self-end">
-                From the first deposit to the next launch - the entire trader loop, designed
-                end-to-end.
-              </p>
-            </div>
+        <section className="relative z-10 px-5 pb-12 pt-6 sm:px-6 md:pb-16 md:pt-8">
+          <div className="mx-auto grid max-w-[1644px] grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <FeatureCard eyebrow="LEADERBOARD" title="become a legend, top the leaderboard">
+              <FeatureImage
+                src={FEATURE_LEADERBOARD}
+                alt="ChadWallet leaderboard preview"
+                className="h-full w-full object-cover object-bottom opacity-95"
+              />
+            </FeatureCard>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              {[
-                {
-                  src: memecoin,
-                  title: "Catch early trends on X",
-                  step: "01 / HUNT",
-                  tagline: "Find the next memecoin.",
-                },
-                {
-                  src: buySell,
-                  title: "Buy & sell trending tokens",
-                  step: "02 / EXECUTE",
-                  tagline: "Buy & sell in one tap.",
-                },
-                {
-                  src: kol,
-                  title: "Follow KOL traders",
-                  step: "03 / COPY",
-                  tagline: "Mirror the winners.",
-                },
-                {
-                  src: portfolio,
-                  title: "Manage your assets",
-                  step: "04 / TRACK",
-                  tagline: "Watch the bags move.",
-                },
-                {
-                  src: launch,
-                  title: "Launch a memecoin from a tweet",
-                  step: "05 / LAUNCH",
-                  tagline: "Be early. Every time.",
-                },
-                {
-                  src: relaunch,
-                  title: "Relaunch a memecoin",
-                  step: "06 / ROTATE",
-                  tagline: "Recycle into the next.",
-                },
-              ].map(
-                (card: { src: StaticImageData; title: string; step: string; tagline: string }) => (
-                  <div
-                    key={card.title}
-                    className="group relative flex aspect-[16/10] flex-col overflow-hidden rounded-3xl bg-gradient-to-b from-sky-400 via-sky-500/80 to-black ring-1 ring-white/10"
-                  >
-                    <p className="relative z-10 pt-5 text-center text-sm font-semibold text-white sm:text-base">
-                      {card.title}
-                    </p>
-                    <div className="relative mt-3 flex flex-1 items-end justify-center px-4 sm:px-6">
-                      <Image
-                        src={card.src}
-                        alt={card.title}
-                        fill
-                        quality={70}
-                        sizes="(min-width: 768px) 50vw, 100vw"
-                        className="pointer-events-none select-none object-contain object-bottom"
-                      />
-                    </div>
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black via-black/80 to-transparent" />
-                    <div className="absolute bottom-6 left-6 z-10 sm:bottom-7 sm:left-8">
-                      <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-indigo-300 sm:text-xs">
-                        {card.step}
-                      </p>
-                      <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-                        {card.tagline}
-                      </p>
-                    </div>
-                  </div>
-                ),
-              )}
-            </div>
+            <FeatureCard
+              eyebrow="SOCIAL FEED"
+              title="discover and follow top traders"
+              visualClassName="h-[66%]"
+            >
+              <FeatureImage
+                src={FEATURE_SOCIAL}
+                alt="ChadWallet social feed preview"
+                className="h-full w-[102%] object-contain object-bottom opacity-95"
+              />
+            </FeatureCard>
+
+            <FeatureCard
+              eyebrow="ALERTS"
+              title="real time notifications for what the best are buying"
+              visualClassName="items-center px-0 pb-10"
+            >
+              <FeatureImage
+                src={FEATURE_ALERTS}
+                alt="ChadWallet alert notification preview"
+                className="h-auto w-[112%] max-w-none object-contain opacity-95"
+              />
+            </FeatureCard>
+
+            <FeatureCard eyebrow="APPLE PAY" title="deposit instantly with apple pay">
+              <FeatureImage
+                src={FEATURE_APPLE_PAY}
+                alt="ChadWallet Apple Pay deposit preview"
+                className="h-full w-full object-cover object-bottom opacity-90"
+              />
+            </FeatureCard>
+
+            <FeatureCard eyebrow="ASSETS" title="track your full portfolio at a glance">
+              <AssetsVisual />
+            </FeatureCard>
+
+            <FeatureCard
+              eyebrow="SIGN IN"
+              title="get started in seconds, no seed phrase"
+              visualClassName="items-end"
+            >
+              <SignInVisual />
+            </FeatureCard>
           </div>
         </section>
       </div>
