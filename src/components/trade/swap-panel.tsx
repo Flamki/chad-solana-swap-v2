@@ -250,7 +250,7 @@ function SwapPanelCore({
       if (quoteQuery.isFetching) return "Refreshing quote";
       if (!hasValidAmount) return `Enter ${pair.inputSymbol} amount`;
       if (!quoteReady) return "Waiting for quote";
-      if (priceImpactTooHigh) return "Price impact too high";
+      if (priceImpactTooHigh) return `Paper ${side === "buy" ? "Buy" : "Sell"} anyway`;
       return `Paper ${side === "buy" ? "Buy" : "Sell"} ${token.symbol}`;
     }
 
@@ -261,7 +261,7 @@ function SwapPanelCore({
     if (quoteQuery.isFetching) return "Refreshing quote";
     if (quoteUnavailable) return isDustQuoteAmount ? "Amount too small" : "No Jupiter route";
     if (!quoteReady) return "Waiting for quote";
-    if (priceImpactTooHigh) return "Price impact too high";
+    if (priceImpactTooHigh) return `${side === "buy" ? "Buy" : "Sell"} anyway`;
     if (!inputBalanceReady) return "Checking balance";
     if (!hasInputBalance) {
       return pair.inputSymbol === "SOL" ? "Keep SOL for fees" : `Deposit ${pair.inputSymbol} first`;
@@ -271,7 +271,6 @@ function SwapPanelCore({
   const primaryDisabled =
     isExecuting ||
     quoteQuery.isFetching ||
-    priceImpactTooHigh ||
     (isTradeTestMode && (!hasValidAmount || !quoteReady)) ||
     (!isTradeTestMode &&
       authenticated &&
@@ -360,14 +359,6 @@ function SwapPanelCore({
 
     if (!quoteReady) {
       setTradeError(quoteUnavailable ? quoteStatus : "Waiting for live Jupiter quote.");
-      return;
-    }
-
-    if (priceImpactTooHigh) {
-      const impact = quoteQuery.data?.priceImpactPct.toFixed(1);
-      setTradeError(
-        `Price impact${impact ? ` ${impact}%` : ""} is too high. Try a smaller amount or a higher-liquidity token.`,
-      );
       return;
     }
 
