@@ -40,7 +40,7 @@ const SOL_DECIMALS = 9;
 const USDC_DECIMALS = 6;
 const RECEIPT_KEY = "chadwallet-trade-receipts";
 const SOL_TRADE_FEE_RESERVE = 0.0022;
-const SOL_NEW_TOKEN_ACCOUNT_RESERVE = 0.0043;
+const SOL_NEW_TOKEN_ACCOUNT_RESERVE = 0.00412;
 const TOKEN_NOT_TRADABLE_PATTERN = /TOKEN_NOT_TRADABLE|not tradable/i;
 
 type TradeReceipt = TradeReceiptRecord;
@@ -287,7 +287,7 @@ function SwapPanelCore({
     if (!hasInputBalance) {
       return pair.inputSymbol === "SOL"
         ? needsNewTokenAccountRent
-          ? `Need ${formatTokenAmount(solBalanceShortfall)} SOL rent/fees`
+          ? `Need ${formatTokenAmount(solBalanceShortfall)} more SOL`
           : `Need ${formatTokenAmount(solBalanceShortfall)} more SOL`
         : `Deposit ${pair.inputSymbol} first`;
     }
@@ -648,7 +648,9 @@ function SwapPanelCore({
             ? "Paper mode - no wallet signature or on-chain transaction"
             : walletAddress
               ? !hasInputBalance && pair.inputSymbol === "SOL"
-                ? `${formatTokenAmount(inputBalance)} SOL available, need ${formatTokenAmount(solBalanceShortfall)} more${needsNewTokenAccountRent ? " for rent/fees" : ""}`
+                ? needsNewTokenAccountRent
+                  ? `${formatTokenAmount(inputBalance)} SOL available | ${formatTokenAmount(requiredInputBalance)} needed = ${formatTokenAmount(amt)} buy + ${formatTokenAmount(solTradeReserve)} setup`
+                  : `${formatTokenAmount(inputBalance)} SOL available, need ${formatTokenAmount(solBalanceShortfall)} more`
                 : `${formatTokenAmount(inputBalance)} ${pair.inputSymbol} available`
               : "Connect wallet to view balance"}
         </div>
