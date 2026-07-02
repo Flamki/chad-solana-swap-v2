@@ -111,19 +111,14 @@ async function buildLegacySwap(body: ValidOrderRequest) {
   }
 
   const simulatedFailure = simulationErrorMessage(swap.simulationError);
-  if (simulatedFailure) {
-    return NextResponse.json(
-      {
-        error: `Jupiter built a transaction but simulation failed: ${simulatedFailure}`,
-        router: "jupiter-legacy",
-      },
-      { status: 400 },
-    );
-  }
-
   if (!swap.swapTransaction) {
     return NextResponse.json(
-      { error: "Jupiter legacy swap did not return a transaction.", router: "jupiter-legacy" },
+      {
+        error: simulatedFailure
+          ? `Jupiter built a transaction but simulation failed: ${simulatedFailure}`
+          : "Jupiter legacy swap did not return a transaction.",
+        router: "jupiter-legacy",
+      },
       { status: 400 },
     );
   }
@@ -135,6 +130,7 @@ async function buildLegacySwap(body: ValidOrderRequest) {
     lastValidBlockHeight: swap.lastValidBlockHeight ? String(swap.lastValidBlockHeight) : undefined,
     prioritizationFeeLamports: swap.prioritizationFeeLamports,
     computeUnitLimit: swap.computeUnitLimit,
+    simulationError: simulatedFailure || undefined,
     router: "jupiter-legacy",
     mode: "legacy",
     source: "jupiter-legacy",

@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
             body.signedTransaction,
             {
               encoding: "base64",
-              skipPreflight: false,
+              skipPreflight: true,
               maxRetries: 3,
             },
           ],
