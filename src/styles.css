@@ -4,28 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@font-face {
-  font-family: "Aeonik";
-  src:
-    local("Aeonik Regular"),
-    local("Aeonik-Regular"),
-    url("/fonts/Aeonik-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: "Aeonik";
-  src:
-    local("Aeonik Medium"),
-    local("Aeonik-Medium"),
-    url("/fonts/Aeonik-Medium.woff2") format("woff2");
-  font-weight: 500 900;
-  font-style: normal;
-  font-display: swap;
-}
-
 /*
  * Design system definition.
  *

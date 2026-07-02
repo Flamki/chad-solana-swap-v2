@@ -2,6 +2,7 @@ import { useLogin, usePrivy } from "@privy-io/react-auth";
 import { useSignTransaction, useWallets } from "@privy-io/react-auth/solana";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  AlertTriangle,
   CheckCircle2,
   Copy,
   Download,
@@ -398,8 +399,9 @@ function SwapPanelCore({
       }
       const nextReceipt: TradeReceipt = {
         signature: result.signature,
-        status:
-          status?.confirmationStatus === "finalized"
+        status: status?.error
+          ? "failed"
+          : status?.confirmationStatus === "finalized"
             ? "finalized"
             : status?.confirmed
               ? "confirmed"
@@ -421,6 +423,14 @@ function SwapPanelCore({
       };
       setReceipt(nextReceipt);
       saveTradeReceipt(nextReceipt);
+
+      if (nextReceipt.status === "failed") {
+        setTradeError(
+          "Swap was sent but did not complete on-chain. Your wallet was not credited with this token. Try a smaller amount or a stronger route.",
+        );
+        return;
+      }
+
       const [, receiptStorage] = await Promise.allSettled([
         recordTokenIntent({
           wallet: walletAddress,
@@ -436,7 +446,7 @@ function SwapPanelCore({
         (receiptStorage.status === "fulfilled" && !receiptStorage.value.stored)
       ) {
         setTradeError(
-          "Swap succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+          "Swap completed on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
         );
       }
       await Promise.all([
@@ -642,11 +652,25 @@ function SwapPanelCore({
         )}
 
         {signature && receipt && (
-          <div className="rounded-lg border border-primary/30 bg-[#20d772]/10 p-2.5 text-[11px] text-primary">
+          <div
+            className={`rounded-lg border p-2.5 text-[11px] ${
+              receipt.status === "failed"
+                ? "border-[#ff5b45]/40 bg-[#ff5b45]/10 text-[#ff8d7c]"
+                : "border-primary/30 bg-[#20d772]/10 text-primary"
+            }`}
+          >
             <div className="flex items-center justify-between gap-3 font-semibold">
               <span className="inline-flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5 text-[#20d772]" />
-                {receipt.mode === "paper" ? "Paper swap" : `Swap ${receipt.status}`}
+                {receipt.status === "failed" ? (
+                  <AlertTriangle className="h-3.5 w-3.5 text-[#ff8d7c]" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[#20d772]" />
+                )}
+                {receipt.mode === "paper"
+                  ? "Paper swap"
+                  : receipt.status === "failed"
+                    ? "Swap not completed"
+                    : `Swap ${receipt.status}`}
               </span>
               <span className="font-mono">
                 {signature.slice(0, 6)}...{signature.slice(-6)}
@@ -674,20 +698,20 @@ function SwapPanelCore({
                   href={receipt.explorerUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex h-7 items-center justify-center gap-1 rounded-md border border-primary/30 bg-background/40 font-semibold"
+                  className="flex h-7 items-center justify-center gap-1 rounded-md border border-current/30 bg-background/40 font-semibold"
                 >
                   Solscan
                   <ExternalLink className="h-3 w-3" />
                 </a>
               ) : (
-                <div className="flex h-7 items-center justify-center rounded-md border border-primary/30 bg-background/40 font-semibold">
+                <div className="flex h-7 items-center justify-center rounded-md border border-current/30 bg-background/40 font-semibold">
                   Paper only
                 </div>
               )}
               <button
                 type="button"
                 onClick={() => downloadTradeReceipt(receipt)}
-                className="flex h-7 items-center justify-center gap-1 rounded-md border border-primary/30 bg-background/40 font-semibold"
+                className="flex h-7 items-center justify-center gap-1 rounded-md border border-current/30 bg-background/40 font-semibold"
               >
                 Receipt
                 <Download className="h-3 w-3" />

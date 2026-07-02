@@ -67,7 +67,7 @@ export type SolanaTransactionStatus = {
 
 export type TradeReceiptRecord = {
   signature: string;
-  status: "paper" | "submitted" | "confirmed" | "finalized";
+  status: "paper" | "submitted" | "confirmed" | "finalized" | "failed";
   slot: number | null;
   wallet: string;
   mode: "paper" | "mainnet";
