@@ -851,6 +851,7 @@ export async function recordTokenIntent(intent: {
 export async function recordTradeReceipt(receipt: TradeReceiptRecord) {
   if (receipt.mode !== "mainnet") return { stored: false };
   if (receipt.status === "failed") return { stored: false, reason: "failed" };
+  if (receipt.status === "submitted") return { stored: false, reason: "submitted" };
 
   const response = await fetch("/api/trade/receipt", {
     method: "POST",
@@ -912,6 +913,7 @@ export async function fetchStoredTradeReceipts(wallet: string, signal?: AbortSig
     .from("trade_receipts")
     .select(tradeReceiptSelect)
     .eq("wallet", wallet)
+    .in("status", ["confirmed", "finalized"])
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -931,7 +933,7 @@ export async function fetchAppFeedTrades(signal?: AbortSignal): Promise<AppFeedT
     .from("trade_receipts")
     .select(tradeReceiptSelect)
     .eq("mode", "mainnet")
-    .in("status", ["submitted", "confirmed", "finalized"])
+    .in("status", ["confirmed", "finalized"])
     .order("created_at", { ascending: false })
     .limit(80);
 
@@ -1348,6 +1350,7 @@ export async function fetchAppLeaderboard(
       "wallet,side,input_symbol,output_symbol,input_amount,output_amount,created_at,mode,status",
     )
     .eq("mode", "mainnet")
+    .in("status", ["confirmed", "finalized"])
     .order("created_at", { ascending: false })
     .limit(1000);
 

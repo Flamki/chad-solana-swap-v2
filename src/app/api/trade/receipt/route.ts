@@ -21,7 +21,7 @@ type TradeReceiptPayload = {
   explorerUrl?: string;
 };
 
-const allowedStatuses = new Set(["submitted", "confirmed", "finalized"]);
+const allowedStatuses = new Set(["confirmed", "finalized"]);
 const allowedSides = new Set(["buy", "sell"]);
 
 export async function POST(request: Request) {
@@ -32,8 +32,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ stored: false, reason: "not-mainnet" });
     }
 
-    if (receipt.status === "failed") {
-      return NextResponse.json({ stored: false, reason: "failed" });
+    if (receipt.status === "failed" || receipt.status === "submitted") {
+      return NextResponse.json({ stored: false, reason: receipt.status });
     }
 
     if (
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     }
 
     const receiptSide = receipt.side as "buy" | "sell";
-    const receiptStatus = receipt.status as "submitted" | "confirmed" | "finalized";
+    const receiptStatus = receipt.status as "confirmed" | "finalized";
 
     const supabase = getSupabaseServerClient();
     if (!supabase) {
@@ -72,12 +72,15 @@ export async function POST(request: Request) {
       }),
     );
 
-    const storedStatus =
-      verification.status === "verified"
-        ? "confirmed"
-        : verification.status === "failed"
-          ? "submitted"
-          : receiptStatus;
+    if (verification.status !== "verified") {
+      return NextResponse.json({
+        stored: false,
+        reason: verification.status,
+        verificationStatus: verification.status,
+      });
+    }
+
+    const storedStatus = receiptStatus === "finalized" ? "finalized" : "confirmed";
 
     const { error } = await supabase.from("trade_receipts").upsert(
       {

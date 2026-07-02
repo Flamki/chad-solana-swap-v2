@@ -583,7 +583,7 @@ export function TradePage({
       const mainnetReceipts = receipts.filter(
         (receipt) =>
           receipt.mode === "mainnet" &&
-          receipt.status !== "failed" &&
+          (receipt.status === "confirmed" || receipt.status === "finalized") &&
           receipt.wallet?.toLowerCase() === walletAddress.toLowerCase() &&
           receipt.signature,
       );

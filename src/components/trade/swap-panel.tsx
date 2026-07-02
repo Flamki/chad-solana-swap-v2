@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   CheckCircle2,
+  Clock3,
   Copy,
   Download,
   ExternalLink,
@@ -361,6 +362,15 @@ function SwapPanelCore({
     setSignature("");
     setReceipt(null);
     try {
+      const freshQuote = await quoteQuery.refetch();
+      if (!freshQuote.data) {
+        throw new Error(
+          freshQuote.error instanceof Error
+            ? freshQuote.error.message
+            : "Fresh Jupiter quote is not available.",
+        );
+      }
+
       const order = await createJupiterSwapOrder({
         inputMint: pair.inputMint,
         outputMint: pair.outputMint,
@@ -417,11 +427,11 @@ function SwapPanelCore({
       setReceipt(nextReceipt);
       saveTradeReceipt(nextReceipt);
 
-      if (nextReceipt.status === "failed") {
+      if (nextReceipt.status === "failed" || nextReceipt.status === "submitted") {
         return;
       }
 
-      const [, receiptStorage] = await Promise.allSettled([
+      await Promise.allSettled([
         recordTokenIntent({
           wallet: walletAddress,
           mint: token.mint,
@@ -431,14 +441,6 @@ function SwapPanelCore({
         }),
         recordTradeReceipt(nextReceipt),
       ]);
-      if (
-        receiptStorage.status === "rejected" ||
-        (receiptStorage.status === "fulfilled" && !receiptStorage.value.stored)
-      ) {
-        setTradeError(
-          "Swap completed on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
-        );
-      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["token-position", walletAddress] }),
         queryClient.invalidateQueries({ queryKey: ["wallet-token-positions", walletAddress] }),
@@ -539,8 +541,8 @@ function SwapPanelCore({
               disabled={!inputBalanceReady || inputBalance <= 0}
               onClick={() => {
                 const maxSpendable =
-                  pair.inputSymbol === "SOL"
-                    ? Math.max(inputBalance - SOL_TRADE_FEE_RESERVE, 0)
+                  pair.inputSymbol === "SOL" && inputBalance > SOL_TRADE_FEE_RESERVE
+                    ? inputBalance - SOL_TRADE_FEE_RESERVE
                     : inputBalance;
                 setAmount(formatAmountForInput((maxSpendable * percent) / 100, pair.inputDecimals));
                 setSelectedPercent(percent);
@@ -639,13 +641,17 @@ function SwapPanelCore({
             className={`rounded-lg border p-2.5 text-[11px] ${
               receipt.status === "failed"
                 ? "border-[#ff5b45]/40 bg-[#ff5b45]/10 text-[#ff8d7c]"
-                : "border-primary/30 bg-[#20d772]/10 text-primary"
+                : receipt.status === "submitted"
+                  ? "border-[#7567ff]/35 bg-[#7567ff]/10 text-[#c7c2ff]"
+                  : "border-primary/30 bg-[#20d772]/10 text-primary"
             }`}
           >
             <div className="flex items-center justify-between gap-3 font-semibold">
               <span className="inline-flex items-center gap-1.5">
                 {receipt.status === "failed" ? (
                   <AlertTriangle className="h-3.5 w-3.5 text-[#ff8d7c]" />
+                ) : receipt.status === "submitted" ? (
+                  <Clock3 className="h-3.5 w-3.5 text-[#c7c2ff]" />
                 ) : (
                   <CheckCircle2 className="h-3.5 w-3.5 text-[#20d772]" />
                 )}
@@ -653,7 +659,9 @@ function SwapPanelCore({
                   ? "Paper swap"
                   : receipt.status === "failed"
                     ? "Swap not completed"
-                    : `Swap ${receipt.status}`}
+                    : receipt.status === "submitted"
+                      ? "Swap submitted"
+                      : `Swap ${receipt.status}`}
               </span>
               <span className="font-mono">
                 {signature.slice(0, 6)}...{signature.slice(-6)}
