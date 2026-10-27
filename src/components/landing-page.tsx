@@ -1,58 +1,89 @@
-import Image, { type StaticImageData } from "next/image";
+import type { ReactNode } from "react";
+import { ArrowDownUp, ChartCandlestick, Clock3, Search, Wallet, Zap } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
+import { BrandName } from "@/components/brand-name";
+import { CinematicScene } from "@/components/landing/cinematic-scene";
 import { DownloadAppButton } from "@/components/landing/download-app-button";
-import { FAQSection } from "@/components/landing/faq-section";
-import { LazyVideo } from "@/components/landing/lazy-video";
 import { LazySignInButton } from "@/components/landing/lazy-sign-in-button";
-import { MarketTicker } from "@/components/landing/market-ticker";
+import { StoreBadges } from "@/components/landing/store-badges";
+import { TrendingCoinTicker } from "@/components/landing/trending-coin-ticker";
+import { BRAND } from "@/lib/brand";
 
-import buySell from "@/assets/flow/buy-sell-4.png";
-import kol from "@/assets/flow/kol-4.png";
-import launch from "@/assets/flow/launch-4.png";
-import memecoin from "@/assets/flow/memecoin-4.png";
-import portfolio from "@/assets/flow/portfolio-4.png";
-import relaunch from "@/assets/flow/relaunch-4.png";
-import chadLogo from "@/assets/logo/dark.png";
-
-const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
-const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
-const SOL_TRADE = "/trade/So11111111111111111111111111111111111111112";
-const STORE_BADGES = "/assets/landing/store-badges-v3-cropped.png";
+const SOL_TRADE = BRAND.tradeHref;
 const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
-const HERO_CHARACTER = "/assets/landing/astronaut-hq.png";
 const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
 const PHONE_MOCKUP = "/assets/landing/phone-mockup.png";
-const PHONE_CLEAN = "/assets/video/MAKE_VIDEO_NOT_IMAGE-Picsart-BackgroundRemover.webm";
-const PHONE_CLEAN_FALLBACK = "/assets/video/MAKE_VIDEO_NOT_IMAGE.mp4";
-const PHONE_VIDEO = "/assets/video/chadwallet.mp4";
-const FOOTER_IMAGE = "/assets/landing/chad-footer.png";
+const FOOTER_IMAGE = BRAND.footer;
 
-function StoreBadges({ className = "" }: { className?: string }) {
+type FeatureCardProps = {
+  eyebrow: string;
+  title: string;
+  children: ReactNode;
+  className?: string;
+  visualClassName?: string;
+};
+
+function FeatureCard({
+  eyebrow,
+  title,
+  children,
+  className = "",
+  visualClassName = "",
+}: FeatureCardProps) {
   return (
-    <div className={`relative inline-flex items-center ${className}`}>
-      <Image
-        src={STORE_BADGES}
-        alt="Download ChadWallet on the App Store and Google Play"
-        width={1482}
-        height={264}
-        sizes="296px"
-        className="h-14 w-auto object-contain"
-      />
-      <a
-        href={IOS}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute inset-y-0 left-0 w-1/2"
-        aria-label="Download on the App Store"
-      />
-      <a
-        href={ANDROID}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute inset-y-0 right-0 w-1/2"
-        aria-label="Get it on Google Play"
-      />
+    <article
+      className={`relative flex aspect-[1/1] min-h-[440px] flex-col overflow-hidden rounded-[25px] border border-white/[0.06] bg-[#12111a] px-7 pb-0 pt-8 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:px-9 lg:min-h-[478px] ${className}`}
+    >
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#151420] via-[#101018]/75 to-transparent" />
+      <p className="relative z-10 font-mono text-[13px] font-bold uppercase tracking-[0.17em] text-[#5f7cff] sm:text-[14px]">
+        {eyebrow}
+      </p>
+      <h3 className="relative z-10 mt-5 max-w-[430px] text-[clamp(2rem,2.25vw,2.62rem)] font-bold leading-[1.08] text-white">
+        {title}
+      </h3>
+      <div
+        className={`absolute inset-x-0 bottom-0 z-0 flex h-[56%] items-end justify-center ${visualClassName}`}
+      >
+        {children}
+      </div>
+    </article>
+  );
+}
+
+function FeatureVisual({
+  icon: Icon,
+  label,
+  details,
+}: {
+  icon: typeof Search;
+  label: string;
+  details: string[];
+}) {
+  return (
+    <div
+      aria-hidden="true"
+      className="relative mb-[-12px] w-[84%] max-w-[390px] rounded-t-[24px] border border-white/10 bg-[#0b0a13]/90 p-5 text-left shadow-[0_0_70px_rgba(91,93,238,0.16)] sm:p-6"
+    >
+      <div className="mb-6 flex items-center gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-xl border border-indigo-300/20 bg-indigo-400/10 text-indigo-300">
+          <Icon className="h-5 w-5" />
+        </span>
+        <span className="text-sm font-semibold text-white/90">{label}</span>
+      </div>
+      <div className="space-y-3">
+        {details.map((detail) => (
+          <div
+            key={detail}
+            className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3"
+          >
+            <span className="h-2 w-2 rounded-full bg-indigo-400/80" />
+            <span className="text-sm text-white/65">{detail}</span>
+            <span className="ml-auto h-1.5 w-8 rounded-full bg-white/10" />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -60,327 +91,209 @@ function StoreBadges({ className = "" }: { className?: string }) {
 export function Landing() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-white">
-      <section className="relative min-h-[85vh] w-full overflow-hidden">
-        <Image
-          src={HERO_BACKGROUND}
-          alt=""
-          fill
-          priority
-          fetchPriority="high"
-          quality={80}
-          sizes="100vw"
-          className="absolute inset-0 h-full w-full object-cover opacity-90"
-        />
+      <section className="soll-hero relative w-full overflow-hidden">
+        <div className="soll-hero-backdrop">
+          <Image
+            src={HERO_BACKGROUND}
+            alt=""
+            fill
+            priority
+            fetchPriority="high"
+            quality={80}
+            sizes="100vw"
+            className="absolute inset-0 h-full w-full object-cover opacity-90"
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" />
 
         <nav className="relative z-20 flex items-center justify-between px-4 pb-2 pt-3 md:px-6 md:pt-4">
-          <div className="-ml-1 flex items-center gap-2.5 sm:gap-3">
-            <Image
-              src={chadLogo}
-              alt="ChadWallet logo"
-              width={40}
-              height={40}
-              priority
-              className="h-9 w-9 rounded-full bg-white object-contain ring-1 ring-white/10 sm:h-10 sm:w-10"
-            />
-            <span className="text-2xl font-extrabold tracking-tight sm:text-3xl">ChadWallet</span>
-          </div>
+          <Link href="/" aria-label="soll home" className="py-2">
+            <BrandName size="lg" showTagline={false} />
+          </Link>
           <div className="flex items-center gap-2 md:gap-3">
             <StoreBadges className="hidden sm:flex" />
-            <LazySignInButton redirectTo={SOL_TRADE} />
+            <LazySignInButton redirectTo={SOL_TRADE} preferTrending />
           </div>
         </nav>
 
-        <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-6 pb-12 pt-16 text-center md:pb-16 md:pt-24">
-          <h1 className="text-[12vw] font-black leading-none tracking-tight text-white/90 drop-shadow-[0_0_60px_rgba(120,140,255,0.25)] sm:text-[9rem] md:text-[11rem]">
-            ChadWallet
-          </h1>
-          <p className="mt-2 text-xl font-semibold sm:text-2xl md:text-3xl">
-            The fastest way to trade Solana.
+        <div className="soll-hero-copy relative z-20 mx-auto flex max-w-6xl flex-col items-center px-6 pt-12 text-center md:pt-16">
+          <h1 className="soll-wordmark">{BRAND.name}</h1>
+          <p className="mt-5 text-xl font-semibold sm:text-2xl md:text-3xl">
+            A clearer way to trade on Solana.
           </p>
           <p className="mt-3 max-w-xl text-xs text-blue-200/70 sm:text-sm">
-            Buy, sell, and copy-trade any token - from viral launches to the wallets that print.
+            Trade SOL and USDC. Your next move starts here.
           </p>
 
           <div className="relative z-20 mt-6 flex flex-wrap items-center justify-center gap-3">
-            <Link
-              href={SOL_TRADE}
-              className="rounded-full bg-white/[0.06] px-7 py-2.5 text-sm font-semibold ring-1 ring-white/[0.18] backdrop-blur transition hover:bg-white/[0.10]"
-            >
-              Start trading
-            </Link>
             <DownloadAppButton />
+            <div className="soll-cta-primary">
+              <LazySignInButton redirectTo={SOL_TRADE} preferTrending label="Start trading" />
+            </div>
           </div>
-
-          <Image
-            src={HERO_CHARACTER}
-            alt="ChadWallet trader floating in space with a satellite"
-            width={1254}
-            height={1254}
-            priority
-            quality={80}
-            sizes="(min-width: 768px) 840px, (min-width: 640px) 760px, 108vw"
-            className="pointer-events-none mt-[-4.15rem] w-[min(680px,108vw)] max-w-none select-none animate-float sm:mt-[-6.65rem] sm:w-[min(760px,105%)] md:mt-[-8.15rem] md:w-[min(840px,100%)]"
-          />
         </div>
+        <CinematicScene />
       </section>
 
-      <section className="landing-deferred relative px-6 pb-16 pt-2 md:pb-24 md:pt-4">
-        <div className="relative -mt-16 md:-mt-24">
-          <MarketTicker />
-        </div>
-
-        <div className="mx-auto mt-12 max-w-6xl text-center md:mt-16">
+      <section className="landing-deferred relative select-none overflow-hidden px-6 pb-10 pt-4 md:pb-16 md:pt-6">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_75%,rgba(76,70,220,0.25),transparent_58%)]" />
+        <div className="relative mx-auto max-w-6xl text-center">
           <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
             NOW AVAILABLE ON WEB
           </p>
-          <h2 className="mt-6 text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
-            trade from anywhere.
+          <h2 className="mt-3 text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
+            trade on the web.
             <br />
             never lose a beat.
           </h2>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-blue-200/70">
-            Open a trade on your phone, close it on your desktop - all in one app.
+          <p className="mx-auto mt-3 max-w-2xl text-lg text-blue-200/70">
+            Explore markets and trade SOL and USDC from your desktop.
           </p>
 
-          <div className="relative mt-20">
-            <div className="absolute inset-x-[8%] bottom-[4%] top-[8%] rounded-full bg-indigo-600/18 blur-3xl" />
-            <Image
-              src={TRADING_DASHBOARD}
-              alt="ChadWallet web trading dashboard with live charts, token list, and swap panel"
-              width={1535}
-              height={700}
-              quality={75}
-              sizes="(min-width: 1280px) 1152px, 92vw"
-              className="relative mx-auto w-full max-w-[1536px] rounded-xl border border-white/10 shadow-[0_38px_120px_rgba(0,0,0,0.68)]"
-            />
-            <Image
-              src={PHONE_MOCKUP}
-              alt="ChadWallet mobile app showing trending tokens"
-              width={1167}
-              height={1347}
-              quality={75}
-              sizes="(min-width: 768px) 30vw, 42vw"
-              className="pointer-events-none absolute bottom-[-17%] right-[-8%] z-10 w-[42%] max-w-[560px] select-none drop-shadow-[0_35px_70px_rgba(99,102,241,0.34)] animate-float sm:bottom-[-19%] sm:right-[-3%] sm:w-[35%] md:bottom-[-22%] md:right-[2%] md:w-[30%]"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-deferred border-t border-white/5 px-6 pb-8 pt-24">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-6 flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-            <p className="font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
-              INSIDE THE APP
-            </p>
-          </div>
-          <div className="grid items-end gap-8 md:grid-cols-2">
-            <h2 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
-              Built for the
-              <br />
-              <span className="bg-gradient-to-r from-white/40 to-white bg-clip-text text-transparent">
-                fastest fingers
-              </span>{" "}
-              on Solana.
-            </h2>
-            <p className="max-w-md text-base text-white/60 sm:text-lg md:justify-self-end">
-              Every screen ships with the trader in mind - discover, ape, track and cash out without
-              ever leaving the wallet.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-deferred relative mt-12 overflow-hidden py-16 md:py-24">
-        <div className="relative mx-auto h-[58vw] min-h-[460px] max-h-[820px] w-full max-w-7xl overflow-visible [perspective:1400px]">
-          <div className="relative h-full w-full overflow-visible [transform-style:preserve-3d] animate-phone-depth">
-            <LazyVideo
-              sources={[
-                { src: PHONE_CLEAN, type: "video/webm" },
-                { src: PHONE_CLEAN_FALLBACK, type: "video/mp4" },
-              ]}
-              className="absolute inset-0 z-10 block h-full w-full scale-[1.15] object-cover object-center"
-            />
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-deferred relative border-t border-white/5 px-6 pb-24 pt-8">
-        <div className="mx-auto max-w-7xl">
-          <div className="mb-8 flex items-center gap-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-            <p className="font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">THE FLOW</p>
-          </div>
-          <div className="mb-14 grid items-end gap-8 md:grid-cols-2">
-            <h2 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
-              One wallet.
-              <br />
-              Every play.
-            </h2>
-            <p className="max-w-md text-base text-white/50 sm:text-lg md:justify-self-end">
-              From the first deposit to the next launch - the entire trader loop, designed
-              end-to-end.
-            </p>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2">
-            {[
-              {
-                src: memecoin,
-                title: "Catch early trends on X",
-                step: "01 / HUNT",
-                tagline: "Find the next memecoin.",
-              },
-              {
-                src: buySell,
-                title: "Buy & sell trending tokens",
-                step: "02 / EXECUTE",
-                tagline: "Buy & sell in one tap.",
-              },
-              {
-                src: kol,
-                title: "Follow KOL traders",
-                step: "03 / COPY",
-                tagline: "Mirror the winners.",
-              },
-              {
-                src: portfolio,
-                title: "Manage your assets",
-                step: "04 / TRACK",
-                tagline: "Watch the bags move.",
-              },
-              {
-                src: launch,
-                title: "Launch a memecoin from a tweet",
-                step: "05 / LAUNCH",
-                tagline: "Be early. Every time.",
-              },
-              {
-                src: relaunch,
-                title: "Relaunch a memecoin",
-                step: "06 / ROTATE",
-                tagline: "Recycle into the next.",
-              },
-            ].map(
-              (card: { src: StaticImageData; title: string; step: string; tagline: string }) => (
-                <div
-                  key={card.title}
-                  className="group relative flex aspect-[16/10] flex-col overflow-hidden rounded-3xl bg-gradient-to-b from-sky-400 via-sky-500/80 to-black ring-1 ring-white/10"
-                >
-                  <p className="relative z-10 pt-5 text-center text-sm font-semibold text-white sm:text-base">
-                    {card.title}
-                  </p>
-                  <div className="relative mt-3 flex flex-1 items-end justify-center px-4 sm:px-6">
-                    <Image
-                      src={card.src}
-                      alt={card.title}
-                      fill
-                      quality={70}
-                      sizes="(min-width: 768px) 50vw, 100vw"
-                      className="pointer-events-none select-none object-contain object-bottom"
-                    />
-                  </div>
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black via-black/80 to-transparent" />
-                  <div className="absolute bottom-6 left-6 z-10 sm:bottom-7 sm:left-8">
-                    <p className="mb-2 font-mono text-[10px] font-bold tracking-[0.3em] text-indigo-300 sm:text-xs">
-                      {card.step}
-                    </p>
-                    <p className="text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-                      {card.tagline}
-                    </p>
-                  </div>
-                </div>
-              ),
-            )}
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-deferred relative border-t border-white/5 px-6 py-28">
-        <div className="mx-auto max-w-6xl text-center">
-          <p className="mb-4 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
-            ON THE TIMELINE
-          </p>
-          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-            what chads are saying.
-          </h2>
-          <div className="mt-14 grid gap-5 text-left md:grid-cols-3">
-            {[
-              {
-                quote: "switched from phantom and never looked back. fills are insane.",
-                handle: "@solwhale",
-              },
-              {
-                quote: "apple pay to SOL in 10 seconds. this should not be legal.",
-                handle: "@degenmom",
-              },
-              {
-                quote: "first wallet that does not make me feel like i am doing taxes.",
-                handle: "@chartfrog",
-              },
-            ].map((item) => (
-              <div
-                key={item.handle}
-                className="rounded-2xl bg-white/[0.02] p-6 ring-1 ring-white/10 transition hover:bg-white/[0.04] hover:ring-indigo-400/30"
-              >
-                <p className="text-sm leading-relaxed text-white/80 sm:text-base">
-                  &quot;{item.quote}&quot;
-                </p>
-                <p className="mt-6 font-mono text-xs text-white/40">{item.handle}</p>
+          <div className="relative mt-8 md:mt-10">
+            <div className="pointer-events-none absolute -inset-x-[8%] -bottom-[12%] top-[10%] rounded-full bg-indigo-600/30 blur-[100px]" />
+            <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#06070b] shadow-[0_38px_120px_rgba(0,0,0,0.68)]">
+              <div className="flex h-14 items-center border-b border-white/10 px-5 text-xl font-bold tracking-tight text-white sm:px-7">
+                {BRAND.name}
+                <span className="ml-auto hidden rounded-full border border-white/10 px-4 py-1.5 text-xs font-normal text-white/40 sm:block">
+                  Web trading preview
+                </span>
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-deferred relative border-t border-white/5 px-6 pb-12 pt-28 text-center">
-        <p className="mb-5 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
-          NOW AVAILABLE ON WEB & MOBILE
-        </p>
-        <h2 className="text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
-          trade from anywhere.
-          <br />
-          never lose a beat.
-        </h2>
-        <div className="mt-10 flex items-center justify-center">
-          <StoreBadges />
-        </div>
-      </section>
-
-      <section className="landing-deferred relative flex items-center justify-center px-6 pb-20 pt-16 md:pb-32 md:pt-24">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black to-transparent" />
-        <div className="relative w-full max-w-[420px] animate-float sm:max-w-[520px] md:max-w-[600px]">
-          <div className="relative rounded-[3.5rem] bg-black p-1.5 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.7)] ring-1 ring-white/[0.08]">
-            <div
-              className="relative overflow-hidden rounded-[3rem] bg-black"
-              style={{ aspectRatio: "9 / 19.3" }}
-            >
-              <div className="absolute left-1/2 top-3 z-20 h-6 w-24 -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.15)]" />
-              <LazyVideo
-                sources={[{ src: PHONE_VIDEO, type: "video/mp4" }]}
-                className="absolute inset-0 h-full w-full object-cover"
+              <div className="relative aspect-[1535/630] overflow-hidden">
+                <Image
+                  src={TRADING_DASHBOARD}
+                  alt="Preview of a Solana trading dashboard with charts, tokens, and a swap panel"
+                  width={1535}
+                  height={700}
+                  quality={75}
+                  sizes="(min-width: 1280px) 1152px, 92vw"
+                  className="absolute bottom-0 left-0 w-full max-w-none"
+                />
+              </div>
+            </div>
+            <div className="pointer-events-none absolute bottom-[-5%] right-[-8%] z-20 w-[42%] max-w-[460px] animate-float sm:right-[-3%] sm:w-[35%] md:bottom-[-7%] md:right-[-3%] md:w-[30%]">
+              <Image
+                src={PHONE_MOCKUP}
+                alt="Illustrative mobile trading preview"
+                width={1167}
+                height={1347}
+                quality={75}
+                sizes="(min-width: 768px) 30vw, 42vw"
+                className="w-full select-none drop-shadow-[0_35px_70px_rgba(99,102,241,0.5)]"
               />
-              <div className="absolute bottom-2 left-1/2 z-20 h-1 w-28 -translate-x-1/2 rounded-full bg-white/20" />
+              <span className="absolute bottom-[5%] right-[3%] rounded-full border border-white/20 bg-[#0a0b18]/75 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/80 backdrop-blur-xl sm:text-[10px]">
+                Mobile coming soon
+              </span>
             </div>
           </div>
         </div>
       </section>
 
-      <FAQSection />
-      <MarketTicker compact reverse />
+      <div className="landing-deferred relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-x-[-24%] top-[24%] bottom-[-8rem] bg-[radial-gradient(ellipse_at_center,rgba(73,72,210,0.2)_0%,rgba(18,16,58,0.18)_42%,rgba(0,0,0,0)_78%)]" />
+        <div className="pointer-events-none absolute left-1/2 top-[64%] h-[36rem] w-[56rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-700/18 blur-[130px]" />
 
-      <section
-        className="landing-deferred relative w-full overflow-hidden bg-black leading-none"
-        style={{ aspectRatio: "1254 / 525" }}
-      >
+        <section className="relative z-10 mx-auto max-w-7xl px-6 pb-8 pt-16 md:pb-12 md:pt-24">
+          <div className="grid items-end gap-6 border-t border-white/10 pt-8 md:grid-cols-2 md:gap-12 md:pt-12">
+            <div>
+              <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
+                BUILT FOR THE MOMENT
+              </p>
+              <h2 className="mt-5 max-w-2xl text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
+                The market moves fast.
+                <span className="block text-white/45">Stay in your element.</span>
+              </h2>
+            </div>
+            <p className="max-w-md text-base leading-relaxed text-white/60 sm:text-lg md:justify-self-end">
+              Discover opportunities, follow the market, and make your next move with soll.
+            </p>
+          </div>
+        </section>
+
+        <section className="relative z-10 px-5 pb-12 pt-6 sm:px-6 md:pb-16 md:pt-8">
+          <div className="mx-auto grid max-w-[1644px] grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            <FeatureCard eyebrow="DISCOVER" title="explore Solana markets">
+              <FeatureVisual
+                icon={Search}
+                label="Token discovery"
+                details={["Trending tokens", "Search by name or mint", "Market information"]}
+              />
+            </FeatureCard>
+
+            <FeatureCard eyebrow="CHARTS" title="follow the market in real time">
+              <FeatureVisual
+                icon={ChartCandlestick}
+                label="Market view"
+                details={["Price charts", "Trading activity", "Token details"]}
+              />
+            </FeatureCard>
+
+            <FeatureCard eyebrow="SWAP" title="trade with Jupiter routes">
+              <FeatureVisual
+                icon={ArrowDownUp}
+                label="Swap on Solana"
+                details={["Review a quote", "Check the route", "Confirm in your wallet"]}
+              />
+            </FeatureCard>
+
+            <FeatureCard eyebrow="ACTIVITY" title="see recent market activity">
+              <FeatureVisual
+                icon={Clock3}
+                label="Market activity"
+                details={["Recent trades", "Token holders", "Market data"]}
+              />
+            </FeatureCard>
+
+            <FeatureCard eyebrow="WALLET" title="keep your wallet within reach">
+              <FeatureVisual
+                icon={Wallet}
+                label="Your wallet"
+                details={["View balances", "Receive assets", "Manage your account"]}
+              />
+            </FeatureCard>
+
+            <FeatureCard eyebrow="SIGN IN" title="get started with email or a wallet">
+              <FeatureVisual
+                icon={Zap}
+                label="Sign in to soll"
+                details={["Email", "Twitter", "Connect a wallet"]}
+              />
+            </FeatureCard>
+          </div>
+        </section>
+      </div>
+
+      <section className="landing-deferred relative px-6 pb-8 pt-8 text-center md:pt-10">
+        <p className="mb-4 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
+          ON WEB NOW. MOBILE COMING SOON.
+        </p>
+        <h2 className="text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
+          trade on the web.
+          <br />
+          stay in the moment.
+        </h2>
+        <div className="mt-7 flex items-center justify-center">
+          <StoreBadges />
+        </div>
+      </section>
+
+      <TrendingCoinTicker />
+
+      <section className="soll-outro landing-deferred" aria-label="soll astronaut in space">
+        <div className="soll-outro-halo" aria-hidden="true" />
+        <div className="soll-outro-orbit soll-outro-orbit-one" aria-hidden="true" />
+        <div className="soll-outro-orbit soll-outro-orbit-two" aria-hidden="true" />
+        <div className="soll-outro-word" aria-hidden="true">
+          {BRAND.name}
+        </div>
         <Image
           src={FOOTER_IMAGE}
-          alt="Chad trader lying on a stack of cash, watching a Solana chart on his phone"
-          fill
-          quality={75}
-          sizes="100vw"
-          className="absolute inset-0 block h-full w-full select-none object-cover object-[center_51%]"
+          alt="soll astronaut sitting on a floating asteroid with a tablet"
+          width={1536}
+          height={1024}
+          quality={80}
+          sizes="(min-width: 1280px) 1200px, 100vw"
+          className="soll-outro-astronaut"
         />
       </section>
     </div>

@@ -6,8 +6,20 @@ import { tradesFromFallbackProviders } from "@/lib/server/market-fallback";
 export const revalidate = 10;
 
 export async function GET(_request: Request, context: { params: Promise<{ mint: string }> }) {
+  const { mint } = await context.params;
+
   try {
-    const { mint } = await context.params;
+    return NextResponse.json({
+      data: await tradesFromFallbackProviders(mint),
+      status: "live",
+      updatedAt: new Date().toISOString(),
+      provider: "geckoterminal",
+    });
+  } catch (error) {
+    console.error("GeckoTerminal trades unavailable", error);
+  }
+
+  try {
     const result = await birdeyeJsonWithMeta<{
       items?: Parameters<typeof tradesFromBirdeye>[0];
     }>(`/defi/txs/token?address=${encodeURIComponent(mint)}&offset=0&limit=25&tx_type=swap`, {
@@ -22,21 +34,11 @@ export async function GET(_request: Request, context: { params: Promise<{ mint: 
     });
   } catch (error) {
     console.error("BirdEye trades unavailable", error);
-    try {
-      const { mint } = await context.params;
-      return NextResponse.json({
-        data: await tradesFromFallbackProviders(mint),
-        status: "live",
-        updatedAt: new Date().toISOString(),
-        provider: "geckoterminal",
-      });
-    } catch {
-      return NextResponse.json({
-        data: [],
-        status: "unavailable",
-        updatedAt: new Date().toISOString(),
-        provider: "birdeye",
-      });
-    }
+    return NextResponse.json({
+      data: [],
+      status: "unavailable",
+      updatedAt: new Date().toISOString(),
+      provider: "geckoterminal",
+    });
   }
 }

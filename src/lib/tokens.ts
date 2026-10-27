@@ -15,6 +15,15 @@ export interface Token {
   liquidity?: number;
   rank?: number;
   source?: "static" | "birdeye" | "jupiter" | "dexscreener" | "geckoterminal";
+  poolDex?: string;
+  poolCreatedAt?: string;
+  description?: string;
+  websites?: string[];
+  twitter?: string;
+  telegram?: string;
+  discord?: string;
+  geckoTerminalUrl?: string;
+  dexScreenerUrl?: string;
 }
 
 export const TOKENS: Token[] = [
@@ -159,6 +168,8 @@ export const TOKENS: Token[] = [
     source: "static",
   },
 ];
+
+export const CRYPTO_TOKEN_MINTS = TOKENS.map((token) => token.mint);
 
 export const getToken = (mint: string) => TOKENS.find((token) => token.mint === mint);
 
