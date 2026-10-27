@@ -2,29 +2,23 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Monitor } from "lucide-react";
 
-import chadLogoIcon from "@/assets/logo/dark.png";
-import { assetUrl } from "@/lib/asset-url";
 import { Providers } from "@/app/providers";
-import { ChadLogo } from "@/components/chad-logo";
+import { BrandName } from "@/components/brand-name";
+import { AppComingSoonButton } from "@/components/landing/download-app-button";
 import "@/styles.css";
 
 export const metadata: Metadata = {
-  title: "ChadWallet - Trade Solana Like a Chad",
+  title: "soll - Trade the moment.",
   description:
     "The Solana wallet for traders. Buy and sell any token in seconds. Apple Pay, gasless, social-first.",
-  authors: [{ name: "ChadWallet" }],
+  authors: [{ name: "soll" }],
   openGraph: {
-    title: "ChadWallet - Trade Solana Like a Chad",
+    title: "soll - Trade the moment.",
     description: "The Solana wallet for traders. Buy and sell any token in seconds.",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    site: "@chadwallet",
-  },
-  icons: {
-    icon: [{ url: assetUrl(chadLogoIcon), type: "image/png" }],
-    apple: [{ url: assetUrl(chadLogoIcon), type: "image/png" }],
   },
 };
 
@@ -42,23 +36,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <div className="flex flex-col items-center text-center gap-6">
               {/* Brand Logo */}
               <div className="flex items-center">
-                <ChadLogo variant="dark" size="lg" showTagline={false} />
+                <BrandName variant="dark" size="lg" showTagline={false} />
               </div>
 
               {/* Tagline */}
               <div className="flex flex-col gap-2 max-w-[280px]">
                 <h2 className="text-[20px] font-bold text-white leading-tight">
-                  Download the app to start trading
+                  Mobile trading is coming soon
                 </h2>
               </div>
 
               {/* App store download buttons */}
               <div className="flex flex-col gap-3 mt-4 w-full max-w-[220px]">
                 {/* iOS App Store */}
-                <a
-                  href="https://apps.apple.com"
-                  target="_blank"
-                  rel="noreferrer"
+                <AppComingSoonButton
+                  platform="ios"
                   className="flex items-center gap-3 bg-[#000000] border border-[#252137] rounded-xl px-4 py-2 text-left hover:bg-[#12111a] transition duration-200"
                 >
                   <svg className="h-5 w-5 fill-current text-white shrink-0" viewBox="0 0 24 24">
@@ -70,13 +62,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     </div>
                     <div className="text-[13px] font-bold text-white leading-none">App Store</div>
                   </div>
-                </a>
+                </AppComingSoonButton>
 
                 {/* Google Play */}
-                <a
-                  href="https://play.google.com"
-                  target="_blank"
-                  rel="noreferrer"
+                <AppComingSoonButton
+                  platform="android"
                   className="flex items-center gap-3 bg-[#000000] border border-[#252137] rounded-xl px-4 py-2 text-left hover:bg-[#12111a] transition duration-200"
                 >
                   <svg className="h-5 w-5 fill-current text-white shrink-0" viewBox="0 0 24 24">
@@ -88,7 +78,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     </div>
                     <div className="text-[13px] font-bold text-white leading-none">Google Play</div>
                   </div>
-                </a>
+                </AppComingSoonButton>
               </div>
             </div>
 
@@ -97,7 +87,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               {/* Desktop info pill */}
               <div className="bg-[#12111a] border border-[#1b1726]/60 rounded-xl px-4 py-2.5 text-[11px] text-[#7a7488] font-bold flex items-center justify-center gap-2 text-center w-full">
                 <Monitor className="h-3.5 w-3.5 text-[#7a7488]" />
-                <span>chadwallet on Web is only available on desktop.</span>
+                <span>soll on Web is only available on desktop.</span>
               </div>
             </div>
           </div>

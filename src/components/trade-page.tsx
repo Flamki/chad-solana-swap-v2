@@ -28,7 +28,8 @@ import {
   X,
 } from "lucide-react";
 
-import { ChadLogo } from "@/components/chad-logo";
+import { BrandName } from "@/components/brand-name";
+import { AppComingSoonButton } from "@/components/landing/download-app-button";
 import { TokenSearch } from "@/components/token-search";
 import { TradeAccount } from "@/components/trade-account";
 import { PriceChart } from "@/components/trade/price-chart";
@@ -904,7 +905,7 @@ export function TradePage({
               ) : null}
               {!leaderboard.isFetching && !visibleLeaderboardRows.length ? (
                 <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
-                  No ChadWallet traders in this range yet
+                  No soll traders in this range yet
                 </div>
               ) : null}
               {visibleLeaderboardRows.map((trader, index) => (
@@ -1015,23 +1016,21 @@ export function TradePage({
         <div className="flex flex-col items-center text-center gap-6">
           {/* Logo */}
           <div className="flex items-center">
-            <ChadLogo variant="dark" size="lg" showTagline={false} />
+            <BrandName variant="dark" size="lg" showTagline={false} />
           </div>
 
           {/* Tagline */}
           <div className="flex flex-col gap-2 max-w-[280px]">
             <h2 className="text-[20px] font-bold text-white leading-tight">
-              Download the app to start trading
+              Mobile trading is coming soon
             </h2>
           </div>
 
           {/* Store Buttons */}
           <div className="flex flex-col gap-3 mt-4 w-full max-w-[220px]">
             {/* App Store button */}
-            <a
-              href="https://apps.apple.com"
-              target="_blank"
-              rel="noreferrer"
+            <AppComingSoonButton
+              platform="ios"
               className="flex items-center gap-3 bg-[#000000] border border-[#252137] rounded-xl px-4 py-2 text-left hover:bg-[#12111a] transition duration-200"
             >
               <svg className="h-5 w-5 fill-current text-white shrink-0" viewBox="0 0 24 24">
@@ -1043,13 +1042,11 @@ export function TradePage({
                 </div>
                 <div className="text-[13px] font-bold text-white leading-none">App Store</div>
               </div>
-            </a>
+            </AppComingSoonButton>
 
             {/* Google Play button */}
-            <a
-              href="https://play.google.com"
-              target="_blank"
-              rel="noreferrer"
+            <AppComingSoonButton
+              platform="android"
               className="flex items-center gap-3 bg-[#000000] border border-[#252137] rounded-xl px-4 py-2 text-left hover:bg-[#12111a] transition duration-200"
             >
               <svg className="h-5 w-5 fill-current text-white shrink-0" viewBox="0 0 24 24">
@@ -1059,7 +1056,7 @@ export function TradePage({
                 <div className="text-[9px] uppercase tracking-wider text-[#7a7488]">Get it on</div>
                 <div className="text-[13px] font-bold text-white leading-none">Google Play</div>
               </div>
-            </a>
+            </AppComingSoonButton>
           </div>
         </div>
 
@@ -1078,7 +1075,7 @@ export function TradePage({
               <line x1="8" y1="21" x2="16" y2="21" />
               <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
-            <span>chadwallet on Web is only available on desktop.</span>
+            <span>soll on Web is only available on desktop.</span>
           </div>
         </div>
       </div>
@@ -1088,7 +1085,7 @@ export function TradePage({
         <header className="sticky top-0 z-30 shrink-0 bg-[#08060f]/95 backdrop-blur-md">
           <div className="flex h-[50px] items-center justify-between border-b border-[#14101d] px-2">
             <div className="flex items-center gap-4 pl-3">
-              <ChadLogo variant="dark" size="sm" showTagline={false} className="fomo-logo" />
+              <BrandName variant="dark" size="sm" showTagline={false} className="fomo-logo" />
             </div>
 
             <div className="flex-1 max-w-[640px] px-4">
@@ -1546,11 +1543,7 @@ function TradeAuthGate({ ready, redirectTo }: { ready: boolean; redirectTo: stri
   }, [login, ready]);
 
   return (
-    <div
-      aria-label="Opening ChadWallet sign in"
-      className="min-h-screen bg-[#08060f]"
-      role="status"
-    />
+    <div aria-label="Opening soll sign in" className="min-h-screen bg-[#08060f]" role="status" />
   );
 }
 
@@ -2302,7 +2295,7 @@ function dataProviderLabel(provider?: "birdeye" | "geckoterminal" | "solana-rpc"
   if (provider === "solana-rpc") return "Solana RPC";
   if (provider === "geckoterminal") return "GeckoTerminal";
   if (provider === "birdeye") return "BirdEye";
-  return "ChadFeed";
+  return "sollFeed";
 }
 
 function LiveState({ title, detail }: { title: string; detail: string }) {

@@ -12,8 +12,8 @@ export async function generateMetadata({ params }: ProfileParams): Promise<Metad
   const handle = decodeURIComponent(identifier).replace(/^@+/, "");
 
   return {
-    title: `${handle} - ChadWallet`,
-    description: `View ${handle}'s ChadWallet trading profile, activity, transfers, and positions.`,
+    title: `${handle} - soll`,
+    description: `View ${handle}'s soll trading profile, activity, transfers, and positions.`,
   };
 }
 

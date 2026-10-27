@@ -1,23 +1,22 @@
 import type { ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
+import { BrandName } from "@/components/brand-name";
+import { CinematicScene } from "@/components/landing/cinematic-scene";
 import { DownloadAppButton } from "@/components/landing/download-app-button";
 import { LazyVideo } from "@/components/landing/lazy-video";
 import { LazySignInButton } from "@/components/landing/lazy-sign-in-button";
+import { StoreBadges } from "@/components/landing/store-badges";
 import { TrendingCoinTicker } from "@/components/landing/trending-coin-ticker";
-import { SOL_TOKEN_PATH } from "@/lib/routes";
+import { BRAND } from "@/lib/brand";
 
-import chadLogo from "@/assets/logo/dark.png";
-
-const IOS = "https://apps.apple.com/us/app/chadwallet/id6757367474";
-const ANDROID = "https://play.google.com/store/apps/details?id=xyz.chadwallet.www";
-const STORE_BADGES = "/assets/landing/store-badges-v3-cropped.png";
+const SOL_TRADE = BRAND.tradeHref;
 const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
-const HERO_CHARACTER = "/assets/landing/astronaut-hq.png";
 const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
 const PHONE_MOCKUP = "/assets/landing/phone-mockup.png";
 const PHONE_VIDEO = "/assets/video/chadwallet.mp4";
-const FOOTER_IMAGE = "/assets/landing/chad-footer.png";
+const FOOTER_IMAGE = BRAND.footer;
 const FEATURE_LEADERBOARD = "/assets/landing/features/leaderboard.webp";
 const FEATURE_SOCIAL = "/assets/landing/features/social-static.webp";
 const FEATURE_ALERTS = "/assets/landing/features/alerts-static.webp";
@@ -73,7 +72,7 @@ function FeatureImage({
       alt={alt}
       width={1200}
       height={780}
-      quality={90}
+      quality={80}
       sizes="(min-width: 1280px) 31vw, (min-width: 768px) 46vw, 92vw"
       className={`pointer-events-none select-none object-contain ${className}`}
     />
@@ -108,104 +107,54 @@ function SignInVisual() {
   );
 }
 
-function StoreBadges({ className = "" }: { className?: string }) {
-  return (
-    <div className={`relative inline-flex items-center ${className}`}>
-      <Image
-        src={STORE_BADGES}
-        alt="Download ChadWallet on the App Store and Google Play"
-        width={1482}
-        height={264}
-        sizes="296px"
-        className="h-14 w-auto object-contain"
-      />
-      <a
-        href={IOS}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute inset-y-0 left-0 w-1/2"
-        aria-label="Download on the App Store"
-      />
-      <a
-        href={ANDROID}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="absolute inset-y-0 right-0 w-1/2"
-        aria-label="Get it on Google Play"
-      />
-    </div>
-  );
-}
-
 export function Landing() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-black text-white">
-      <section className="relative min-h-[72vh] w-full overflow-hidden md:min-h-[76vh]">
-        <Image
-          src={HERO_BACKGROUND}
-          alt=""
-          fill
-          priority
-          fetchPriority="high"
-          quality={80}
-          sizes="100vw"
-          className="absolute inset-0 h-full w-full object-cover opacity-90"
-        />
+      <section className="soll-hero relative w-full overflow-hidden">
+        <div className="soll-hero-backdrop">
+          <Image
+            src={HERO_BACKGROUND}
+            alt=""
+            fill
+            priority
+            fetchPriority="high"
+            quality={80}
+            sizes="100vw"
+            className="absolute inset-0 h-full w-full object-cover opacity-90"
+          />
+        </div>
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" />
 
         <nav className="relative z-20 flex items-center justify-between px-4 pb-2 pt-3 md:px-6 md:pt-4">
-          <div className="-ml-1 flex items-center gap-2.5 sm:gap-3">
-            <Image
-              src={chadLogo}
-              alt="ChadWallet logo"
-              width={40}
-              height={40}
-              priority
-              className="h-9 w-9 rounded-full bg-white object-contain ring-1 ring-white/10 sm:h-10 sm:w-10"
-            />
-            <span className="text-2xl font-extrabold tracking-tight sm:text-3xl">ChadWallet</span>
-          </div>
+          <Link href="/" aria-label="soll home" className="py-2">
+            <BrandName size="lg" showTagline={false} />
+          </Link>
           <div className="flex items-center gap-2 md:gap-3">
             <StoreBadges className="hidden sm:flex" />
-            <LazySignInButton redirectTo={SOL_TOKEN_PATH} preferTrending />
+            <LazySignInButton redirectTo={SOL_TRADE} preferTrending />
           </div>
         </nav>
 
-        <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-6 pb-4 pt-12 text-center md:pb-6 md:pt-16">
-          <h1 className="text-[12vw] font-black leading-none tracking-tight text-white/90 drop-shadow-[0_0_60px_rgba(120,140,255,0.25)] sm:text-[9rem] md:text-[11rem]">
-            ChadWallet
-          </h1>
-          <p className="mt-2 text-xl font-semibold sm:text-2xl md:text-3xl">
+        <div className="soll-hero-copy relative z-20 mx-auto flex max-w-6xl flex-col items-center px-6 pt-12 text-center md:pt-16">
+          <h1 className="soll-wordmark">{BRAND.name}</h1>
+          <p className="mt-5 text-xl font-semibold sm:text-2xl md:text-3xl">
             The fastest way to trade Solana.
           </p>
           <p className="mt-3 max-w-xl text-xs text-blue-200/70 sm:text-sm">
-            Buy, sell, and copy-trade any token - from viral launches to the wallets that print.
+            Trade SOL and USDC. Your next move starts here.
           </p>
 
           <div className="relative z-20 mt-6 flex flex-wrap items-center justify-center gap-3">
-            <LazySignInButton
-              redirectTo={SOL_TOKEN_PATH}
-              preferTrending
-              label="Start trading"
-              className="bg-white/[0.03] px-7 py-2.5 font-semibold ring-white/[0.12] hover:bg-white/[0.07]"
-            />
             <DownloadAppButton />
+            <div className="soll-cta-primary">
+              <LazySignInButton redirectTo={SOL_TRADE} preferTrending label="Start trading" />
+            </div>
           </div>
-
-          <Image
-            src={HERO_CHARACTER}
-            alt="ChadWallet trader floating in space with a satellite"
-            width={1254}
-            height={1254}
-            priority
-            quality={80}
-            sizes="(min-width: 768px) 700px, (min-width: 640px) 640px, 96vw"
-            className="pointer-events-none mt-[-3rem] w-[min(560px,96vw)] max-w-none select-none animate-float sm:mt-[-4.75rem] sm:w-[min(640px,88%)] md:mt-[-6rem] md:w-[min(700px,82%)]"
-          />
         </div>
+        <CinematicScene />
       </section>
 
-      <section className="landing-deferred relative -mt-10 select-none px-6 pb-2 pt-0 md:-mt-16 md:pb-4">
+      <section className="landing-deferred relative select-none px-6 pb-2 pt-4 md:pb-4 md:pt-6">
         <div className="mx-auto max-w-6xl text-center">
           <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
             NOW AVAILABLE ON WEB
@@ -223,7 +172,7 @@ export function Landing() {
             <div className="absolute inset-x-[8%] bottom-[4%] top-[8%] rounded-full bg-indigo-600/18 blur-3xl" />
             <Image
               src={TRADING_DASHBOARD}
-              alt="ChadWallet web trading dashboard with live charts, token list, and swap panel"
+              alt="soll web trading dashboard with live charts, token list, and swap panel"
               width={1535}
               height={700}
               quality={75}
@@ -232,7 +181,7 @@ export function Landing() {
             />
             <Image
               src={PHONE_MOCKUP}
-              alt="ChadWallet mobile app showing trending tokens"
+              alt="soll mobile app showing trending tokens"
               width={1167}
               height={1347}
               quality={75}
@@ -304,7 +253,7 @@ export function Landing() {
             <FeatureCard eyebrow="LEADERBOARD" title="become a legend, top the leaderboard">
               <FeatureImage
                 src={FEATURE_LEADERBOARD}
-                alt="ChadWallet leaderboard preview"
+                alt="soll leaderboard preview"
                 className="h-full w-full object-cover object-bottom opacity-95"
               />
             </FeatureCard>
@@ -316,7 +265,7 @@ export function Landing() {
             >
               <FeatureImage
                 src={FEATURE_SOCIAL}
-                alt="ChadWallet social feed preview"
+                alt="soll social feed preview"
                 className="h-full w-[102%] object-contain object-bottom opacity-95"
               />
             </FeatureCard>
@@ -328,7 +277,7 @@ export function Landing() {
             >
               <FeatureImage
                 src={FEATURE_ALERTS}
-                alt="ChadWallet alert notification preview"
+                alt="soll alert notification preview"
                 className="h-auto w-[112%] max-w-none object-contain opacity-95"
               />
             </FeatureCard>
@@ -336,7 +285,7 @@ export function Landing() {
             <FeatureCard eyebrow="APPLE PAY" title="deposit instantly with apple pay">
               <FeatureImage
                 src={FEATURE_APPLE_PAY}
-                alt="ChadWallet Apple Pay deposit preview"
+                alt="soll Apple Pay deposit preview"
                 className="h-full w-full object-cover object-bottom opacity-90"
               />
             </FeatureCard>
@@ -358,7 +307,7 @@ export function Landing() {
 
       <section className="landing-deferred relative px-6 pb-8 pt-8 text-center md:pt-10">
         <p className="mb-4 font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
-          NOW AVAILABLE ON WEB & MOBILE
+          ON WEB NOW. MOBILE COMING SOON.
         </p>
         <h2 className="text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
           trade from anywhere.
@@ -372,17 +321,21 @@ export function Landing() {
 
       <TrendingCoinTicker />
 
-      <section
-        className="landing-deferred relative w-full overflow-hidden bg-black leading-none"
-        style={{ aspectRatio: "1254 / 525" }}
-      >
+      <section className="soll-outro landing-deferred" aria-label="soll astronaut in space">
+        <div className="soll-outro-halo" aria-hidden="true" />
+        <div className="soll-outro-orbit soll-outro-orbit-one" aria-hidden="true" />
+        <div className="soll-outro-orbit soll-outro-orbit-two" aria-hidden="true" />
+        <div className="soll-outro-word" aria-hidden="true">
+          {BRAND.name}
+        </div>
         <Image
           src={FOOTER_IMAGE}
-          alt="Chad trader lying on a stack of cash, watching a Solana chart on his phone"
-          fill
-          quality={75}
-          sizes="100vw"
-          className="absolute inset-0 block h-full w-full select-none object-cover object-[center_51%]"
+          alt="soll astronaut sitting on a floating asteroid with a tablet"
+          width={1536}
+          height={1024}
+          quality={80}
+          sizes="(min-width: 1280px) 1200px, 100vw"
+          className="soll-outro-astronaut"
         />
       </section>
     </div>

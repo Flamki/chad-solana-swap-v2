@@ -1255,7 +1255,7 @@ function downloadTradeReceipt(receipt: TradeReceipt) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `chadwallet-swap-${receipt.signature.slice(0, 8)}.json`;
+  anchor.download = `soll-swap-${receipt.signature.slice(0, 8)}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
 }

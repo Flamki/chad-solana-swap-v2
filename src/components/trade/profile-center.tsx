@@ -774,7 +774,7 @@ function ViewedTradeProfile({
           <section className="mt-5 min-w-0 overflow-hidden rounded-lg border border-[#1b1726] bg-[#0b0912]">
             <div className="flex h-12 items-center gap-4 border-b border-[#1b1726] bg-[#15121d] px-4 text-sm font-black">
               <span className="text-white">Recorded swaps</span>
-              <span className="text-[#5c5669]">Mainnet receipts from ChadWallet</span>
+              <span className="text-[#5c5669]">Mainnet receipts from soll</span>
             </div>
             <div className="grid min-w-0 grid-cols-[minmax(58px,0.75fr)_minmax(52px,0.55fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(66px,0.7fr)] border-b border-[#171320] px-4 py-2 text-xs font-semibold text-[#5c5669]">
               <span className="min-w-0 truncate">Token</span>
@@ -1020,7 +1020,7 @@ function FollowRelationshipsDialog({
                   No {tab === "following" ? "following" : "followers"}
                 </div>
                 <div className="mt-2 text-xs font-semibold text-[#4f4859]">
-                  ChadWallet relationships will appear here as users follow each other.
+                  soll relationships will appear here as users follow each other.
                 </div>
               </div>
             </div>
@@ -1357,7 +1357,7 @@ function EditProfileDialog({
       <DialogContent className="w-[min(520px,calc(100vw-32px))] max-w-none gap-0 rounded-3xl border border-[#232034] bg-[#08060f] p-5 text-[#f4f1ff] shadow-[0_28px_120px_rgba(0,0,0,0.75)] [&>button]:-top-14 [&>button]:right-0 [&>button]:grid [&>button]:h-12 [&>button]:w-12 [&>button]:place-items-center [&>button]:rounded-full [&>button]:border [&>button]:border-[#252137] [&>button]:bg-[#0f0d17] [&>button]:text-white [&>button]:opacity-100 [&>button]:ring-offset-0 [&>button:hover]:bg-[#191522]">
         <DialogHeader className="sr-only">
           <DialogTitle>Edit profile</DialogTitle>
-          <DialogDescription>Update your ChadWallet trading profile.</DialogDescription>
+          <DialogDescription>Update your soll trading profile.</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSave} className="space-y-4">
@@ -1546,7 +1546,7 @@ export function FollowTopTradersPanel({
         <div className="mb-3 flex items-center justify-between">
           <div>
             <div className="text-[15px] font-black leading-none text-white">Follow top traders</div>
-            <div className="mt-1 text-[11px] font-semibold text-[#7a7488]">ChadWallet profiles</div>
+            <div className="mt-1 text-[11px] font-semibold text-[#7a7488]">soll profiles</div>
           </div>
           <span className="rounded-md border border-[#252137] bg-[#15121d] px-2 py-1 text-[10px] font-black text-[#7da1ff]">
             LIVE
@@ -1617,7 +1617,7 @@ export function FollowTopTradersPanel({
 
           {!leaderboard.isFetching && !traders.length ? (
             <div className="px-3 py-8 text-center text-xs font-semibold text-[#5c5669]">
-              No other ChadWallet traders yet
+              No other soll traders yet
             </div>
           ) : null}
         </div>
@@ -1854,13 +1854,13 @@ function ConnectedProfileSendPanel({
         const storage = await recordWalletTransfer(nextTransfer);
         if (!storage.stored) {
           setError(
-            "Transfer succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+            "Transfer succeeded on-chain, but soll could not store the app receipt. Keep the Solscan link and refresh.",
           );
         }
       } catch (storageError) {
         console.warn("Transfer submitted, but receipt storage failed.", storageError);
         setError(
-          "Transfer succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+          "Transfer succeeded on-chain, but soll could not store the app receipt. Keep the Solscan link and refresh.",
         );
       }
       setAmount("");
@@ -2648,13 +2648,13 @@ function getDisplayName(user: ReturnType<typeof usePrivy>["user"], email: string
     if (readable) return readable;
   }
 
-  return "Chad Trader";
+  return "soll Trader";
 }
 
 function getProfileHandle(displayName: string, email: string | null) {
   const base = email?.split("@")[0] || displayName;
   const handle = base.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 18);
-  return handle || "ChadTrader";
+  return handle || "sollTrader";
 }
 
 async function copyToClipboard(value: string) {

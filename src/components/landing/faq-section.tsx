@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const FAQS = [
   {
-    q: "Is ChadWallet self-custody?",
+    q: "Is soll self-custody?",
     a: "Yes. Keys are generated and stored client-side through Privy.",
   },
   {

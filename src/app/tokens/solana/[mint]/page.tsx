@@ -31,8 +31,8 @@ export async function generateMetadata({ params }: SolanaTokenParams): Promise<M
   }
 
   return {
-    title: `${symbol} - ChadWallet`,
-    description: `Trade ${name} (${symbol}) on Solana with ChadWallet.`,
+    title: `${symbol} - soll`,
+    description: `Trade ${name} (${symbol}) on Solana with soll.`,
   };
 }
 

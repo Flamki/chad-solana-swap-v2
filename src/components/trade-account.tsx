@@ -490,13 +490,13 @@ export function WithdrawDialog({
         const storage = await recordWalletTransfer(transfer);
         if (!storage.stored) {
           setError(
-            "Withdrawal succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+            "Withdrawal succeeded on-chain, but soll could not store the app receipt. Keep the Solscan link and refresh.",
           );
         }
       } catch (storageError) {
         console.warn("Withdrawal submitted, but receipt storage failed.", storageError);
         setError(
-          "Withdrawal succeeded on-chain, but ChadWallet could not store the app receipt. Keep the Solscan link and refresh.",
+          "Withdrawal succeeded on-chain, but soll could not store the app receipt. Keep the Solscan link and refresh.",
         );
       }
       setSignature(txSignature);
@@ -627,7 +627,7 @@ function ManageAccountDialog({
               Manage account
             </DialogTitle>
             <DialogDescription className="mt-2 text-sm text-[#8f8a9d]">
-              Your ChadWallet identity and Solana wallet.
+              Your soll identity and Solana wallet.
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -840,13 +840,13 @@ function getDisplayName(user: ReturnType<typeof usePrivy>["user"], email: string
     if (readable) return readable;
   }
 
-  return "Chad Trader";
+  return "soll Trader";
 }
 
 function getProfileHandle(displayName: string, email: string | null) {
   const base = email?.split("@")[0] || displayName;
   const handle = base.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 18);
-  return handle || "ChadTrader";
+  return handle || "sollTrader";
 }
 
 async function copyToClipboard(value: string) {
