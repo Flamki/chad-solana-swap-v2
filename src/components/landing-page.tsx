@@ -13,6 +13,7 @@ import { BRAND } from "@/lib/brand";
 const SOL_TRADE = BRAND.tradeHref;
 const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
 const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
+const PHONE_MOCKUP = "/assets/landing/phone-mockup.png";
 const FOOTER_IMAGE = BRAND.footer;
 const FEATURE_LEADERBOARD = "/assets/landing/features/leaderboard.webp";
 const FEATURE_SOCIAL = "/assets/landing/features/social-static.webp";
@@ -151,8 +152,9 @@ export function Landing() {
         <CinematicScene />
       </section>
 
-      <section className="landing-deferred relative select-none px-6 pb-2 pt-4 md:pb-4 md:pt-6">
-        <div className="mx-auto max-w-6xl text-center">
+      <section className="landing-deferred relative select-none overflow-hidden px-6 pb-10 pt-4 md:pb-16 md:pt-6">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_75%,rgba(76,70,220,0.25),transparent_58%)]" />
+        <div className="relative mx-auto max-w-6xl text-center">
           <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
             NOW AVAILABLE ON WEB
           </p>
@@ -166,7 +168,7 @@ export function Landing() {
           </p>
 
           <div className="relative mt-8 md:mt-10">
-            <div className="absolute inset-x-[8%] bottom-[4%] top-[8%] rounded-full bg-indigo-600/18 blur-3xl" />
+            <div className="pointer-events-none absolute -inset-x-[8%] -bottom-[12%] top-[10%] rounded-full bg-indigo-600/30 blur-[100px]" />
             <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#06070b] shadow-[0_38px_120px_rgba(0,0,0,0.68)]">
               <div className="flex h-14 items-center border-b border-white/10 px-5 text-xl font-bold tracking-tight text-white sm:px-7">
                 {BRAND.name}
@@ -186,6 +188,20 @@ export function Landing() {
                 />
               </div>
             </div>
+            <div className="pointer-events-none absolute bottom-[-5%] right-[-8%] z-20 w-[42%] max-w-[460px] animate-float sm:right-[-3%] sm:w-[35%] md:bottom-[-7%] md:right-[-3%] md:w-[30%]">
+              <Image
+                src={PHONE_MOCKUP}
+                alt="Illustrative mobile trading preview"
+                width={1167}
+                height={1347}
+                quality={75}
+                sizes="(min-width: 768px) 30vw, 42vw"
+                className="w-full select-none drop-shadow-[0_35px_70px_rgba(99,102,241,0.5)]"
+              />
+              <span className="absolute bottom-[5%] right-[3%] rounded-full border border-white/20 bg-[#0a0b18]/75 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-white/80 backdrop-blur-xl sm:text-[10px]">
+                Mobile coming soon
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -193,6 +209,23 @@ export function Landing() {
       <div className="landing-deferred relative overflow-hidden">
         <div className="pointer-events-none absolute inset-x-[-24%] top-[24%] bottom-[-8rem] bg-[radial-gradient(ellipse_at_center,rgba(73,72,210,0.2)_0%,rgba(18,16,58,0.18)_42%,rgba(0,0,0,0)_78%)]" />
         <div className="pointer-events-none absolute left-1/2 top-[64%] h-[36rem] w-[56rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-700/18 blur-[130px]" />
+
+        <section className="relative z-10 mx-auto max-w-7xl px-6 pb-8 pt-16 md:pb-12 md:pt-24">
+          <div className="grid items-end gap-6 border-t border-white/10 pt-8 md:grid-cols-2 md:gap-12 md:pt-12">
+            <div>
+              <p className="font-mono text-xs font-bold tracking-[0.25em] text-indigo-400">
+                BUILT FOR THE MOMENT
+              </p>
+              <h2 className="mt-5 max-w-2xl text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
+                The market moves fast.
+                <span className="block text-white/45">Stay in your element.</span>
+              </h2>
+            </div>
+            <p className="max-w-md text-base leading-relaxed text-white/60 sm:text-lg md:justify-self-end">
+              Discover opportunities, follow the market, and make your next move with soll.
+            </p>
+          </div>
+        </section>
 
         <section className="relative z-10 px-5 pb-12 pt-6 sm:px-6 md:pb-16 md:pt-8">
           <div className="mx-auto grid max-w-[1644px] grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
