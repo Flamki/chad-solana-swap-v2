@@ -25,7 +25,7 @@ export function PrivyAppProvider({ children }: { children: ReactNode }) {
       appId={env.privyAppId}
       clientId={env.privyClientId}
       config={{
-        loginMethods: ["google", "email", "twitter", "wallet"],
+        loginMethods: ["email", "twitter", "wallet"],
         appearance: {
           accentColor: "#7C3AED",
           logo: "",
