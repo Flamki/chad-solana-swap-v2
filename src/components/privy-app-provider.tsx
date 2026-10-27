@@ -28,6 +28,8 @@ export function PrivyAppProvider({ children }: { children: ReactNode }) {
         loginMethods: ["google", "email", "twitter", "wallet"],
         appearance: {
           accentColor: "#7C3AED",
+          logo: "",
+          landingHeader: "Log in to soll",
           showWalletLoginFirst: false,
           walletChainType: "ethereum-and-solana",
         },

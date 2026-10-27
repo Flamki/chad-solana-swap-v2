@@ -5,7 +5,6 @@ import Link from "next/link";
 import { BrandName } from "@/components/brand-name";
 import { CinematicScene } from "@/components/landing/cinematic-scene";
 import { DownloadAppButton } from "@/components/landing/download-app-button";
-import { LazyVideo } from "@/components/landing/lazy-video";
 import { LazySignInButton } from "@/components/landing/lazy-sign-in-button";
 import { StoreBadges } from "@/components/landing/store-badges";
 import { TrendingCoinTicker } from "@/components/landing/trending-coin-ticker";
@@ -14,8 +13,6 @@ import { BRAND } from "@/lib/brand";
 const SOL_TRADE = BRAND.tradeHref;
 const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
 const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
-const PHONE_MOCKUP = "/assets/landing/phone-mockup.png";
-const PHONE_VIDEO = "/assets/video/chadwallet.mp4";
 const FOOTER_IMAGE = BRAND.footer;
 const FEATURE_LEADERBOARD = "/assets/landing/features/leaderboard.webp";
 const FEATURE_SOCIAL = "/assets/landing/features/social-static.webp";
@@ -160,34 +157,35 @@ export function Landing() {
             NOW AVAILABLE ON WEB
           </p>
           <h2 className="mt-3 text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl md:text-7xl">
-            trade from anywhere.
+            trade on the web.
             <br />
             never lose a beat.
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-lg text-blue-200/70">
-            Open a trade on your phone, close it on your desktop - all in one app.
+            Explore markets and trade SOL and USDC from your desktop.
           </p>
 
           <div className="relative mt-8 md:mt-10">
             <div className="absolute inset-x-[8%] bottom-[4%] top-[8%] rounded-full bg-indigo-600/18 blur-3xl" />
-            <Image
-              src={TRADING_DASHBOARD}
-              alt="soll web trading dashboard with live charts, token list, and swap panel"
-              width={1535}
-              height={700}
-              quality={75}
-              sizes="(min-width: 1280px) 1152px, 92vw"
-              className="relative mx-auto w-full max-w-[1536px] rounded-xl border border-white/10 shadow-[0_38px_120px_rgba(0,0,0,0.68)]"
-            />
-            <Image
-              src={PHONE_MOCKUP}
-              alt="soll mobile app showing trending tokens"
-              width={1167}
-              height={1347}
-              quality={75}
-              sizes="(min-width: 768px) 30vw, 42vw"
-              className="pointer-events-none absolute bottom-[2%] right-[-8%] z-20 w-[42%] max-w-[560px] select-none drop-shadow-[0_35px_70px_rgba(99,102,241,0.34)] animate-float sm:bottom-[1%] sm:right-[-3%] sm:w-[35%] md:bottom-0 md:right-[2%] md:w-[30%]"
-            />
+            <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#06070b] shadow-[0_38px_120px_rgba(0,0,0,0.68)]">
+              <div className="flex h-14 items-center border-b border-white/10 px-5 text-xl font-bold tracking-tight text-white sm:px-7">
+                {BRAND.name}
+                <span className="ml-auto hidden rounded-full border border-white/10 px-4 py-1.5 text-xs font-normal text-white/40 sm:block">
+                  Web trading preview
+                </span>
+              </div>
+              <div className="relative aspect-[1535/630] overflow-hidden">
+                <Image
+                  src={TRADING_DASHBOARD}
+                  alt="Preview of a Solana trading dashboard with charts, tokens, and a swap panel"
+                  width={1535}
+                  height={700}
+                  quality={75}
+                  sizes="(min-width: 1280px) 1152px, 92vw"
+                  className="absolute bottom-0 left-0 w-full max-w-none"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -195,58 +193,6 @@ export function Landing() {
       <div className="landing-deferred relative overflow-hidden">
         <div className="pointer-events-none absolute inset-x-[-24%] top-[24%] bottom-[-8rem] bg-[radial-gradient(ellipse_at_center,rgba(73,72,210,0.2)_0%,rgba(18,16,58,0.18)_42%,rgba(0,0,0,0)_78%)]" />
         <div className="pointer-events-none absolute left-1/2 top-[64%] h-[36rem] w-[56rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-indigo-700/18 blur-[130px]" />
-
-        <section className="relative z-10 px-6 pb-3 pt-8 md:pt-10">
-          <div className="mx-auto max-w-7xl">
-            <div className="mb-4 flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-indigo-400" />
-              <p className="font-mono text-xs font-bold tracking-[0.3em] text-indigo-400">
-                INSIDE THE APP
-              </p>
-            </div>
-            <div className="grid items-end gap-5 md:grid-cols-2">
-              <h2 className="text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl md:text-7xl">
-                Built for the
-                <br />
-                <span className="bg-gradient-to-r from-white/40 to-white bg-clip-text text-transparent">
-                  fastest fingers
-                </span>{" "}
-                on Solana.
-              </h2>
-              <p className="max-w-md text-base text-white/60 sm:text-lg md:justify-self-end">
-                Every screen ships with the trader in mind - discover, ape, track and cash out
-                without ever leaving the wallet.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        <section className="relative z-10 -mt-8 flex items-center justify-center bg-transparent px-6 pb-6 pt-14 md:-mt-10 md:pb-8 md:pt-16">
-          <div className="relative w-full max-w-[290px] animate-float sm:max-w-[320px] md:max-w-[350px]">
-            <div className="absolute inset-x-6 -bottom-10 h-16 rounded-full bg-black/80 blur-2xl" />
-            <div className="absolute -inset-8 rounded-[4.5rem] bg-gradient-to-b from-indigo-500/22 via-blue-500/10 to-transparent blur-2xl" />
-            <div className="relative rounded-[4.15rem] bg-gradient-to-br from-[#3b3d45] via-[#050507] to-[#242832] p-[10px] shadow-[0_42px_120px_rgba(0,0,0,0.78),0_0_90px_rgba(82,92,255,0.28)] ring-1 ring-white/[0.18]">
-              <div className="absolute -left-[5px] top-[18%] h-14 w-[5px] rounded-l-full bg-gradient-to-b from-[#6c7078] to-[#17191f]" />
-              <div className="absolute -left-[5px] top-[31%] h-10 w-[5px] rounded-l-full bg-gradient-to-b from-[#6c7078] to-[#17191f]" />
-              <div className="absolute -right-[5px] top-[25%] h-20 w-[5px] rounded-r-full bg-gradient-to-b from-[#6c7078] to-[#17191f]" />
-
-              <div className="relative rounded-[3.65rem] bg-[#07080d] p-[6px] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_16px_28px_rgba(255,255,255,0.08)]">
-                <div
-                  className="relative overflow-hidden rounded-[3.2rem] bg-[#0a0c12]"
-                  style={{ aspectRatio: "9 / 19.3" }}
-                >
-                  <LazyVideo
-                    sources={[{ src: PHONE_VIDEO, type: "video/mp4" }]}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                  <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(112deg,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.06)_18%,rgba(255,255,255,0)_42%)] mix-blend-screen" />
-                  <div className="absolute left-1/2 top-3 z-30 h-8 w-28 -translate-x-1/2 rounded-full bg-black shadow-[inset_0_1px_2px_rgba(255,255,255,0.2),0_1px_8px_rgba(0,0,0,0.55)]" />
-                  <div className="absolute bottom-3 left-1/2 z-30 h-1.5 w-32 -translate-x-1/2 rounded-full bg-white/55 shadow-[0_1px_8px_rgba(0,0,0,0.45)]" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
 
         <section className="relative z-10 px-5 pb-12 pt-6 sm:px-6 md:pb-16 md:pt-8">
           <div className="mx-auto grid max-w-[1644px] grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
@@ -310,9 +256,9 @@ export function Landing() {
           ON WEB NOW. MOBILE COMING SOON.
         </p>
         <h2 className="text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl md:text-6xl">
-          trade from anywhere.
+          trade on the web.
           <br />
-          never lose a beat.
+          stay in the moment.
         </h2>
         <div className="mt-7 flex items-center justify-center">
           <StoreBadges />
