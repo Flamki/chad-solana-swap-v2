@@ -1,70 +1,13 @@
-# ChadWallet
+# soll
 
-**A high-fidelity Solana wallet and trading terminal for fast-moving token markets.**
+A Solana trading interface with market data, wallet sign-in, and Jupiter-based swap routing. The web app is available at [trysoll.vercel.app](https://trysoll.vercel.app). Mobile apps are not available yet.
 
-[Live product](https://chad-solana-swap-v2.vercel.app) |
-[One-page project summary](output/pdf/ChadWallet-One-Pager.pdf) |
-[Android app](https://play.google.com/store/apps/details?id=xyz.chadwallet.www) |
-[iOS app](https://apps.apple.com/us/app/chadwallet/id6757367474)
+## Current status
 
-[![ChadWallet trading terminal](public/assets/landing/trading-dashboard.png)](https://chad-solana-swap-v2.vercel.app/trade/So11111111111111111111111111111111111111112)
-
-ChadWallet is a three-day founding-engineer take-home built against the quality
-bar of fomo.family. It pairs a cinematic, responsive landing experience with a
-functional Solana trading workspace powered by live market data, embedded wallet
-infrastructure, token search, charting, portfolio controls, deposits, and
-Jupiter swap routing.
-
-## Reviewer Quick Start
-
-1. Open the [live landing page](https://chad-solana-swap-v2.vercel.app).
-2. Select any token in the top or bottom live ticker.
-3. Search by token name, symbol, or Solana mint address.
-4. Sign in with Google or a supported wallet through Privy.
-5. Review live quotes, routes, holders, trades, positions, and deposit controls.
-
-Apple sign-in remains intentionally unconfigured because production Sign in with
-Apple requires paid Apple Developer credentials.
-
-## Assignment Coverage
-
-| Requirement                                | Implementation                         |
-| ------------------------------------------ | -------------------------------------- |
-| ChadWallet branded landing page            | Complete                               |
-| Official Android and iOS links             | Complete                               |
-| Privy Google and wallet authentication     | Complete                               |
-| Solana support                             | Complete                               |
-| Live rotating token banners                | Complete                               |
-| Banner-to-trading navigation               | Complete                               |
-| Left: live token discovery                 | Complete                               |
-| Middle: token data, chart, holders, trades | Complete                               |
-| Right: buy/sell, route, wallet position    | Complete                               |
-| BirdEye market integration                 | Complete, with live provider fallbacks |
-| Alchemy Solana RPC                         | Complete                               |
-| Jupiter quotes and transaction flow        | Complete                               |
-| Supabase trade-intent persistence          | Complete                               |
-| Cloudflare market-data edge worker         | Complete                               |
-| Vercel production deployment               | Complete                               |
-
-## Product Highlights
-
-- **High-fidelity landing experience:** responsive ChadWallet branding,
-  scroll-driven depth, optimized visual assets, app-store calls to action, and
-  real token tickers.
-- **Universal Solana token search:** live Jupiter token discovery with token name,
-  symbol, and mint-address lookup.
-- **Live market data:** BirdEye is the primary provider, with Jupiter,
-  GeckoTerminal, DexScreener, and Solana RPC fallbacks where coverage is sparse
-  or rate-limited.
-- **Professional charting:** responsive candlesticks, volume, interval controls,
-  price/market-cap modes, and TradingView widget support for listed assets.
-- **Embedded wallet workflow:** Privy authentication, Solana wallet controls,
-  address copy, deposits, transfers, account management, and wallet export entry
-  points.
-- **Jupiter execution path:** live quotes, route metadata, transaction creation,
-  signing handoff, submission, confirmation polling, and downloadable receipts.
-- **Independent workspace scrolling:** token discovery, chart/activity, and
-  trading controls remain usable without losing context.
+- Early-stage web product. The founder has reported performing a trade; independent end-to-end production verification and user traction have not yet been documented here.
+- Email, Twitter, and wallet sign-in are configured through Privy. Google is currently hidden from the sign-in screen.
+- The trading interface includes token discovery, charts, wallet balances, quotes, and a Jupiter transaction flow. Availability depends on provider configuration and market conditions.
+- Screenshots and illustrations on the landing page are previews; they should not be read as verified live prices or user activity.
 
 ## Architecture
 
@@ -108,7 +51,7 @@ Requirements:
 git clone https://github.com/Flamki/chad-solana-swap-v2.git
 cd chad-solana-swap-v2
 npm install
-copy .env.example .env.local
+cp .env.example .env.local
 npm run dev
 ```
 
@@ -197,6 +140,5 @@ npm run check
 
 ## Repository
 
-- Production: <https://chad-solana-swap-v2.vercel.app>
+- Production: <https://trysoll.vercel.app>
 - Repository: <https://github.com/Flamki/chad-solana-swap-v2>
-- Project summary: [ChadWallet One-Pager](output/pdf/ChadWallet-One-Pager.pdf)

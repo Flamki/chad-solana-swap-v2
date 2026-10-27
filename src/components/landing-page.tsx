@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { ArrowDownUp, ChartCandlestick, Clock3, Search, Wallet, Zap } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -15,10 +16,6 @@ const HERO_BACKGROUND = "/assets/landing/hero-space-earth.png";
 const TRADING_DASHBOARD = "/assets/landing/trading-dashboard.png";
 const PHONE_MOCKUP = "/assets/landing/phone-mockup.png";
 const FOOTER_IMAGE = BRAND.footer;
-const FEATURE_LEADERBOARD = "/assets/landing/features/leaderboard.webp";
-const FEATURE_SOCIAL = "/assets/landing/features/social-static.webp";
-const FEATURE_ALERTS = "/assets/landing/features/alerts-static.webp";
-const FEATURE_APPLE_PAY = "/assets/landing/features/apple-pay-static.webp";
 
 type FeatureCardProps = {
   eyebrow: string;
@@ -55,52 +52,38 @@ function FeatureCard({
   );
 }
 
-function FeatureImage({
-  src,
-  alt,
-  className = "",
+function FeatureVisual({
+  icon: Icon,
+  label,
+  details,
 }: {
-  src: string;
-  alt: string;
-  className?: string;
+  icon: typeof Search;
+  label: string;
+  details: string[];
 }) {
   return (
-    <Image
-      src={src}
-      alt={alt}
-      width={1200}
-      height={780}
-      quality={80}
-      sizes="(min-width: 1280px) 31vw, (min-width: 768px) 46vw, 92vw"
-      className={`pointer-events-none select-none object-contain ${className}`}
-    />
-  );
-}
-
-function AssetsVisual() {
-  return (
-    <div className="relative mb-[-54px] h-[285px] w-full">
-      <div className="absolute left-[16%] top-[18%] h-24 w-56 -rotate-12 rounded-[18px] border border-white/30 bg-gradient-to-br from-cyan-100 via-sky-500 to-violet-600 opacity-95 shadow-[0_0_46px_rgba(85,160,255,0.45)]" />
-      <div className="absolute left-[23%] top-[39%] h-20 w-48 -rotate-12 rounded-[16px] border border-white/25 bg-gradient-to-br from-white via-cyan-300 to-violet-500 opacity-90 shadow-[0_0_34px_rgba(137,92,246,0.35)]" />
-      <div className="absolute right-[18%] top-[12%] h-44 w-44 rotate-6 rounded-[30px] border border-white/35 bg-gradient-to-br from-cyan-200 via-blue-500 to-violet-700 opacity-95 shadow-[0_0_58px_rgba(59,130,246,0.45)]" />
-      <div className="absolute bottom-[-8%] left-[30%] h-24 w-32 rotate-12 rounded-[20px] bg-gradient-to-br from-amber-200 via-amber-500 to-orange-700 opacity-90 shadow-[0_0_38px_rgba(251,191,36,0.28)]" />
-      <div className="absolute bottom-[-13%] right-[28%] h-36 w-36 -rotate-12 rounded-[28px] border border-white/30 bg-gradient-to-br from-white via-violet-300 to-indigo-700 opacity-95 shadow-[0_0_50px_rgba(168,85,247,0.45)]" />
-    </div>
-  );
-}
-
-function SignInVisual() {
-  return (
-    <div className="relative mb-8 flex w-[82%] max-w-[408px] flex-col gap-3">
-      <div className="flex h-14 items-center justify-center gap-3 rounded-2xl bg-white text-lg font-bold text-black shadow-[0_16px_44px_rgba(255,255,255,0.13)]">
-        <span className="text-xl">Apple</span>
-        <span>Sign in with Apple</span>
+    <div
+      aria-hidden="true"
+      className="relative mb-[-12px] w-[84%] max-w-[390px] rounded-t-[24px] border border-white/10 bg-[#0b0a13]/90 p-5 text-left shadow-[0_0_70px_rgba(91,93,238,0.16)] sm:p-6"
+    >
+      <div className="mb-6 flex items-center gap-3">
+        <span className="grid h-10 w-10 place-items-center rounded-xl border border-indigo-300/20 bg-indigo-400/10 text-indigo-300">
+          <Icon className="h-5 w-5" />
+        </span>
+        <span className="text-sm font-semibold text-white/90">{label}</span>
       </div>
-      <div className="flex h-14 items-center justify-center gap-3 rounded-2xl bg-[#151515] text-lg font-bold text-white shadow-[0_16px_44px_rgba(59,130,246,0.16)]">
-        <span className="text-xl text-[#4285f4]">G</span>
-        <span>Sign in with Google</span>
+      <div className="space-y-3">
+        {details.map((detail) => (
+          <div
+            key={detail}
+            className="flex items-center gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-4 py-3"
+          >
+            <span className="h-2 w-2 rounded-full bg-indigo-400/80" />
+            <span className="text-sm text-white/65">{detail}</span>
+            <span className="ml-auto h-1.5 w-8 rounded-full bg-white/10" />
+          </div>
+        ))}
       </div>
-      <div className="pointer-events-none absolute -bottom-28 right-[24%] h-44 w-14 rounded-t-full bg-gradient-to-b from-[#ffd7ca] via-[#e7a18e] to-[#9a574c] shadow-[0_-18px_50px_rgba(255,210,190,0.18)]" />
     </div>
   );
 }
@@ -136,7 +119,7 @@ export function Landing() {
         <div className="soll-hero-copy relative z-20 mx-auto flex max-w-6xl flex-col items-center px-6 pt-12 text-center md:pt-16">
           <h1 className="soll-wordmark">{BRAND.name}</h1>
           <p className="mt-5 text-xl font-semibold sm:text-2xl md:text-3xl">
-            The fastest way to trade Solana.
+            A clearer way to trade on Solana.
           </p>
           <p className="mt-3 max-w-xl text-xs text-blue-200/70 sm:text-sm">
             Trade SOL and USDC. Your next move starts here.
@@ -229,56 +212,52 @@ export function Landing() {
 
         <section className="relative z-10 px-5 pb-12 pt-6 sm:px-6 md:pb-16 md:pt-8">
           <div className="mx-auto grid max-w-[1644px] grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-            <FeatureCard eyebrow="LEADERBOARD" title="become a legend, top the leaderboard">
-              <FeatureImage
-                src={FEATURE_LEADERBOARD}
-                alt="soll leaderboard preview"
-                className="h-full w-full object-cover object-bottom opacity-95"
+            <FeatureCard eyebrow="DISCOVER" title="explore Solana markets">
+              <FeatureVisual
+                icon={Search}
+                label="Token discovery"
+                details={["Trending tokens", "Search by name or mint", "Market information"]}
               />
             </FeatureCard>
 
-            <FeatureCard
-              eyebrow="SOCIAL FEED"
-              title="discover and follow top traders"
-              visualClassName="h-[66%]"
-            >
-              <FeatureImage
-                src={FEATURE_SOCIAL}
-                alt="soll social feed preview"
-                className="h-full w-[102%] object-contain object-bottom opacity-95"
+            <FeatureCard eyebrow="CHARTS" title="follow the market in real time">
+              <FeatureVisual
+                icon={ChartCandlestick}
+                label="Market view"
+                details={["Price charts", "Trading activity", "Token details"]}
               />
             </FeatureCard>
 
-            <FeatureCard
-              eyebrow="ALERTS"
-              title="real time notifications for what the best are buying"
-              visualClassName="items-center px-0 pb-10"
-            >
-              <FeatureImage
-                src={FEATURE_ALERTS}
-                alt="soll alert notification preview"
-                className="h-auto w-[112%] max-w-none object-contain opacity-95"
+            <FeatureCard eyebrow="SWAP" title="trade with Jupiter routes">
+              <FeatureVisual
+                icon={ArrowDownUp}
+                label="Swap on Solana"
+                details={["Review a quote", "Check the route", "Confirm in your wallet"]}
               />
             </FeatureCard>
 
-            <FeatureCard eyebrow="APPLE PAY" title="deposit instantly with apple pay">
-              <FeatureImage
-                src={FEATURE_APPLE_PAY}
-                alt="soll Apple Pay deposit preview"
-                className="h-full w-full object-cover object-bottom opacity-90"
+            <FeatureCard eyebrow="ACTIVITY" title="see recent market activity">
+              <FeatureVisual
+                icon={Clock3}
+                label="Market activity"
+                details={["Recent trades", "Token holders", "Market data"]}
               />
             </FeatureCard>
 
-            <FeatureCard eyebrow="ASSETS" title="track your full portfolio at a glance">
-              <AssetsVisual />
+            <FeatureCard eyebrow="WALLET" title="keep your wallet within reach">
+              <FeatureVisual
+                icon={Wallet}
+                label="Your wallet"
+                details={["View balances", "Receive assets", "Manage your account"]}
+              />
             </FeatureCard>
 
-            <FeatureCard
-              eyebrow="SIGN IN"
-              title="get started in seconds, no seed phrase"
-              visualClassName="items-end"
-            >
-              <SignInVisual />
+            <FeatureCard eyebrow="SIGN IN" title="get started with email or a wallet">
+              <FeatureVisual
+                icon={Zap}
+                label="Sign in to soll"
+                details={["Email", "Twitter", "Connect a wallet"]}
+              />
             </FeatureCard>
           </div>
         </section>

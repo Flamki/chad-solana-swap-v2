@@ -9,12 +9,11 @@ import "@/styles.css";
 
 export const metadata: Metadata = {
   title: "soll - Trade the moment.",
-  description:
-    "The Solana wallet for traders. Buy and sell any token in seconds. Apple Pay, gasless, social-first.",
+  description: "Explore Solana markets and trade with soll on the web.",
   authors: [{ name: "soll" }],
   openGraph: {
     title: "soll - Trade the moment.",
-    description: "The Solana wallet for traders. Buy and sell any token in seconds.",
+    description: "Explore Solana markets and trade with soll on the web.",
     type: "website",
   },
   twitter: {
